@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { api } from '../../core/networking/api';
+import { api } from '../../../core/networking/api';
 import * as SecureStore from 'expo-secure-store';
 
 type Props = {
