@@ -63,6 +63,11 @@ export default function DashboardScreen({ navigation }: any) {
                 if (feature.name === 'Notice') navigation.navigate('Notice');
                 if (feature.name === 'Homework') navigation.navigate('Homework');
                 if (feature.name === 'Results') navigation.navigate('Result');
+                if (feature.name === 'Online Class') navigation.navigate('OnlineClass');
+                if (feature.name === 'Chat') navigation.navigate('Chat');
+                if (feature.name === 'Exams') navigation.navigate('Exams');
+                if (feature.name === 'Library') navigation.navigate('Library');
+                if (feature.name === 'Calendar') navigation.navigate('Calendar');
               }}
             >
               <View style={[styles.gridIconContainer, { backgroundColor: feature.bg }]}>
@@ -107,11 +112,11 @@ export default function DashboardScreen({ navigation }: any) {
           <Ionicons name="notifications-outline" size={24} color="#A0AEC0" />
           <Text style={styles.navText}>Notice</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('OnlineClass')}>
           <Ionicons name="laptop-outline" size={24} color="#A0AEC0" />
           <Text style={styles.navText}>Classes</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Chat')}>
           <Ionicons name="chatbubble-outline" size={24} color="#A0AEC0" />
           <Text style={styles.navText}>Chat</Text>
         </TouchableOpacity>
