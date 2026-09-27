@@ -25,7 +25,7 @@ export default function DashboardScreen({ navigation }: any) {
         <View style={styles.header}>
           <TouchableOpacity style={styles.profileSection} onPress={() => navigation.navigate('Profile')}>
             <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={24} color="#FFF" />
+              <Ionicons name="person" size={24} color="#FFFFFF" />
             </View>
             <View>
               <Text style={styles.greetingText}>Hi, Tapas Dev S.</Text>
@@ -34,10 +34,10 @@ export default function DashboardScreen({ navigation }: any) {
           </TouchableOpacity>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Notice')}>
-              <Ionicons name="notifications-outline" size={20} color="#ffffff" />
+              <Ionicons name="notifications-outline" size={20} color="#1F2937" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton}>
-              <Ionicons name="search-outline" size={20} color="#ffffff" />
+              <Ionicons name="search-outline" size={20} color="#1F2937" />
             </TouchableOpacity>
           </View>
         </View>
@@ -130,43 +130,43 @@ export default function DashboardScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080808' },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   scrollContent: { paddingBottom: 24 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingTop: 48, backgroundColor: '#080808' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingTop: 48, backgroundColor: '#FFFFFF' },
   profileSection: { flexDirection: 'row', alignItems: 'center' },
-  avatarPlaceholder: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#191d20', borderWidth: 1, borderColor: '#2a2e33', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
-  greetingText: { fontSize: 16, fontWeight: '600', color: '#ffffff' },
-  subText: { fontSize: 12, color: '#9c9da1', marginTop: 4 },
+  avatarPlaceholder: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#2F80ED', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
+  greetingText: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
+  subText: { fontSize: 13, color: '#6B7280', marginTop: 2 },
   headerIcons: { flexDirection: 'row' },
-  iconButton: { marginLeft: 16, width: 40, height: 40, borderRadius: 20, backgroundColor: '#191d20', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#2a2e33' },
+  iconButton: { marginLeft: 16, width: 40, height: 40, borderRadius: 20, backgroundColor: '#F9FAFB', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
   
-  overviewCard: { margin: 24, padding: 24, backgroundColor: '#191d20', borderRadius: 9, borderWidth: 1, borderColor: '#2a2e33', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  overviewCard: { margin: 24, padding: 24, backgroundColor: '#EBF3FE', borderRadius: 12, borderWidth: 1, borderColor: '#D1E4FF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   overviewTextContainer: { flex: 1 },
-  overviewTitle: { fontSize: 16, fontWeight: '600', color: '#ffffff' },
-  overviewSubTitle: { fontSize: 13, color: '#9c9da1', marginTop: 4 },
-  viewAll: { color: '#7170ff', fontWeight: '500', fontSize: 13 },
+  overviewTitle: { fontSize: 16, fontWeight: '700', color: '#2F80ED' },
+  overviewSubTitle: { fontSize: 13, color: '#2F80ED', marginTop: 4, opacity: 0.8 },
+  viewAll: { color: '#2F80ED', fontWeight: '600', fontSize: 13 },
   
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12 },
   gridItem: { width: '25%', alignItems: 'center', marginBottom: 24 },
-  gridIconContainer: { width: 56, height: 56, borderRadius: 9, backgroundColor: '#191d20', borderWidth: 1, borderColor: '#2a2e33', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  gridText: { fontSize: 12, color: '#9c9da1', textAlign: 'center', fontWeight: '500' },
+  gridIconContainer: { width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  gridText: { fontSize: 12, color: '#1F2937', textAlign: 'center', fontWeight: '500' },
   
   scheduleSection: { padding: 24 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#ffffff' },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
   
-  scheduleCard: { flexDirection: 'row', backgroundColor: '#191d20', padding: 16, borderRadius: 9, borderWidth: 1, borderColor: '#2a2e33', alignItems: 'center' },
-  scheduleIconContainer: { width: 48, height: 48, borderRadius: 9, backgroundColor: '#080808', borderWidth: 1, borderColor: '#2a2e33', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
+  scheduleCard: { flexDirection: 'row', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#F3F4F6', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  scheduleIconContainer: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   scheduleDetails: { flex: 1 },
-  scheduleSubject: { fontSize: 14, fontWeight: '600', color: '#ffffff' },
-  scheduleTime: { fontSize: 12, color: '#9c9da1', marginVertical: 4 },
-  scheduleRoom: { fontSize: 12, color: '#6b6b6b' },
+  scheduleSubject: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
+  scheduleTime: { fontSize: 13, color: '#6B7280', marginVertical: 4 },
+  scheduleRoom: { fontSize: 12, color: '#9CA3AF' },
   
-  liveBadge: { backgroundColor: '#f34e5220', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 9999, borderWidth: 1, borderColor: '#f34e5240' },
-  liveText: { color: '#f34e52', fontSize: 12, fontWeight: '600' },
+  liveBadge: { backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 9999 },
+  liveText: { color: '#EF4444', fontSize: 12, fontWeight: '700' },
   
-  bottomNav: { flexDirection: 'row', backgroundColor: '#191d20', paddingVertical: 16, borderTopWidth: 1, borderTopColor: '#2a2e33', paddingBottom: 32 },
+  bottomNav: { flexDirection: 'row', backgroundColor: '#FFFFFF', paddingVertical: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6', paddingBottom: 32 },
   navItem: { flex: 1, alignItems: 'center' },
-  navTextActive: { fontSize: 12, color: '#7170ff', marginTop: 4, fontWeight: '600' },
-  navText: { fontSize: 12, color: '#9c9da1', marginTop: 4, fontWeight: '500' }
+  navTextActive: { fontSize: 12, color: '#2F80ED', marginTop: 4, fontWeight: '600' },
+  navText: { fontSize: 12, color: '#6B7280', marginTop: 4, fontWeight: '500' }
 });
