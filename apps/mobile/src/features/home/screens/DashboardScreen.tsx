@@ -65,6 +65,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 if (feature.name === 'Routine') navigation.navigate('Routine');
                 if (feature.name === 'Attendance') navigation.navigate('Attendance');
                 if (feature.name === 'Notice') navigation.navigate('Notice');
+                if (feature.name === 'Homework') navigation.navigate('Homework');
               }}
             >
               <View style={styles.gridIconContainer}>
