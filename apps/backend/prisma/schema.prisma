@@ -39,6 +39,32 @@ model User {
   studentProfile StudentProfile?
   teacherProfile TeacherProfile?
   adminProfile   AdminProfile?
+
+  studentAttendances Attendance[] @relation("StudentAttendance")
+  markedAttendances  Attendance[] @relation("TeacherAttendance")
+}
+
+model Attendance {
+  id        String   @id @default(uuid())
+  studentId String
+  student   User     @relation("StudentAttendance", fields: [studentId], references: [id])
+  teacherId String?
+  teacher   User?    @relation("TeacherAttendance", fields: [teacherId], references: [id])
+  
+  date      DateTime
+  status    AttendanceStatus
+  subject   String?  // Optional for subject-wise attendance
+  remarks   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
 }
 
 model StudentProfile {
