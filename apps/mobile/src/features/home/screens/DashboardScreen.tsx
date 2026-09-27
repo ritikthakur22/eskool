@@ -64,6 +64,7 @@ export default function DashboardScreen({ navigation }: Props) {
               onPress={() => {
                 if (feature.name === 'Routine') navigation.navigate('Routine');
                 if (feature.name === 'Attendance') navigation.navigate('Attendance');
+                if (feature.name === 'Notice') navigation.navigate('Notice');
               }}
             >
               <View style={styles.gridIconContainer}>
@@ -104,7 +105,7 @@ export default function DashboardScreen({ navigation }: Props) {
           <Text style={styles.navIconActive}>🏠</Text>
           <Text style={styles.navTextActive}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Notice')}>
           <Text style={styles.navIcon}>🔔</Text>
           <Text style={styles.navText}>Notice</Text>
         </TouchableOpacity>
