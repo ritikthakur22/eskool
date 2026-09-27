@@ -1,25 +1,21 @@
 import React from 'react';
-import { StyleSheet, View, Text, SafeAreaView, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-type Props = {
-  navigation: NativeStackNavigationProp<any>;
-};
-
-export default function DashboardScreen({ navigation }: Props) {
+export default function DashboardScreen({ navigation }: any) {
   const features = [
-    { name: 'Attendance', icon: '📅' },
-    { name: 'Homework', icon: '📝' },
-    { name: 'Online Class', icon: '💻' },
-    { name: 'Routine', icon: '⏰' },
-    { name: 'Exams', icon: '📄' },
-    { name: 'Results', icon: '🏆' },
-    { name: 'Library', icon: '📚' },
-    { name: 'Calendar', icon: '🗓' },
-    { name: 'Notice', icon: '🔔' },
-    { name: 'Chat', icon: '💬' },
-    { name: 'Complaint', icon: '⚠️' },
-    { name: 'More', icon: '⋯' },
+    { name: 'Attendance', icon: 'finger-print-outline', color: '#3182CE', bg: '#EBF8FF' },
+    { name: 'Homework', icon: 'book-outline', color: '#DD6B20', bg: '#FEEBC8' },
+    { name: 'Online Class', icon: 'laptop-outline', color: '#38A169', bg: '#C6F6D5' },
+    { name: 'Routine', icon: 'calendar-outline', color: '#805AD5', bg: '#E9D8FD' },
+    { name: 'Exams', icon: 'document-text-outline', color: '#E53E3E', bg: '#FED7D7' },
+    { name: 'Results', icon: 'trophy-outline', color: '#D69E2E', bg: '#FEFCBF' },
+    { name: 'Library', icon: 'library-outline', color: '#319795', bg: '#B2F5EA' },
+    { name: 'Calendar', icon: 'calendar-number-outline', color: '#D53F8C', bg: '#FED7E2' },
+    { name: 'Notice', icon: 'notifications-outline', color: '#E53E3E', bg: '#FED7D7' },
+    { name: 'Chat', icon: 'chatbubbles-outline', color: '#3182CE', bg: '#EBF8FF' },
+    { name: 'Complaint', icon: 'megaphone-outline', color: '#DD6B20', bg: '#FEEBC8' },
+    { name: 'More', icon: 'grid-outline', color: '#718096', bg: '#EDF2F7' },
   ];
 
   return (
@@ -28,31 +24,31 @@ export default function DashboardScreen({ navigation }: Props) {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.profileSection} onPress={() => navigation.navigate('Profile')}>
-            <View style={styles.avatarPlaceholder} />
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={24} color="#FFF" />
+            </View>
             <View>
               <Text style={styles.greetingText}>Hi, Tapas Dev S.</Text>
               <Text style={styles.subText}>Class 10 • Student</Text>
             </View>
           </TouchableOpacity>
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Notice')}><Text>🔔</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton}><Text>🔍</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Notice')}>
+              <Ionicons name="notifications-outline" size={24} color="#1A202C" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton}>
+              <Ionicons name="search-outline" size={24} color="#1A202C" />
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Classes Summary */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryHeader}>
-            <View style={styles.summaryTitleRow}>
-              <Text style={styles.summaryIcon}>📚</Text>
-              <Text style={styles.summaryTitle}>Today's Classes</Text>
-            </View>
-            <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
+        {/* Classes Overview */}
+        <View style={styles.overviewCard}>
+          <View style={styles.overviewTextContainer}>
+            <Text style={styles.overviewTitle}>Today's Classes</Text>
+            <Text style={styles.overviewSubTitle}>2 / 5 completed</Text>
           </View>
-          <Text style={styles.summarySubtitle}>2 / 5 completed</Text>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: '40%' }]} />
-          </View>
+          <TouchableOpacity><Text style={styles.viewAll}>View All</Text></TouchableOpacity>
         </View>
 
         {/* Grid Features */}
@@ -69,8 +65,8 @@ export default function DashboardScreen({ navigation }: Props) {
                 if (feature.name === 'Results') navigation.navigate('Result');
               }}
             >
-              <View style={styles.gridIconContainer}>
-                <Text style={styles.gridIcon}>{feature.icon}</Text>
+              <View style={[styles.gridIconContainer, { backgroundColor: feature.bg }]}>
+                <Ionicons name={feature.icon as any} size={28} color={feature.color} />
               </View>
               <Text style={styles.gridText}>{feature.name}</Text>
             </TouchableOpacity>
@@ -85,8 +81,8 @@ export default function DashboardScreen({ navigation }: Props) {
           </View>
           
           <View style={styles.scheduleCard}>
-            <View style={styles.scheduleIconContainer}>
-              <Text style={styles.scheduleIcon}>📐</Text>
+            <View style={[styles.scheduleIconContainer, { backgroundColor: '#FEEBC8' }]}>
+              <Ionicons name="calculator-outline" size={24} color="#DD6B20" />
             </View>
             <View style={styles.scheduleDetails}>
               <Text style={styles.scheduleSubject}>Mathematics</Text>
@@ -104,23 +100,23 @@ export default function DashboardScreen({ navigation }: Props) {
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Dashboard')}>
-          <Text style={styles.navIconActive}>🏠</Text>
+          <Ionicons name="home" size={24} color="#3182CE" />
           <Text style={styles.navTextActive}>Home</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Notice')}>
-          <Text style={styles.navIcon}>🔔</Text>
+          <Ionicons name="notifications-outline" size={24} color="#A0AEC0" />
           <Text style={styles.navText}>Notice</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
-          <Text style={styles.navIcon}>💻</Text>
+          <Ionicons name="laptop-outline" size={24} color="#A0AEC0" />
           <Text style={styles.navText}>Classes</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem}>
-          <Text style={styles.navIcon}>💬</Text>
+          <Ionicons name="chatbubble-outline" size={24} color="#A0AEC0" />
           <Text style={styles.navText}>Chat</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
-          <Text style={styles.navIcon}>👤</Text>
+          <Ionicons name="person-outline" size={24} color="#A0AEC0" />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -130,44 +126,36 @@ export default function DashboardScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  scrollContent: { padding: 20, paddingBottom: 100 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  scrollContent: { paddingBottom: 20 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 40, backgroundColor: '#FFFFFF' },
   profileSection: { flexDirection: 'row', alignItems: 'center' },
-  avatarPlaceholder: { width: 45, height: 45, borderRadius: 22.5, backgroundColor: '#E2E8F0', marginRight: 12 },
+  avatarPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#A0AEC0', marginRight: 15, justifyContent: 'center', alignItems: 'center' },
   greetingText: { fontSize: 18, fontWeight: 'bold', color: '#1A202C' },
   subText: { fontSize: 14, color: '#718096' },
   headerIcons: { flexDirection: 'row' },
-  iconButton: { marginLeft: 15, padding: 5 },
-  summaryCard: { backgroundColor: '#E6FFFA', padding: 20, borderRadius: 16, marginBottom: 25 },
-  summaryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  summaryTitleRow: { flexDirection: 'row', alignItems: 'center' },
-  summaryIcon: { fontSize: 20, marginRight: 8 },
-  summaryTitle: { fontSize: 16, fontWeight: 'bold', color: '#234E52' },
-  viewAll: { color: '#3182CE', fontWeight: '600', fontSize: 14 },
-  summarySubtitle: { color: '#285E61', marginTop: 8, marginBottom: 12 },
-  progressBar: { height: 6, backgroundColor: '#B2F5EA', borderRadius: 3 },
-  progressFill: { height: '100%', backgroundColor: '#319795', borderRadius: 3 },
-  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  gridItem: { width: '22%', alignItems: 'center', marginBottom: 20 },
-  gridIconContainer: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, marginBottom: 8 },
-  gridIcon: { fontSize: 24 },
+  iconButton: { marginLeft: 15 },
+  overviewCard: { margin: 20, padding: 20, backgroundColor: '#EBF8FF', borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  overviewTextContainer: { flex: 1 },
+  overviewTitle: { fontSize: 16, fontWeight: 'bold', color: '#2B6CB0' },
+  overviewSubTitle: { fontSize: 14, color: '#4299E1', marginTop: 4 },
+  viewAll: { color: '#3182CE', fontWeight: 'bold' },
+  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10 },
+  gridItem: { width: '25%', alignItems: 'center', marginBottom: 20 },
+  gridIconContainer: { width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   gridText: { fontSize: 12, color: '#4A5568', textAlign: 'center' },
-  scheduleSection: { marginTop: 10 },
+  scheduleSection: { padding: 20 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A202C' },
-  scheduleCard: { backgroundColor: '#FFFFFF', padding: 15, borderRadius: 12, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  scheduleIconContainer: { width: 40, height: 40, backgroundColor: '#FEFCBF', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  scheduleIcon: { fontSize: 20 },
+  scheduleCard: { flexDirection: 'row', backgroundColor: '#FFFFFF', padding: 15, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  scheduleIconContainer: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   scheduleDetails: { flex: 1 },
-  scheduleSubject: { fontSize: 16, fontWeight: 'bold', color: '#1A202C', marginBottom: 4 },
-  scheduleTime: { fontSize: 12, color: '#718096', marginBottom: 2 },
-  scheduleRoom: { fontSize: 12, color: '#718096' },
+  scheduleSubject: { fontSize: 16, fontWeight: 'bold', color: '#1A202C' },
+  scheduleTime: { fontSize: 14, color: '#718096', marginVertical: 2 },
+  scheduleRoom: { fontSize: 12, color: '#A0AEC0' },
   liveBadge: { backgroundColor: '#FED7D7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   liveText: { color: '#E53E3E', fontSize: 12, fontWeight: 'bold' },
-  bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 15, paddingBottom: 25, borderTopWidth: 1, borderTopColor: '#E2E8F0' },
-  navItem: { alignItems: 'center' },
-  navIconActive: { fontSize: 20, color: '#3182CE' },
+  bottomNav: { flexDirection: 'row', backgroundColor: '#FFFFFF', paddingVertical: 15, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingBottom: 25 },
+  navItem: { flex: 1, alignItems: 'center' },
   navTextActive: { fontSize: 12, color: '#3182CE', marginTop: 4, fontWeight: 'bold' },
-  navIcon: { fontSize: 20, color: '#A0AEC0' },
-  navText: { fontSize: 12, color: '#A0AEC0', marginTop: 4 },
+  navText: { fontSize: 12, color: '#A0AEC0', marginTop: 4 }
 });
