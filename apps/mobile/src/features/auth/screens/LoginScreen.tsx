@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
 
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { api } from '../../core/networking/api';
+import * as SecureStore from 'expo-secure-store';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -11,12 +13,34 @@ export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Student');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const roles = ['Student', 'Parent', 'Teacher', 'Admin'];
 
-  const handleLogin = () => {
-    console.log('Login attempt', { email, role });
-    navigation.replace('Dashboard');
+  const handleLogin = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const response = await api.post('/auth/login', {
+        email,
+        password,
+      });
+
+      if (response.data?.access_token) {
+        await SecureStore.setItemAsync('access_token', response.data.access_token);
+        // Also save user info if needed
+        await SecureStore.setItemAsync('user_data', JSON.stringify(response.data.user));
+        
+        navigation.replace('Dashboard');
+      }
+    } catch (err: any) {
+      console.log('Login error:', err.response?.data || err.message);
+      setError(err.response?.data?.message || 'Failed to login. Check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -62,8 +86,10 @@ export default function LoginScreen({ navigation }: Props) {
             <Text style={styles.forgotPassword}>Forgot Password?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Login</Text>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
+            <Text style={styles.loginButtonText}>{loading ? 'Logging in...' : 'Login'}</Text>
           </TouchableOpacity>
 
           <View style={styles.dividerContainer}>
@@ -171,6 +197,11 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  errorText: {
+    color: '#E53E3E',
+    marginBottom: 10,
+    textAlign: 'center',
   },
   dividerContainer: {
     flexDirection: 'row',
