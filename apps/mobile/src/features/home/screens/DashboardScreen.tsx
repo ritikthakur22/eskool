@@ -63,6 +63,7 @@ export default function DashboardScreen({ navigation }: Props) {
               style={styles.gridItem}
               onPress={() => {
                 if (feature.name === 'Routine') navigation.navigate('Routine');
+                if (feature.name === 'Attendance') navigation.navigate('Attendance');
               }}
             >
               <View style={styles.gridIconContainer}>
