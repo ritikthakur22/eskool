@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native';
 
-export default function LoginScreen() {
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type Props = {
+  navigation: NativeStackNavigationProp<any>;
+};
+
+export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Student');
@@ -10,7 +16,7 @@ export default function LoginScreen() {
 
   const handleLogin = () => {
     console.log('Login attempt', { email, role });
-    // TODO: Implement API call
+    navigation.replace('Dashboard');
   };
 
   return (
