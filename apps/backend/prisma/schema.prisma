@@ -43,6 +43,37 @@ model User {
   studentAttendances Attendance[] @relation("StudentAttendance")
   markedAttendances  Attendance[] @relation("TeacherAttendance")
   authoredNotices    Notice[]     @relation("NoticeAuthor")
+  teacherHomeworks   Homework[]   @relation("TeacherHomework")
+  studentSubmissions HomeworkSubmission[] @relation("StudentSubmission")
+}
+
+model Homework {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  dueDate     DateTime
+  subject     String
+  teacherId   String
+  teacher     User     @relation("TeacherHomework", fields: [teacherId], references: [id])
+  classId     String   
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  submissions HomeworkSubmission[]
+}
+
+model HomeworkSubmission {
+  id         String   @id @default(uuid())
+  homeworkId String
+  homework   Homework @relation(fields: [homeworkId], references: [id])
+  studentId  String
+  student    User     @relation("StudentSubmission", fields: [studentId], references: [id])
+  content    String?
+  fileUrl    String?
+  status     String   // PENDING, SUBMITTED, GRADED
+  grade      String?
+  feedback   String?
+  submittedAt DateTime @default(now())
 }
 
 model Attendance {
