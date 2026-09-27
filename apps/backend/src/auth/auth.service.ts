@@ -28,29 +28,4 @@ export class AuthService {
     };
   }
 
-  async register(data: any) {
-    const existingUser = await this.usersService.findByEmail(data.email);
-    if (existingUser) {
-      throw new BadRequestException('User already exists');
-    }
-
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-    const user = await this.usersService.create({
-      email: data.email,
-      password: hashedPassword,
-      role: data.role || Role.STUDENT,
-      school: {
-        connectOrCreate: {
-          where: { id: data.schoolId || 'default-school-id' },
-          create: {
-            id: data.schoolId || 'default-school-id',
-            name: 'Default School'
-          }
-        }
-      }
-    });
-
-    const { password, ...result } = user;
-    return result;
-  }
 }
