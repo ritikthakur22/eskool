@@ -34,10 +34,10 @@ export default function DashboardScreen({ navigation }: any) {
           </TouchableOpacity>
           <View style={styles.headerIcons}>
             <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Notice')}>
-              <Ionicons name="notifications-outline" size={24} color="#1A202C" />
+              <Ionicons name="notifications-outline" size={20} color="#ffffff" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton}>
-              <Ionicons name="search-outline" size={24} color="#1A202C" />
+              <Ionicons name="search-outline" size={20} color="#ffffff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -130,37 +130,43 @@ export default function DashboardScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  scrollContent: { paddingBottom: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 40, backgroundColor: '#FFFFFF' },
+  container: { flex: 1, backgroundColor: '#080808' },
+  scrollContent: { paddingBottom: 24 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingTop: 48, backgroundColor: '#080808' },
   profileSection: { flexDirection: 'row', alignItems: 'center' },
-  avatarPlaceholder: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#A0AEC0', marginRight: 15, justifyContent: 'center', alignItems: 'center' },
-  greetingText: { fontSize: 18, fontWeight: 'bold', color: '#1A202C' },
-  subText: { fontSize: 14, color: '#718096' },
+  avatarPlaceholder: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#191d20', borderWidth: 1, borderColor: '#2a2e33', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
+  greetingText: { fontSize: 16, fontWeight: '600', color: '#ffffff' },
+  subText: { fontSize: 12, color: '#9c9da1', marginTop: 4 },
   headerIcons: { flexDirection: 'row' },
-  iconButton: { marginLeft: 15 },
-  overviewCard: { margin: 20, padding: 20, backgroundColor: '#EBF8FF', borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  iconButton: { marginLeft: 16, width: 40, height: 40, borderRadius: 20, backgroundColor: '#191d20', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#2a2e33' },
+  
+  overviewCard: { margin: 24, padding: 24, backgroundColor: '#191d20', borderRadius: 9, borderWidth: 1, borderColor: '#2a2e33', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   overviewTextContainer: { flex: 1 },
-  overviewTitle: { fontSize: 16, fontWeight: 'bold', color: '#2B6CB0' },
-  overviewSubTitle: { fontSize: 14, color: '#4299E1', marginTop: 4 },
-  viewAll: { color: '#3182CE', fontWeight: 'bold' },
-  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10 },
-  gridItem: { width: '25%', alignItems: 'center', marginBottom: 20 },
-  gridIconContainer: { width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  gridText: { fontSize: 12, color: '#4A5568', textAlign: 'center' },
-  scheduleSection: { padding: 20 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A202C' },
-  scheduleCard: { flexDirection: 'row', backgroundColor: '#FFFFFF', padding: 15, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  scheduleIconContainer: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  overviewTitle: { fontSize: 16, fontWeight: '600', color: '#ffffff' },
+  overviewSubTitle: { fontSize: 13, color: '#9c9da1', marginTop: 4 },
+  viewAll: { color: '#7170ff', fontWeight: '500', fontSize: 13 },
+  
+  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12 },
+  gridItem: { width: '25%', alignItems: 'center', marginBottom: 24 },
+  gridIconContainer: { width: 56, height: 56, borderRadius: 9, backgroundColor: '#191d20', borderWidth: 1, borderColor: '#2a2e33', justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+  gridText: { fontSize: 12, color: '#9c9da1', textAlign: 'center', fontWeight: '500' },
+  
+  scheduleSection: { padding: 24 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#ffffff' },
+  
+  scheduleCard: { flexDirection: 'row', backgroundColor: '#191d20', padding: 16, borderRadius: 9, borderWidth: 1, borderColor: '#2a2e33', alignItems: 'center' },
+  scheduleIconContainer: { width: 48, height: 48, borderRadius: 9, backgroundColor: '#080808', borderWidth: 1, borderColor: '#2a2e33', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   scheduleDetails: { flex: 1 },
-  scheduleSubject: { fontSize: 16, fontWeight: 'bold', color: '#1A202C' },
-  scheduleTime: { fontSize: 14, color: '#718096', marginVertical: 2 },
-  scheduleRoom: { fontSize: 12, color: '#A0AEC0' },
-  liveBadge: { backgroundColor: '#FED7D7', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  liveText: { color: '#E53E3E', fontSize: 12, fontWeight: 'bold' },
-  bottomNav: { flexDirection: 'row', backgroundColor: '#FFFFFF', paddingVertical: 15, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingBottom: 25 },
+  scheduleSubject: { fontSize: 14, fontWeight: '600', color: '#ffffff' },
+  scheduleTime: { fontSize: 12, color: '#9c9da1', marginVertical: 4 },
+  scheduleRoom: { fontSize: 12, color: '#6b6b6b' },
+  
+  liveBadge: { backgroundColor: '#f34e5220', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 9999, borderWidth: 1, borderColor: '#f34e5240' },
+  liveText: { color: '#f34e52', fontSize: 12, fontWeight: '600' },
+  
+  bottomNav: { flexDirection: 'row', backgroundColor: '#191d20', paddingVertical: 16, borderTopWidth: 1, borderTopColor: '#2a2e33', paddingBottom: 32 },
   navItem: { flex: 1, alignItems: 'center' },
-  navTextActive: { fontSize: 12, color: '#3182CE', marginTop: 4, fontWeight: 'bold' },
-  navText: { fontSize: 12, color: '#A0AEC0', marginTop: 4 }
+  navTextActive: { fontSize: 12, color: '#7170ff', marginTop: 4, fontWeight: '600' },
+  navText: { fontSize: 12, color: '#9c9da1', marginTop: 4, fontWeight: '500' }
 });
