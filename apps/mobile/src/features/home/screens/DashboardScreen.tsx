@@ -58,7 +58,13 @@ export default function DashboardScreen({ navigation }: Props) {
         {/* Grid Features */}
         <View style={styles.gridContainer}>
           {features.map((feature, idx) => (
-            <TouchableOpacity key={idx} style={styles.gridItem}>
+            <TouchableOpacity 
+              key={idx} 
+              style={styles.gridItem}
+              onPress={() => {
+                if (feature.name === 'Routine') navigation.navigate('Routine');
+              }}
+            >
               <View style={styles.gridIconContainer}>
                 <Text style={styles.gridIcon}>{feature.icon}</Text>
               </View>
