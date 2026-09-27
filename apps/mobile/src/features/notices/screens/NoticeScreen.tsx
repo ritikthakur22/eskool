@@ -1,69 +1,57 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import api from '../../../core/networking/api';
 
 export default function NoticeScreen({ navigation }: any) {
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [allNotices, setAllNotices] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const tabs = ['All', 'Important', 'Academic', 'Exam'];
 
-  const allNotices = [
-    {
-      id: '1',
-      title: 'School Notice',
-      subtitle: 'विद्यार्थी, शिक्षकवर्ग तथा अभिभावकज्यूमा सुरक्षित रहनुहुन अपिल',
-      date: 'Sep 24, 2026',
-      badge: 'Important',
-      category: 'Important',
-      icon: 'business',
-      iconBg: '#EBF8FF',
-      iconColor: '#3182CE'
-    },
-    {
-      id: '2',
-      title: 'Exam Schedule',
-      subtitle: 'First Terminal Examination schedule...',
-      date: 'Sep 20, 2026',
-      badge: 'New',
-      category: 'Exam',
-      icon: 'document-text',
-      iconBg: '#E6FFFA',
-      iconColor: '#319795'
-    },
-    {
-      id: '3',
-      title: 'Holiday Notice',
-      subtitle: 'Next Monday will be a holiday...',
-      date: 'Sep 18, 2026',
-      badge: null,
-      category: 'Important',
-      icon: 'calendar',
-      iconBg: '#F0FFF4',
-      iconColor: '#38A169'
-    },
-    {
-      id: '4',
-      title: 'Chemistry MCQ Questions',
-      subtitle: 'Dear Students & Parents...',
-      date: 'Sep 10, 2026',
-      badge: null,
-      category: 'Academic',
-      icon: 'flask',
-      iconBg: '#EBF4FF',
-      iconColor: '#4C51BF'
-    },
-    {
-      id: '5',
-      title: 'Fee Payment Reminder',
-      subtitle: 'Please clear your dues before...',
-      date: 'Sep 05, 2026',
-      badge: null,
-      category: 'Academic',
-      icon: 'wallet',
-      iconBg: '#FFFFF0',
-      iconColor: '#D69E2E'
+  useEffect(() => {
+    fetchNotices();
+  }, []);
+
+  const fetchNotices = async () => {
+    try {
+      const response = await api.get('/notices');
+      const mappedNotices = response.data.map((n: any) => {
+        let icon = 'document-text';
+        let iconBg = '#E6FFFA';
+        let iconColor = '#319795';
+        let badge = null;
+        
+        if (n.category === 'Important') {
+          icon = 'business'; iconBg = '#EBF8FF'; iconColor = '#3182CE'; badge = 'Important';
+        } else if (n.category === 'Exam') {
+          icon = 'document-text'; iconBg = '#E6FFFA'; iconColor = '#319795';
+        } else if (n.category === 'Academic') {
+          icon = 'flask'; iconBg = '#EBF4FF'; iconColor = '#4C51BF';
+        } else {
+          icon = 'calendar'; iconBg = '#F0FFF4'; iconColor = '#38A169';
+        }
+
+        return {
+          id: n.id,
+          title: n.title,
+          subtitle: n.content,
+          date: new Date(n.date).toLocaleDateString(),
+          badge: badge,
+          category: n.category,
+          icon,
+          iconBg,
+          iconColor
+        };
+      });
+      setAllNotices(mappedNotices);
+    } catch (error) {
+      console.error('Failed to fetch notices:', error);
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
 
   const filteredNotices = allNotices.filter(notice => {
     const matchesTab = activeTab === 'All' || notice.category === activeTab;
@@ -106,27 +94,33 @@ export default function NoticeScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.listContainer}>
-        {filteredNotices.map((notice) => (
-          <TouchableOpacity key={notice.id} style={styles.noticeCard}>
-            <View style={[styles.iconContainer, { backgroundColor: notice.iconBg }]}>
-              <Ionicons name={notice.icon as any} size={24} color={notice.iconColor} />
-            </View>
-            <View style={styles.noticeContent}>
-              <View style={styles.noticeHeaderRow}>
-                <Text style={styles.noticeTitle}>{notice.title}</Text>
-                {notice.badge && (
-                  <View style={[styles.badge, notice.badge === 'Important' ? styles.badgeImportant : styles.badgeNew]}>
-                    <Text style={[styles.badgeText, notice.badge === 'Important' ? styles.badgeTextImportant : styles.badgeTextNew]}>
-                      {notice.badge}
-                    </Text>
-                  </View>
-                )}
+        {isLoading ? (
+          <ActivityIndicator size="large" color="#3182CE" style={{ marginTop: 50 }} />
+        ) : filteredNotices.length === 0 ? (
+          <Text style={{ textAlign: 'center', marginTop: 50, color: '#A0AEC0' }}>No notices found.</Text>
+        ) : (
+          filteredNotices.map((notice) => (
+            <TouchableOpacity key={notice.id} style={styles.noticeCard}>
+              <View style={[styles.iconContainer, { backgroundColor: notice.iconBg }]}>
+                <Ionicons name={notice.icon as any} size={24} color={notice.iconColor} />
               </View>
-              <Text style={styles.noticeSubtitle} numberOfLines={1}>{notice.subtitle}</Text>
-              <Text style={styles.noticeDate}>{notice.date}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
+              <View style={styles.noticeContent}>
+                <View style={styles.noticeHeaderRow}>
+                  <Text style={styles.noticeTitle}>{notice.title}</Text>
+                  {notice.badge && (
+                    <View style={[styles.badge, notice.badge === 'Important' ? styles.badgeImportant : styles.badgeNew]}>
+                      <Text style={[styles.badgeText, notice.badge === 'Important' ? styles.badgeTextImportant : styles.badgeTextNew]}>
+                        {notice.badge}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.noticeSubtitle} numberOfLines={1}>{notice.subtitle}</Text>
+                <Text style={styles.noticeDate}>{notice.date}</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
