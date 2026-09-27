@@ -27,15 +27,15 @@ export default function DashboardScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.profileSection}>
+          <TouchableOpacity style={styles.profileSection} onPress={() => navigation.navigate('Profile')}>
             <View style={styles.avatarPlaceholder} />
             <View>
               <Text style={styles.greetingText}>Hi, Tapas Dev S.</Text>
               <Text style={styles.subText}>Class 10 • Student</Text>
             </View>
-          </View>
+          </TouchableOpacity>
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconButton}><Text>🔔</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Notice')}><Text>🔔</Text></TouchableOpacity>
             <TouchableOpacity style={styles.iconButton}><Text>🔍</Text></TouchableOpacity>
           </View>
         </View>
@@ -66,6 +66,7 @@ export default function DashboardScreen({ navigation }: Props) {
                 if (feature.name === 'Attendance') navigation.navigate('Attendance');
                 if (feature.name === 'Notice') navigation.navigate('Notice');
                 if (feature.name === 'Homework') navigation.navigate('Homework');
+                if (feature.name === 'Results') navigation.navigate('Result');
               }}
             >
               <View style={styles.gridIconContainer}>
@@ -102,7 +103,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Dashboard')}>
           <Text style={styles.navIconActive}>🏠</Text>
           <Text style={styles.navTextActive}>Home</Text>
         </TouchableOpacity>
@@ -118,7 +119,7 @@ export default function DashboardScreen({ navigation }: Props) {
           <Text style={styles.navIcon}>💬</Text>
           <Text style={styles.navText}>Chat</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
           <Text style={styles.navIcon}>👤</Text>
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>

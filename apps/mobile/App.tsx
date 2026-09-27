@@ -7,6 +7,8 @@ import RoutineScreen from './src/features/routine/screens/RoutineScreen';
 import AttendanceScreen from './src/features/attendance/screens/AttendanceScreen';
 import NoticeScreen from './src/features/notices/screens/NoticeScreen';
 import HomeworkScreen from './src/features/homework/screens/HomeworkScreen';
+import ResultScreen from './src/features/results/screens/ResultScreen';
+import ProfileScreen from './src/features/profile/screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +22,8 @@ export default function App() {
         <Stack.Screen name="Attendance" component={AttendanceScreen} />
         <Stack.Screen name="Notice" component={NoticeScreen} />
         <Stack.Screen name="Homework" component={HomeworkScreen} />
+        <Stack.Screen name="Result" component={ResultScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

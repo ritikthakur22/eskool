@@ -7,9 +7,10 @@ import { AuthModule } from './auth/auth.module.js';
 import { AttendanceModule } from './attendance/attendance.module.js';
 import { NoticesModule } from './notices/notices.module.js';
 import { HomeworkModule } from './homework/homework.module.js';
+import { ExamsModule } from './exams/exams.module.js';
 
 @Module({
-  imports: [PrismaModule, UsersModule, AuthModule, AttendanceModule, NoticesModule, HomeworkModule],
+  imports: [PrismaModule, UsersModule, AuthModule, AttendanceModule, NoticesModule, HomeworkModule, ExamsModule],
   controllers: [AppController],
   providers: [AppService],
 })

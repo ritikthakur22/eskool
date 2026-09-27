@@ -45,6 +45,7 @@ model User {
   authoredNotices    Notice[]     @relation("NoticeAuthor")
   teacherHomeworks   Homework[]   @relation("TeacherHomework")
   studentSubmissions HomeworkSubmission[] @relation("StudentSubmission")
+  studentResults     ExamResult[] @relation("StudentResults")
 }
 
 model Homework {
@@ -140,4 +141,25 @@ model Notice {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Exam {
+  id        String   @id @default(uuid())
+  title     String
+  date      DateTime
+  classId   String
+  
+  results   ExamResult[]
+}
+
+model ExamResult {
+  id        String   @id @default(uuid())
+  examId    String
+  exam      Exam     @relation(fields: [examId], references: [id])
+  studentId String
+  student   User     @relation("StudentResults", fields: [studentId], references: [id])
+  subject   String
+  marksObtained Float
+  totalMarks    Float
+  grade     String?
 }
