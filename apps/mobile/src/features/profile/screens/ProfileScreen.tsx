@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
-import auth from '@react-native-firebase/auth';
+import auth, { GoogleAuthProvider } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 export default function ProfileScreen({ navigation }: any) {
@@ -39,7 +39,7 @@ export default function ProfileScreen({ navigation }: any) {
         throw new Error('Google Sign-In failed to return an ID token.');
       }
 
-      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+      const googleCredential = GoogleAuthProvider.credential(idToken);
       
       // Sign in or link using Firebase Auth
       await auth().signInWithCredential(googleCredential);
@@ -47,7 +47,8 @@ export default function ProfileScreen({ navigation }: any) {
       Alert.alert('Success', 'Google Account successfully linked via Firebase!');
     } catch (error: any) {
       console.error(error);
-      Alert.alert('Error', error.message || 'Failed to link Google account.');
+      const errorMsg = error instanceof Error ? `${error.name}: ${error.message}` : JSON.stringify(error);
+      Alert.alert('Developer Error Details', errorMsg);
     } finally {
       setIsLinking(false);
     }
