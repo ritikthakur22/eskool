@@ -62,6 +62,41 @@
 
 We meticulously selected the most powerful modern technologies to guarantee high performance, massive scalability, and cross-platform reliability.
 
+
+### 🏗️ Full System Architecture
+
+```mermaid
+graph TD;
+    subgraph Client [Mobile Application]
+        UI[📱 Expo / React Native]
+        Storage[💾 AsyncStorage / SecureStore]
+    end
+
+    subgraph Auth [Authentication]
+        Google[🌐 Google Sign-In]
+    end
+
+    subgraph API [NestJS Backend]
+        Router[🚦 API Gateway & Routes]
+        Services[⚙️ Business Logic / Services]
+        Guards[🛡️ RBAC & JWT Guards]
+        PrismaORM[🗄️ Prisma ORM]
+    end
+
+    subgraph Database
+        NeonDB[(🐘 PostgreSQL on NeonDB)]
+    end
+
+    UI -->|1. Request Login| Google
+    Google -->|2. Return OAuth Token| UI
+    UI -->|3. Send Token / HTTPS API Request| Router
+    Router --> Guards
+    Guards --> Services
+    Services --> PrismaORM
+    PrismaORM <-->|TCP/IP| NeonDB
+    Services -->|JSON Response| UI
+```
+
 ### 📱 Frontend (Mobile App)
 | Tech | Version | Why We Chose It |
 |------|---------|-----------------|
@@ -184,8 +219,15 @@ git clone https://github.com/eskool33/eskool-software.git
 cd eskool-software
 ```
 
-### 3️⃣ Backend Setup (NestJS)
+
+### 3️⃣ Backend Setup (NestJS & PostgreSQL)
 First, set up the API server and database.
+
+**Database Configuration (NeonDB):**
+1. Go to [Neon.tech](https://neon.tech/) and create a free PostgreSQL database.
+2. Copy your connection string.
+3. If it contains `?sslmode=require`, ensure your backend environment matches it.
+
 ```bash
 cd apps/backend
 
@@ -193,20 +235,33 @@ cd apps/backend
 npm install
 
 # 2. Configure Environment Variables
-# Create a .env file in the backend folder and add:
-# DATABASE_URL="your-postgresql-url"
-# JWT_SECRET="your-super-secret-key"
+# Create a .env file in the backend folder and add your DB and Auth keys:
+echo 'DATABASE_URL="postgresql://user:pass@ep-rest-of-url.neon.tech/eskool?sslmode=require"' > .env
+echo 'JWT_SECRET="your-super-secret-key"' >> .env
 
 # 3. Generate Prisma Client & Run Migrations
 npx prisma generate
 npx prisma migrate dev
 
-# 4. Start the Development Server (Runs on port 3000)
+# 4. Seed the Database with Default Roles
+# This will inject the default Super Admin so you can log in!
+npm run seed
+
+# 5. Start the Development Server (Runs on port 3000)
 npm run start:dev
 ```
 
+
+
+
 ### 4️⃣ Mobile App Setup (React Native Expo)
 Open a **new** terminal window (keep the backend running).
+
+**Network Configuration:**
+By default, the app is pointed at the live cloud server. To test locally:
+1. Open `apps/mobile/src/core/networking/api.ts`
+2. Change the URL to your computer's local IP (e.g., `http://192.168.1.5:3000`)
+
 ```bash
 cd apps/mobile
 
@@ -217,10 +272,11 @@ npm install
 npx expo start -c
 ```
 *   Press `a` in the terminal to open the app in an Android Emulator.
-*   Or download the **Expo Go** app on your physical phone and scan the QR code!
+*   Or download the **Expo Go** app on your physical phone and scan the QR code! (Make sure your phone and PC are on the same Wi-Fi).
 
 > **Linux Pro-Tip:** If you encounter a `System limit for number of file watchers reached` error while running Expo on Linux, run this command:
 > `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
+
 
 
 ## ⚖️ License & Copyright
