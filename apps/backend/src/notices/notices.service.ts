@@ -10,10 +10,11 @@ export class NoticesService {
     return this.prisma.notice.create({ data });
   }
 
-  async getAllNotices(category?: string): Promise<Notice[]> {
+  async getAllNotices(category?: string, limit?: number): Promise<Notice[]> {
     const where = category ? { category } : {};
     return this.prisma.notice.findMany({
       where,
+      ...(limit ? { take: limit } : {}),
       orderBy: { date: 'desc' },
       include: {
         author: {

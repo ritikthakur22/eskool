@@ -5,7 +5,7 @@ import { getInMemoryAccessToken } from './session';
 
 // Set EXPO_PUBLIC_API_URL to the computer's LAN URL when using a physical device.
 const getBaseUrl = () => process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/$/, '') ||
-  (Platform.OS === 'android' ? 'http://localhost:3000' : 'http://localhost:3000');
+  (Platform.OS === 'android' ? 'https://eskool-api.onrender.com' : 'https://eskool-api.onrender.com');
 
 export const API_BASE_URL = getBaseUrl();
 

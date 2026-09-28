@@ -3,19 +3,25 @@ import { ActivityIndicator, Modal, RefreshControl, SafeAreaView, ScrollView, Sty
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../../core/networking/api';
 import { useTheme } from '../../../core/theme/ThemeContext';
+import { isNoticeUnread, loadNoticeReadState, markAllNoticesRead, markNoticeRead, saveNoticeReadState, type NoticeReadState } from '../../../core/utils/noticeReadState';
 
-type Notice = { id: string; title: string; content: string; category: string; date: string; author?: any };
+type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; author?: any };
 const categories = ['All', 'Important', 'Academic', 'Exam', 'Holiday', 'Event', 'General'];
 
 export default function NoticeScreen({ navigation }: any) {
   const { colors } = useTheme(); const s = makeStyles(colors);
   const [activeCategory, setActiveCategory] = useState('All'); const [search, setSearch] = useState('');
-  const [notices, setNotices] = useState<Notice[]>([]); const [readIds, setReadIds] = useState<string[]>([]);
+  const [notices, setNotices] = useState<Notice[]>([]); const [readState, setReadState] = useState<NoticeReadState>({ initialized: false, readThrough: 0, readIds: [] });
   const [selected, setSelected] = useState<Notice | null>(null); const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false); const [error, setError] = useState('');
   const fetchNotices = useCallback(async (refresh = false) => {
     refresh ? setRefreshing(true) : setLoading(true); setError('');
-    try { const { data } = await api.get('/notices'); setNotices((data || []).map((n: any) => ({ ...n, content: n.content || '', category: n.category || 'General' }))); }
+    try {
+      const { data } = await api.get('/notices');
+      const normalized = (data || []).map((n: any) => ({ ...n, content: n.content || '', category: n.category || 'General' }));
+      setNotices(normalized);
+      setReadState(await loadNoticeReadState(normalized));
+    }
     catch (e: any) { setError(e.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load notices. Check your connection and try again.'); }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
@@ -25,7 +31,18 @@ export default function NoticeScreen({ navigation }: any) {
     const query = search.trim().toLowerCase(); return matchesCategory && (!query || n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query));
   }), [activeCategory, notices, search]);
   const featured = notices.find(n => ['important', 'emergency'].includes(n.category.toLowerCase()));
-  const openNotice = (n: Notice) => { if (!readIds.includes(n.id)) setReadIds(ids => [...ids, n.id]); setSelected(n); };
+  const unreadCount = notices.filter(notice => isNoticeUnread(notice, readState)).length;
+  const openNotice = (n: Notice) => {
+    const next = markNoticeRead(readState, n.id);
+    setReadState(next);
+    void saveNoticeReadState(next);
+    setSelected(n);
+  };
+  const markAllAsRead = () => {
+    const next = markAllNoticesRead(readState, notices);
+    setReadState(next);
+    void saveNoticeReadState(next);
+  };
   const iconFor = (category: string) => {
     const key = category.toLowerCase();
     if (['important', 'emergency'].includes(key)) return { name: 'alert-circle', color: colors.danger, bg: colors.danger + '18' };
@@ -40,9 +57,9 @@ export default function NoticeScreen({ navigation }: any) {
       <View style={s.sticky}><View style={s.search}><Ionicons name="search-outline" size={19} color={colors.subText} /><TextInput value={search} onChangeText={setSearch} placeholder="Search updates" placeholderTextColor={colors.subText} style={s.searchInput} returnKeyType="search" />{search.length > 0 && <TouchableOpacity onPress={() => setSearch('')}><Ionicons name="close-circle" size={18} color={colors.subText} /></TouchableOpacity>}</View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.categories}>{categories.map(category => <TouchableOpacity key={category} onPress={() => setActiveCategory(category)} style={[s.chip, activeCategory === category && s.chipActive]}><Text style={[s.chipText, activeCategory === category && s.chipTextActive]}>{category}</Text></TouchableOpacity>)}</ScrollView></View>
       <View style={s.content}>
         {featured && <TouchableOpacity activeOpacity={0.9} onPress={() => openNotice(featured)} style={s.featured}><View style={s.featuredTop}><View style={s.urgentTag}><Ionicons name="warning" size={12} color="#fff" /><Text style={s.urgentText}>IMPORTANT UPDATE</Text></View><Ionicons name="chevron-forward" size={20} color="#fff" /></View><Text style={s.featuredTitle} numberOfLines={2}>{featured.title}</Text><Text style={s.featuredPreview} numberOfLines={2}>{featured.content}</Text><Text style={s.featuredDate}>{new Date(featured.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text></TouchableOpacity>}
-        <View style={s.sectionHeading}><View><Text style={s.sectionTitle}>{activeCategory === 'All' ? 'Recent updates' : activeCategory}</Text><Text style={s.sectionSubtitle}>{filtered.length} {filtered.length === 1 ? 'notice' : 'notices'} from your school</Text></View><View style={s.count}><Text style={s.countText}>{filtered.length}</Text></View></View>
+        <View style={s.sectionHeading}><View><Text style={s.sectionTitle}>{activeCategory === 'All' ? 'Recent updates' : activeCategory}</Text><Text style={s.sectionSubtitle}>{filtered.length} {filtered.length === 1 ? 'notice' : 'notices'} · {unreadCount} unread</Text></View><TouchableOpacity accessibilityRole="button" accessibilityLabel={unreadCount ? 'Mark all notices as read' : 'All notices are read'} accessibilityState={{ disabled: unreadCount === 0 }} disabled={unreadCount === 0} onPress={markAllAsRead} style={{ minHeight: 34, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, borderRadius: 11, backgroundColor: unreadCount ? colors.primary + '12' : colors.success + '12' }}><Ionicons name="checkmark-done-outline" size={15} color={unreadCount ? colors.primary : colors.success} /><Text style={{ color: unreadCount ? colors.primary : colors.success, fontSize: 10, fontWeight: '800' }}>{unreadCount ? 'Mark all read' : 'All read'}</Text></TouchableOpacity></View>
         {loading ? <View style={s.state}><ActivityIndicator size="large" color={colors.primary} /><Text style={s.stateText}>Bringing you the latest updates…</Text></View> : error ? <View style={s.state}><Ionicons name="cloud-offline-outline" size={42} color={colors.subText} /><Text style={s.stateTitle}>Notices unavailable</Text><Text style={s.stateText}>{error}</Text><TouchableOpacity style={s.retry} onPress={() => fetchNotices()}><Text style={s.retryText}>Try again</Text></TouchableOpacity></View> : filtered.length === 0 ? <View style={s.empty}><View style={s.emptyIcon}><Ionicons name="notifications-off-outline" size={25} color={colors.primary} /></View><Text style={s.stateTitle}>Nothing to show</Text><Text style={s.stateText}>{search ? 'Try a different search phrase or clear your search.' : 'New school updates will appear here when they’re posted.'}</Text></View> : filtered.map(notice => {
-          const icon = iconFor(notice.category); const unread = !readIds.includes(notice.id);
+          const icon = iconFor(notice.category); const unread = isNoticeUnread(notice, readState);
           return <TouchableOpacity accessibilityRole="button" key={notice.id} style={s.noticeCard} onPress={() => openNotice(notice)}><View style={[s.noticeIcon, { backgroundColor: icon.bg }]}><Ionicons name={icon.name as any} size={21} color={icon.color} /></View><View style={s.noticeBody}><View style={s.categoryLine}><Text style={[s.categoryLabel, { color: icon.color }]}>{notice.category}</Text>{unread && <View style={s.newTag}><View style={s.dot} /><Text style={s.newText}>NEW</Text></View>}</View><Text style={[s.noticeTitle, unread && { fontWeight: '800' }]} numberOfLines={2}>{notice.title}</Text><Text style={s.preview} numberOfLines={2}>{notice.content}</Text><Text style={s.date}>{new Date(notice.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text></View><Ionicons name="chevron-forward" size={17} color={colors.subText} /></TouchableOpacity>;
         })}
       </View>
