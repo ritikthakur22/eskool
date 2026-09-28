@@ -12,6 +12,7 @@ import ProfileScreen from './src/features/profile/screens/ProfileScreen';
 import ChatScreen from './src/features/chat/screens/ChatScreen';
 import OnlineClassScreen from './src/features/classes/screens/OnlineClassScreen';
 import OnboardingScreen from './src/features/onboarding/screens/OnboardingScreen';
+import SplashScreen from "./src/features/onboarding/screens/SplashScreen";
 import LibraryScreen from './src/features/library/screens/LibraryScreen';
 import ExamsScreen from './src/features/exams/screens/ExamsScreen';
 import CalendarScreen from './src/features/calendar/screens/CalendarScreen';
@@ -21,7 +22,8 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Onboarding" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Dashboard" component={DashboardScreen} />

@@ -1,67 +1,143 @@
-import React from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, FlatList, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-export default function OnboardingScreen({ navigation }: any) {
+const { width } = Dimensions.get('window');
+
+const ONBOARDING_DATA = [
+  {
+    id: '1',
+    title: 'Your School\nIn Your Pocket',
+    subtitle: 'Classes, study materials, notices,\nexams, routine and more.',
+    icon: 'school',
+  },
+  {
+    id: '2',
+    title: 'Track Your\nAttendance',
+    subtitle: 'Easily track your daily attendance,\nholidays, and leave requests.',
+    icon: 'calendar',
+  },
+  {
+    id: '3',
+    title: 'Never Miss\nAn Assignment',
+    subtitle: 'Submit your homework on time\nand get instant grades.',
+    icon: 'book',
+  },
+  {
+    id: '4',
+    title: 'Live Online\nClasses',
+    subtitle: 'Join live interactive classes from\nanywhere in the world.',
+    icon: 'laptop',
+  },
+];
+
+type Props = {
+  navigation: NativeStackNavigationProp<any>;
+};
+
+export default function OnboardingScreen({ navigation }: Props) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const flatListRef = useRef<FlatList>(null);
+
+  const handleNext = () => {
+    if (currentIndex < ONBOARDING_DATA.length - 1) {
+      flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
+    } else {
+      navigation.replace('Login');
+    }
+  };
+
+  const renderItem = ({ item }: { item: any }) => {
+    return (
+      <View style={styles.slide}>
+        <View style={styles.imagePlaceholder}>
+          <Ionicons name={item.icon} size={120} color="#2F80ED" />
+          <View style={styles.floatingIcons}>
+            <Ionicons name="documents" size={30} color="#F59E0B" style={styles.icon1} />
+            <Ionicons name="chatbubbles" size={30} color="#10B981" style={styles.icon2} />
+            <Ionicons name="play-circle" size={30} color="#EF4444" style={styles.icon3} />
+          </View>
+        </View>
+        
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.subtitle}>{item.subtitle}</Text>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
+      
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.replace('Login')}>
           <Text style={styles.skipText}>Skip</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.imagePlaceholder}>
-          <Ionicons name="school" size={100} color="#3182CE" />
-          <View style={styles.floatingIcons}>
-            <Ionicons name="book" size={30} color="#DD6B20" style={styles.icon1} />
-            <Ionicons name="chatbubbles" size={30} color="#38A169" style={styles.icon2} />
-            <Ionicons name="desktop" size={30} color="#E53E3E" style={styles.icon3} />
-          </View>
-        </View>
-        
-        <Text style={styles.title}>Your School{'\n'}In Your Pocket</Text>
-        <Text style={styles.subtitle}>
-          Attend classes, check notices,{'\n'}submit homework and much more.
-        </Text>
+      <FlatList
+        ref={flatListRef}
+        data={ONBOARDING_DATA}
+        renderItem={renderItem}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        pagingEnabled
+        bounces={false}
+        keyExtractor={(item) => item.id}
+        onMomentumScrollEnd={(e) => {
+          const index = Math.round(e.nativeEvent.contentOffset.x / width);
+          setCurrentIndex(index);
+        }}
+      />
 
+      <View style={styles.bottomSection}>
         <View style={styles.pagination}>
-          <View style={[styles.dot, styles.activeDot]} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
-          <View style={styles.dot} />
+          {ONBOARDING_DATA.map((_, idx) => (
+            <View 
+              key={idx} 
+              style={[
+                styles.dot, 
+                currentIndex === idx && styles.activeDot
+              ]} 
+            />
+          ))}
         </View>
-      </View>
 
-      <View style={styles.footer}>
         <TouchableOpacity 
           style={styles.button}
-          onPress={() => navigation.replace('Login')}
+          onPress={handleNext}
         >
-          <Text style={styles.buttonText}>Get Started</Text>
+          <Text style={styles.buttonText}>
+            {currentIndex === ONBOARDING_DATA.length - 1 ? 'Get Started' : 'Next'}
+          </Text>
         </TouchableOpacity>
       </View>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { alignItems: 'flex-end', padding: 20, paddingTop: 40 },
-  skipText: { fontSize: 16, color: '#4A5568', fontWeight: 'bold' },
-  content: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
-  imagePlaceholder: { width: 250, height: 250, backgroundColor: '#EBF8FF', borderRadius: 125, alignItems: 'center', justifyContent: 'center', marginBottom: 40 },
+  header: { alignItems: 'flex-end', padding: 24, paddingTop: 40 },
+  skipText: { fontSize: 16, color: '#6B7280', fontWeight: '600' },
+  
+  slide: { width, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
+  
+  imagePlaceholder: { width: 260, height: 260, backgroundColor: '#EBF3FE', borderRadius: 130, alignItems: 'center', justifyContent: 'center', marginBottom: 40 },
   floatingIcons: { position: 'absolute', width: '100%', height: '100%' },
-  icon1: { position: 'absolute', top: 20, left: 20 },
-  icon2: { position: 'absolute', top: 40, right: 20 },
-  icon3: { position: 'absolute', bottom: 20, right: 40 },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#1A202C', textAlign: 'center', marginBottom: 15 },
-  subtitle: { fontSize: 16, color: '#718096', textAlign: 'center', lineHeight: 24, marginBottom: 30 },
-  pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E2E8F0', marginHorizontal: 4 },
-  activeDot: { width: 24, backgroundColor: '#3182CE' },
-  footer: { padding: 30 },
-  button: { backgroundColor: '#3182CE', width: '100%', paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
-  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold' }
+  icon1: { position: 'absolute', top: 30, left: 20 },
+  icon2: { position: 'absolute', top: 50, right: 20 },
+  icon3: { position: 'absolute', bottom: 30, right: 40 },
+  
+  title: { fontSize: 32, fontWeight: '700', color: '#1F2937', textAlign: 'center', marginBottom: 16, lineHeight: 40 },
+  subtitle: { fontSize: 16, color: '#6B7280', textAlign: 'center', lineHeight: 24 },
+  
+  bottomSection: { padding: 32, alignItems: 'center' },
+  pagination: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 32 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E5E7EB', marginHorizontal: 6 },
+  activeDot: { width: 24, backgroundColor: '#2F80ED' },
+  
+  button: { backgroundColor: '#2F80ED', width: '100%', paddingVertical: 18, borderRadius: 16, alignItems: 'center', shadowColor: '#2F80ED', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
 });
