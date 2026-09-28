@@ -21,6 +21,10 @@ import SplashScreen from "./src/features/onboarding/screens/SplashScreen";
 import LibraryScreen from './src/features/library/screens/LibraryScreen';
 import ExamsScreen from './src/features/exams/screens/ExamsScreen';
 import CalendarScreen from './src/features/calendar/screens/CalendarScreen';
+import GeneralSettingsScreen from "./src/features/profile/screens/GeneralSettingsScreen";
+import TermsScreen from "./src/features/profile/screens/TermsScreen";
+import FeedbackScreen from "./src/features/profile/screens/FeedbackScreen";
+import AppInfoScreen from "./src/features/profile/screens/AppInfoScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -43,6 +47,10 @@ export default function App() {
         <Stack.Screen name="Library" component={LibraryScreen} />
         <Stack.Screen name="Exams" component={ExamsScreen} />
         <Stack.Screen name="Calendar" component={CalendarScreen} />
+        <Stack.Screen name="General Settings" component={GeneralSettingsScreen} />
+        <Stack.Screen name="Terms" component={TermsScreen} />
+        <Stack.Screen name="Feedback" component={FeedbackScreen} />
+        <Stack.Screen name="App Info" component={AppInfoScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
