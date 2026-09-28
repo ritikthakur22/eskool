@@ -37,6 +37,48 @@
 
 ---
 
+## 📸 App Showcase
+
+
+
+<div align="center">
+
+  <table>
+
+    <tr>
+
+      <td><img src="docs/assets/Screenshot_20260928-174503_eSkool.png" width="250"/></td>
+
+      <td><img src="docs/assets/Screenshot_20260928-174514_eSkool.png" width="250"/></td>
+
+      <td><img src="docs/assets/Screenshot_20260928-174519_eSkool.png" width="250"/></td>
+
+      <td><img src="docs/assets/Screenshot_20260928-174526_eSkool.png" width="250"/></td>
+
+    </tr>
+
+    <tr>
+
+      <td><img src="docs/assets/Screenshot_20260928-174607_eSkool.png" width="250"/></td>
+
+      <td><img src="docs/assets/Screenshot_20260928-174614_Trebuchet.png" width="250"/></td>
+
+      <td><img src="docs/assets/Screenshot_20260928-174630_eSkool.png" width="250"/></td>
+
+      <td><img src="docs/assets/Screenshot_20260928-174825_eSkool.png" width="250"/></td>
+
+    </tr>
+
+  </table>
+
+</div>
+
+
+
+---
+
+
+
 ## 🛠 Tech Stack & Architecture
 
 We meticulously selected the most powerful modern technologies to guarantee high performance, massive scalability, and cross-platform reliability.
