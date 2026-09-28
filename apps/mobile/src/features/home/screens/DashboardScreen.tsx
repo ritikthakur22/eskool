@@ -1,184 +1,73 @@
-import React from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import * as SecureStore from 'expo-secure-store';
+import { useTheme } from '../../../core/theme/ThemeContext';
+import BottomNavigation from '../../../core/components/BottomNavigation';
 
-type Props = {
-  navigation: NativeStackNavigationProp<any>;
-};
+type Props = { navigation: NativeStackNavigationProp<any> };
+type Feature = { name: string; icon: any; route: string; accent: string };
+const groups: { title: string; subtitle: string; features: Feature[] }[] = [
+  { title: 'Learning', subtitle: 'Your day-to-day learning tools', features: [
+    { name: 'Homework', icon: 'book-outline', route: 'Homework', accent: '#2F80ED' },
+    { name: 'Class Routine', icon: 'time-outline', route: 'Routine', accent: '#8B5CF6' },
+    { name: 'Attendance', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#10B981' },
+    { name: 'Library', icon: 'library-outline', route: 'Library', accent: '#F59E0B' },
+  ] },
+  { title: 'Academic', subtitle: 'Plan and track your progress', features: [
+    { name: 'Calendar', icon: 'calendar-outline', route: 'Calendar', accent: '#2F80ED' },
+    { name: 'Exams', icon: 'document-text-outline', route: 'Exams', accent: '#EF4444' },
+    { name: 'Results', icon: 'podium-outline', route: 'Result', accent: '#10B981' },
+  ] },
+  { title: 'School', subtitle: 'Updates and school services', features: [
+    { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#EF4444' },
+    { name: 'Online class', icon: 'videocam-outline', route: 'OnlineClass', accent: '#0EA5E9' },
+    { name: 'Study materials', icon: 'folder-open-outline', route: 'Library', accent: '#8B5CF6' },
+    { name: 'Settings', icon: 'settings-outline', route: 'Profile', accent: '#14B8A6' },
+  ] },
+];
 
 export default function DashboardScreen({ navigation }: Props) {
-  const features = [
-    { name: 'Attendance', icon: 'finger-print-outline', color: '#10B981', bg: '#E7F8F2', route: 'Attendance' },
-    { name: 'Homework', icon: 'book-outline', color: '#2F80ED', bg: '#EBF3FE', route: 'Homework' },
-    { name: 'Online Class', icon: 'laptop-outline', color: '#38A169', bg: '#E6FFFA', route: 'OnlineClass' },
-    { name: 'Class Routine', icon: 'calendar-outline', color: '#EF4444', bg: '#FEE2E2', route: 'Routine' },
-    { name: 'Exams', icon: 'document-text-outline', color: '#2F80ED', bg: '#EBF3FE', route: 'Exams' },
-    { name: 'Result', icon: 'podium-outline', color: '#2F80ED', bg: '#EBF3FE', route: 'Result' },
-    { name: 'Library', icon: 'library-outline', color: '#8B5CF6', bg: '#F3E8FF', route: 'Library' },
-    { name: 'Calendar', icon: 'calendar-number-outline', color: '#F59E0B', bg: '#FEF3C7', route: 'Calendar' },
-    { name: 'Notice', icon: 'notifications-outline', color: '#EF4444', bg: '#FEE2E2', route: 'Notice' },
-    { name: 'Study Materials', icon: 'folder-open-outline', color: '#10B981', bg: '#E7F8F2', route: 'Library' },
-    { name: 'Complaints', icon: 'chatbubbles-outline', color: '#10B981', bg: '#E7F8F2', route: 'Chat' },
-    { name: 'More', icon: 'ellipsis-horizontal', color: '#6B7280', bg: '#F3F4F6', route: 'Profile' },
-  ];
+  const { colors } = useTheme();
+  const [identity, setIdentity] = useState({ name: 'Student', detail: 'Welcome to eSkool' });
+
+  useEffect(() => {
+    SecureStore.getItemAsync('user_data').then(raw => {
+      if (!raw) return;
+      const user = JSON.parse(raw);
+      const profile = user.studentProfile || user.teacherProfile || user.adminProfile;
+      const name = profile ? `${profile.firstName} ${profile.lastName}`.trim() : user.email?.split('@')[0] || 'Student';
+      const detail = user.studentProfile?.grade ? `Class ${user.studentProfile.grade}${user.studentProfile.section ? ` · ${user.studentProfile.section}` : ''}` : (user.role || 'School account').toLowerCase().replace('_', ' ');
+      setIdentity({ name, detail });
+    }).catch(() => undefined);
+  }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        {/* Header Section */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.profileSection} onPress={() => navigation.navigate('Profile')}>
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarText}>TD</Text>
-            </View>
-            <View>
-              <Text style={styles.greetingText}>Hi, Tapas Dev S.</Text>
-              <Text style={styles.subText}>Class 10 - Student</Text>
-            </View>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+          <TouchableOpacity style={styles.profile} onPress={() => navigation.navigate('Profile')}>
+            <View style={[styles.avatar, { backgroundColor: colors.primary + '20' }]}><Text style={[styles.avatarText, { color: colors.primary }]}>{identity.name.slice(0, 1).toUpperCase()}</Text></View>
+            <View><Text style={[styles.greeting, { color: colors.text }]}>Hello, {identity.name}</Text><Text style={[styles.meta, { color: colors.subText }]}>{identity.detail}</Text></View>
           </TouchableOpacity>
-          <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('Notice')}>
-              <Ionicons name="notifications-outline" size={22} color="#2F80ED" />
-              <View style={styles.notificationDot} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton}>
-              <Ionicons name="person-add-outline" size={20} color="#2F80ED" />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity accessibilityLabel="Open notices" style={[styles.notificationButton, { backgroundColor: colors.mutedSurface }]} onPress={() => navigation.navigate('Notice')}><Ionicons name="notifications-outline" size={22} color={colors.primary} /></TouchableOpacity>
         </View>
-
-        {/* Promotional Banner */}
-        <View style={styles.bannerCard}>
-          <View style={styles.bannerContent}>
-            <Text style={styles.bannerTitle}>Keep Learning</Text>
-            <Text style={styles.bannerSubtitle}>Every day is a step towards your goal.</Text>
-          </View>
-          <View style={styles.bannerIllustration}>
-            <Ionicons name="school" size={60} color="#FFFFFF" style={{ opacity: 0.8 }} />
-          </View>
+        <View style={styles.content}>
+          {groups.map(group => <View key={group.title} style={styles.section}>
+            <View style={styles.sectionHeading}><Text style={[styles.sectionTitle, { color: colors.text }]}>{group.title}</Text><Text style={[styles.sectionSubtitle, { color: colors.subText }]}>{group.subtitle}</Text></View>
+            <View style={styles.grid}>{group.features.map(feature => <TouchableOpacity key={feature.name} style={[styles.feature, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => navigation.navigate(feature.route)}>
+              <View style={[styles.featureIcon, { backgroundColor: feature.accent + '18' }]}><Ionicons name={feature.icon} size={22} color={feature.accent} /></View>
+              <Text style={[styles.featureName, { color: colors.text }]}>{feature.name}</Text><Ionicons name="arrow-forward" size={15} color={colors.subText} style={styles.featureArrow} />
+            </TouchableOpacity>)}</View>
+          </View>)}
         </View>
-
-        {/* Grid Features */}
-        <View style={styles.gridContainer}>
-          {features.map((feature, idx) => (
-            <TouchableOpacity 
-              key={idx} 
-              style={styles.gridItem}
-              onPress={() => navigation.navigate(feature.route)}
-            >
-              <View style={[styles.gridIconContainer, { backgroundColor: feature.bg }]}>
-                <Ionicons name={feature.icon as any} size={26} color={feature.color} />
-              </View>
-              <Text style={styles.gridText} numberOfLines={1}>{feature.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Notice & News */}
-        <View style={styles.noticeSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Notice & News</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Notice')}>
-              <Text style={styles.viewAll}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {/* Notice Item 1 */}
-          <TouchableOpacity style={styles.noticeCard} onPress={() => navigation.navigate('Notice')}>
-            <View style={[styles.noticeIconContainer, { backgroundColor: '#FEE2E2' }]}>
-              <Ionicons name="alert-circle" size={24} color="#EF4444" />
-            </View>
-            <View style={styles.noticeDetails}>
-              <Text style={styles.noticeCategory}>Notice</Text>
-              <Text style={styles.noticeTitle} numberOfLines={1}>School Exhibition 2083</Text>
-              <Text style={styles.noticeDate}>Sep 24, 2026</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          {/* Notice Item 2 */}
-          <TouchableOpacity style={styles.noticeCard} onPress={() => navigation.navigate('Notice')}>
-            <View style={[styles.noticeIconContainer, { backgroundColor: '#E7F8F2' }]}>
-              <Ionicons name="newspaper" size={24} color="#10B981" />
-            </View>
-            <View style={styles.noticeDetails}>
-              <Text style={styles.noticeCategory}>News</Text>
-              <Text style={styles.noticeTitle} numberOfLines={1}>Science Exhibition 2083</Text>
-              <Text style={styles.noticeDate}>Sep 20, 2026</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-        </View>
-
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Dashboard')}>
-          <Ionicons name="home" size={24} color="#2F80ED" />
-          <Text style={styles.navTextActive}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Notice')}>
-          <Ionicons name="notifications-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Notice</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('OnlineClass')}>
-          <Ionicons name="laptop-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Classes</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
-          <Ionicons name="person-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomNavigation navigation={navigation} activeRoute="Dashboard" colors={colors} />
     </SafeAreaView>
-
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  scrollContent: { paddingBottom: 24 },
-  
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 40, backgroundColor: '#FFFFFF' },
-  profileSection: { flexDirection: 'row', alignItems: 'center' },
-  avatarPlaceholder: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFD700', marginRight: 12, justifyContent: 'center', alignItems: 'center' },
-  avatarText: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
-  greetingText: { fontSize: 16, fontWeight: '700', color: '#1F2937' },
-  subText: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  headerIcons: { flexDirection: 'row', alignItems: 'center' },
-  iconButton: { marginLeft: 16, justifyContent: 'center', alignItems: 'center' },
-  notificationDot: { position: 'absolute', top: 0, right: 2, width: 8, height: 8, borderRadius: 4, backgroundColor: '#EF4444', borderWidth: 1, borderColor: '#FFFFFF' },
-  
-  bannerCard: { marginHorizontal: 20, marginBottom: 24, padding: 24, backgroundColor: '#2F80ED', borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#2F80ED', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 5 },
-  bannerContent: { flex: 1, paddingRight: 16 },
-  bannerTitle: { fontSize: 22, fontWeight: '700', color: '#FFFFFF', marginBottom: 8 },
-  bannerSubtitle: { fontSize: 13, color: '#EBF3FE', lineHeight: 20 },
-  bannerIllustration: { width: 80, height: 80, justifyContent: 'center', alignItems: 'center' },
-  
-  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10, marginBottom: 10 },
-  gridItem: { width: '25%', alignItems: 'center', marginBottom: 20 },
-  gridIconContainer: { width: 56, height: 56, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
-  gridText: { fontSize: 11, color: '#1F2937', textAlign: 'center', fontWeight: '500', paddingHorizontal: 4 },
-  
-  noticeSection: { paddingHorizontal: 20 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1F2937' },
-  viewAll: { color: '#2F80ED', fontWeight: '600', fontSize: 14 },
-  
-  noticeCard: { flexDirection: 'row', backgroundColor: '#FFFFFF', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#F3F4F6', alignItems: 'center', marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 8, elevation: 1 },
-  noticeIconContainer: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  noticeDetails: { flex: 1 },
-  noticeCategory: { fontSize: 12, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
-  noticeTitle: { fontSize: 14, fontWeight: '700', color: '#4B5563', marginBottom: 6 },
-  
-  noticeDate: { fontSize: 12, color: '#9CA3AF' },
-  
-  bottomNav: { flexDirection: 'row', backgroundColor: '#FFFFFF', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#E5E7EB' },
-  navItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  navTextActive: { fontSize: 11, color: '#2F80ED', marginTop: 4, fontWeight: '600' },
-  navText: { fontSize: 11, color: '#6B7280', marginTop: 4, fontWeight: '500' }
+  container: { flex: 1 }, scroll: { paddingBottom: 20 }, header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: 1 }, profile: { flexDirection: 'row', alignItems: 'center' }, avatar: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 12 }, avatarText: { fontSize: 20, fontWeight: '800' }, greeting: { fontSize: 17, fontWeight: '800' }, meta: { fontSize: 13, marginTop: 3, textTransform: 'capitalize' }, notificationButton: { height: 42, width: 42, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }, content: { paddingHorizontal: 18, paddingTop: 20 }, section: { marginBottom: 25 }, sectionHeading: { marginBottom: 13 }, sectionTitle: { fontSize: 19, fontWeight: '800' }, sectionSubtitle: { fontSize: 12, marginTop: 3 }, grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }, feature: { width: '48%', minHeight: 112, borderRadius: 16, padding: 14, borderWidth: 1, justifyContent: 'space-between', marginBottom: 10 }, featureIcon: { height: 39, width: 39, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, featureName: { fontSize: 13, fontWeight: '700', marginTop: 13 }, featureArrow: { position: 'absolute', right: 14, bottom: 14 },
 });
-

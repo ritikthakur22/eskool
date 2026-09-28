@@ -6,12 +6,17 @@ import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { UsersModule } from '../users/users.module.js';
 
+const jwtSecret: string = process.env.JWT_SECRET ?? '';
+if (!jwtSecret) {
+  throw new Error('JWT_SECRET must be configured before starting the backend');
+}
+
 @Module({
   imports: [
     UsersModule,
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'super-secret',
+      secret: jwtSecret,
       signOptions: { expiresIn: '1d' },
     }),
   ],

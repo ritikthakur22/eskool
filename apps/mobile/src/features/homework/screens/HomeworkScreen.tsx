@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
+import { useTheme } from '../../../core/theme/ThemeContext';
 
 export default function HomeworkScreen({ navigation }: any) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [activeTab, setActiveTab] = useState('Assigned');
   const tabs = ['Assigned', 'Submitted', 'Upcoming'];
 
@@ -51,8 +54,8 @@ export default function HomeworkScreen({ navigation }: any) {
     : [];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.card }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
@@ -103,32 +106,32 @@ export default function HomeworkScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, backgroundColor: '#FFFFFF' },
+const makeStyles = (c: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, backgroundColor: c.card },
   backButton: { padding: 5 },
-  backIcon: { fontSize: 24, color: '#1A202C' },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A202C' },
-  tabsContainer: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', paddingBottom: 5 },
+  backIcon: { fontSize: 24, color: c.text },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: c.text },
+  tabsContainer: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border, paddingBottom: 5 },
   tabButton: { paddingBottom: 10, flex: 1, alignItems: 'center' },
-  tabButtonActive: { borderBottomWidth: 2, borderBottomColor: '#3182CE' },
-  tabText: { fontSize: 14, color: '#718096', fontWeight: '500' },
-  tabTextActive: { color: '#3182CE', fontWeight: 'bold' },
+  tabButtonActive: { borderBottomWidth: 2, borderBottomColor: c.primary },
+  tabText: { fontSize: 14, color: c.subText, fontWeight: '500' },
+  tabTextActive: { color: c.primary, fontWeight: 'bold' },
   listContainer: { padding: 20 },
   emptyState: { padding: 20, alignItems: 'center', marginTop: 50 },
-  emptyStateText: { color: '#A0AEC0', fontSize: 16 },
-  homeworkCard: { flexDirection: 'row', backgroundColor: '#FFFFFF', padding: 15, borderRadius: 12, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  emptyStateText: { color: c.subText, fontSize: 16 },
+  homeworkCard: { flexDirection: 'row', backgroundColor: c.card, padding: 15, borderRadius: 12, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   iconContainer: { width: 50, height: 50, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   icon: { fontSize: 24 },
   contentContainer: { flex: 1, justifyContent: 'center' },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  subjectText: { fontSize: 16, fontWeight: 'bold', color: '#1A202C' },
+  subjectText: { fontSize: 16, fontWeight: 'bold', color: c.text },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   badgePending: { backgroundColor: '#FEEBC8' },
   badgeSubmitted: { backgroundColor: '#C6F6D5' },
   badgeText: { fontSize: 10, fontWeight: 'bold' },
   badgeTextPending: { color: '#DD6B20' },
   badgeTextSubmitted: { color: '#38A169' },
-  descriptionText: { fontSize: 14, color: '#4A5568', marginBottom: 4 },
-  dueDateText: { fontSize: 12, color: '#A0AEC0' }
+  descriptionText: { fontSize: 14, color: c.subText, marginBottom: 4 },
+  dueDateText: { fontSize: 12, color: c.subText }
 });

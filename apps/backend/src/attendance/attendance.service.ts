@@ -15,10 +15,10 @@ export class AttendanceService {
     
     if (month && year) {
       const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
+      const endDate = new Date(year, month, 1);
       whereClause.date = {
         gte: startDate,
-        lte: endDate,
+        lt: endDate,
       };
     }
 

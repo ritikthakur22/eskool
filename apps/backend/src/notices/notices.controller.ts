@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { NoticesService } from './notices.service.js';
 import { Prisma } from '@prisma/client';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 
 @Controller('notices')
+@UseGuards(JwtAuthGuard)
 export class NoticesController {
   constructor(private readonly noticesService: NoticesService) {}
 

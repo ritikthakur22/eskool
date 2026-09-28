@@ -1,142 +1,147 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import NepaliDate from 'nepali-date-converter';
+import { api } from '../../../core/networking/api';
+import { useTheme } from '../../../core/theme/ThemeContext';
+import BottomNavigation from '../../../core/components/BottomNavigation';
+import { currentBsMonth, getBsMonthDays, getBsMonthLabels, getGregorianMonthsForBsMonth, shiftBsMonth, type BsMonth } from '../../../core/utils/bsCalendar';
+
+type RecordItem = { id: string; date: string; status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY'; subject?: string | null; remarks?: string | null };
+const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
 export default function AttendanceScreen({ navigation }: any) {
-  const [filter, setFilter] = useState('Class-Wise');
-  const filters = ['Class-Wise', 'Subject-Wise', 'Biometric'];
-  
-  // Dummy calendar data to represent 1-30 Sept
-  const daysInMonth = Array.from({ length: 30 }, (_, i) => i + 1);
-  const startDayOffset = 2; // Sept 1 starts on Tuesday (dummy offset)
+  const { colors } = useTheme();
+  const s = makeStyles(colors);
+  const [month, setMonth] = useState<BsMonth>(currentBsMonth);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [records, setRecords] = useState<RecordItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
 
-  const getStatusColor = (day: number) => {
-    if (day === 27) return '#3182CE'; // Selected/Today
-    if ([7, 14, 21, 28].includes(day)) return '#E2E8F0'; // Weekends/Holidays
-    if (day === 5 || day === 12) return '#E53E3E'; // Absent
-    return '#38A169'; // Present (default)
+  const days = useMemo(() => getBsMonthDays(month), [month]);
+  const weeks = useMemo(() => {
+    const cells: (typeof days[number] | null)[] = [...Array(days[0]?.weekDay || 0).fill(null), ...days];
+    while (cells.length % 7) cells.push(null);
+    return Array.from({ length: cells.length / 7 }, (_, index) => cells.slice(index * 7, index * 7 + 7));
+  }, [days]);
+  const { bs: bsLabel, ad: adLabel } = getBsMonthLabels(month);
+  const selectedRecords = records.filter(item => dateKey(new Date(item.date)) === dateKey(selectedDate));
+
+  const loadAttendance = useCallback(async (refresh = false) => {
+    refresh ? setRefreshing(true) : setLoading(true);
+    setError('');
+    try {
+      const { data: profileResponse } = await api.get('/users/me');
+      const studentId = profileResponse?.id;
+      if (!studentId) throw new Error('Student profile is unavailable.');
+      const adMonths = getGregorianMonthsForBsMonth(month);
+      const responses = await Promise.all(adMonths.map(({ year, month: adMonth }) =>
+        api.get(`/attendance/student/${encodeURIComponent(studentId)}`, { params: { month: adMonth + 1, year } }),
+      ));
+      const allRecords = responses.flatMap(response => Array.isArray(response.data) ? response.data : []) as RecordItem[];
+      const unique = new Map(allRecords.map(item => [item.id, item]));
+      setRecords([...unique.values()]);
+    } catch (e: any) {
+      setError(e.response?.status === 401 ? 'Your session expired. Please sign in again.' : 'We couldn’t load attendance for this month. Check your connection and retry.');
+      setRecords([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [month]);
+
+  useEffect(() => { loadAttendance(); }, [loadAttendance]);
+
+  const moveMonth = (offset: number) => {
+    const next = shiftBsMonth(month, offset);
+    const nextDays = getBsMonthDays(next);
+    const todayKey = dateKey(new Date());
+    const todayInMonth = nextDays.find(day => dateKey(day.adDate) === todayKey);
+    setMonth(next);
+    setSelectedDate(todayInMonth?.adDate || nextDays[0].adDate);
+  };
+  const goToToday = () => {
+    const today = new Date();
+    setMonth(currentBsMonth());
+    setSelectedDate(today);
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Attendance</Text>
-        <View style={{ width: 24 }} />
+  const getDayStatus = (day: Date) => {
+    const matches = records.filter(item => dateKey(new Date(item.date)) === dateKey(day));
+    if (!matches.length) return null;
+    if (matches.some(item => item.status === 'ABSENT')) return 'ABSENT';
+    if (matches.some(item => item.status === 'HALF_DAY')) return 'HALF_DAY';
+    if (matches.some(item => item.status === 'LATE')) return 'LATE';
+    return 'PRESENT';
+  };
+  const statusColor = (status: string) => status === 'PRESENT' ? colors.success : status === 'ABSENT' ? colors.danger : colors.warning;
+  const presentCount = records.filter(item => item.status === 'PRESENT').length;
+  const absentCount = records.filter(item => item.status === 'ABSENT').length;
+  const otherCount = records.filter(item => item.status === 'LATE' || item.status === 'HALF_DAY').length;
+  const attendanceRate = records.length ? Math.round((presentCount / records.length) * 100) : 0;
+  const selectedBs = new NepaliDate(selectedDate).format('ddd, DD MMMM YYYY');
+  const selectedAd = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  return <SafeAreaView style={s.screen}>
+    <View style={s.header}>
+      <TouchableOpacity accessibilityLabel="Go back" onPress={() => navigation.goBack()} style={s.back}><Ionicons name="chevron-back" size={23} color={colors.text} /></TouchableOpacity>
+      <View style={{ flex: 1 }}><Text style={s.title}>Attendance</Text><Text style={s.subtitle}>Bikram Sambat · Gregorian</Text></View>
+      <TouchableOpacity accessibilityLabel="Go to today" onPress={goToToday} style={s.todayButton}><Text style={s.todayButtonText}>Today</Text></TouchableOpacity>
+    </View>
+    <ScrollView contentContainerStyle={s.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => loadAttendance(true)} tintColor={colors.primary} />}>
+      <View style={s.calendarCard}>
+        <View style={s.monthHeader}>
+          <TouchableOpacity accessibilityLabel="Previous BS month" onPress={() => moveMonth(-1)} style={s.monthArrow}><Ionicons name="chevron-back" size={19} color={colors.text} /></TouchableOpacity>
+          <View style={s.monthCopy}><Text style={s.bsMonth}>{bsLabel}</Text><Text style={s.adMonth}>{adLabel}</Text></View>
+          <TouchableOpacity accessibilityLabel="Next BS month" onPress={() => moveMonth(1)} style={s.monthArrow}><Ionicons name="chevron-forward" size={19} color={colors.text} /></TouchableOpacity>
+        </View>
+        <View style={s.weekHeader}>{weekDays.map((day, index) => <View key={`${day}-${index}`} style={s.weekdayCell}><Text style={[s.weekday, index === 6 && s.saturday]}>{day}</Text></View>)}</View>
+        {weeks.map((week, weekIndex) => <View key={weekIndex} style={s.weekRow}>{week.map((day, dayIndex) => {
+          if (!day) return <View key={`blank-${dayIndex}`} style={s.dayCell} />;
+          const isToday = dateKey(day.adDate) === dateKey(new Date());
+          const isSelected = dateKey(day.adDate) === dateKey(selectedDate);
+          const isSaturday = day.weekDay === 6;
+          const status = getDayStatus(day.adDate);
+          const color = isSaturday ? colors.danger : status ? statusColor(status) : colors.text;
+          return <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${new NepaliDate(day.adDate).format('DD MMMM YYYY')}, ${day.adDate.toLocaleDateString()}, ${status || 'no attendance record'}`} key={day.adDate.toISOString()} onPress={() => setSelectedDate(day.adDate)} style={[s.dayCell, isSelected && s.selectedDay]}>
+            <Text style={[s.bsDay, { color: isToday ? colors.primary : color }, isToday && s.todayDay]}>{day.bsDay}</Text>
+            <Text style={[s.adDay, isSelected && s.selectedAd]}>{day.adDate.getDate()}</Text>
+            {status ? <View style={[s.statusDot, { backgroundColor: statusColor(status) }]} /> : null}
+          </TouchableOpacity>;
+        })}</View>)}
+        <View style={s.legend}><LegendDot color={colors.success} label="Present" styles={s} /><LegendDot color={colors.danger} label="Absent" styles={s} /><LegendDot color={colors.warning} label="Late / half day" styles={s} /><LegendDot color={colors.danger} label="Saturday" styles={s} /></View>
       </View>
 
-      <View style={styles.filterContainer}>
-        {filters.map((f) => (
-          <TouchableOpacity key={f} style={[styles.filterButton, filter === f && styles.filterButtonActive]} onPress={() => setFilter(f)}>
-            <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.calendarCard}>
-          <View style={styles.monthSelector}>
-            <TouchableOpacity><Text style={styles.arrowIcon}>{'<'}</Text></TouchableOpacity>
-            <Text style={styles.monthText}>September 2026</Text>
-            <TouchableOpacity><Text style={styles.arrowIcon}>{'>'}</Text></TouchableOpacity>
-          </View>
-          
-          <View style={styles.weekDays}>
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-              <Text key={d} style={styles.weekDayText}>{d}</Text>
-            ))}
-          </View>
-
-          <View style={styles.daysGrid}>
-            {Array.from({ length: startDayOffset }).map((_, i) => <View key={`empty-${i}`} style={styles.dayCell} />)}
-            {daysInMonth.map(day => (
-              <View key={day} style={styles.dayCell}>
-                <View style={[
-                  styles.dayCircle,
-                  day === 27 && { backgroundColor: '#3182CE' }
-                ]}>
-                  <Text style={[styles.dayNumber, day === 27 && { color: '#FFF' }]}>{day}</Text>
-                </View>
-                {/* Status Dot */}
-                <View style={[styles.statusDot, { backgroundColor: getStatusColor(day) }]} />
-              </View>
-            ))}
-          </View>
+      {error ? <View style={s.errorCard}><Ionicons name="cloud-offline-outline" size={25} color={colors.subText} /><Text style={s.errorText}>{error}</Text><TouchableOpacity onPress={() => loadAttendance()}><Text style={s.retry}>Retry</Text></TouchableOpacity></View> : loading ? <View style={s.loading}><ActivityIndicator size="large" color={colors.primary} /><Text style={s.muted}>Loading this month’s attendance…</Text></View> : <>
+        <View style={s.statsRow}>
+          <StatCard value={String(records.length)} label="Sessions" accent={colors.primary} styles={s} />
+          <StatCard value={String(presentCount)} label="Present" accent={colors.success} styles={s} />
+          <StatCard value={String(absentCount)} label="Absent" accent={colors.danger} styles={s} />
+          <StatCard value={String(otherCount)} label="Other" accent={colors.warning} styles={s} />
         </View>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>12</Text>
-            <Text style={styles.statLabel}>Total</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={[styles.statNumber, { color: '#38A169' }]}>11</Text>
-            <Text style={styles.statLabel}>Present</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={[styles.statNumber, { color: '#E53E3E' }]}>1</Text>
-            <Text style={styles.statLabel}>Absent</Text>
-          </View>
-        </View>
-
-        <Text style={styles.overviewTitle}>Attendance Overview</Text>
-        <View style={styles.overviewCard}>
-          <View style={styles.circularProgress}>
-            <Text style={styles.progressText}>92%</Text>
-          </View>
-          <View style={styles.legendContainer}>
-            <View style={styles.legendRow}>
-              <View style={[styles.legendDot, { backgroundColor: '#38A169' }]} />
-              <Text style={styles.legendLabel}>Present</Text>
-              <Text style={styles.legendValue}>11 (92%)</Text>
-            </View>
-            <View style={styles.legendRow}>
-              <View style={[styles.legendDot, { backgroundColor: '#E53E3E' }]} />
-              <Text style={styles.legendLabel}>Absent</Text>
-              <Text style={styles.legendValue}>1 (8%)</Text>
-            </View>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+        <View style={s.overviewCard}><View style={[s.rateRing, { borderColor: colors.success }]}><Text style={s.rateText}>{attendanceRate}%</Text></View><View style={s.overviewCopy}><Text style={s.overviewTitle}>Monthly attendance</Text><Text style={s.overviewHint}>{presentCount} present of {records.length} recorded sessions</Text></View><Ionicons name="analytics-outline" size={23} color={colors.primary} /></View>
+        <View style={s.daySectionHead}><View><Text style={s.sectionTitle}>Selected day</Text><Text style={s.sectionSubtitle}>{selectedBs}</Text><Text style={s.sectionSubtitle}>{selectedAd}</Text></View><Ionicons name="calendar-outline" size={21} color={colors.primary} /></View>
+        {selectedRecords.length ? selectedRecords.map(item => <View key={item.id} style={s.recordCard}><View style={[s.recordMarker, { backgroundColor: statusColor(item.status) }]} /><View style={{ flex: 1 }}><Text style={s.recordSubject}>{item.subject || 'Class attendance'}</Text>{item.remarks ? <Text style={s.recordRemarks}>{item.remarks}</Text> : null}</View><Text style={[s.recordStatus, { color: statusColor(item.status) }]}>{item.status.replace('_', ' ')}</Text></View>) : <View style={s.emptyCard}><Ionicons name="information-circle-outline" size={20} color={colors.subText} /><Text style={s.emptyText}>No attendance has been recorded for this day.</Text></View>}
+      </>}
+    </ScrollView>
+    <BottomNavigation navigation={navigation} activeRoute="Attendance" colors={colors} />
+  </SafeAreaView>;
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, backgroundColor: '#FFFFFF' },
-  backButton: { padding: 5 },
-  backIcon: { fontSize: 24, color: '#1A202C' },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A202C' },
-  filterContainer: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
-  filterButton: { paddingBottom: 10 },
-  filterButtonActive: { borderBottomWidth: 2, borderBottomColor: '#3182CE' },
-  filterText: { fontSize: 14, color: '#718096', fontWeight: '500' },
-  filterTextActive: { color: '#3182CE', fontWeight: 'bold' },
-  content: { padding: 20 },
-  calendarCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 15, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  monthSelector: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  arrowIcon: { fontSize: 18, color: '#718096', paddingHorizontal: 10 },
-  monthText: { fontSize: 16, fontWeight: 'bold', color: '#1A202C' },
-  weekDays: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  weekDayText: { flex: 1, textAlign: 'center', fontSize: 12, color: '#A0AEC0', fontWeight: 'bold' },
-  daysGrid: { flexDirection: 'row', flexWrap: 'wrap' },
-  dayCell: { width: '14.28%', alignItems: 'center', marginVertical: 8, height: 45 },
-  dayCircle: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
-  dayNumber: { fontSize: 14, color: '#4A5568' },
-  statusDot: { width: 6, height: 6, borderRadius: 3, marginTop: 4 },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
-  statBox: { flex: 1, backgroundColor: '#FFFFFF', padding: 15, borderRadius: 12, alignItems: 'center', marginHorizontal: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  statNumber: { fontSize: 20, fontWeight: 'bold', color: '#1A202C', marginBottom: 4 },
-  statLabel: { fontSize: 12, color: '#718096' },
-  overviewTitle: { fontSize: 16, fontWeight: 'bold', color: '#1A202C', marginBottom: 15 },
-  overviewCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, flexDirection: 'row', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  circularProgress: { width: 80, height: 80, borderRadius: 40, borderWidth: 8, borderColor: '#38A169', justifyContent: 'center', alignItems: 'center', marginRight: 20 },
-  progressText: { fontSize: 18, fontWeight: 'bold', color: '#234E52' },
-  legendContainer: { flex: 1 },
-  legendRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  legendDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  legendLabel: { flex: 1, fontSize: 14, color: '#4A5568' },
-  legendValue: { fontSize: 14, fontWeight: 'bold', color: '#1A202C' },
+function LegendDot({ color, label, styles }: any) {
+  return <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: color }]} /><Text style={styles.legendLabel}>{label}</Text></View>;
+}
+
+function StatCard({ value, label, accent, styles }: any) {
+  return <View style={styles.statCard}><Text style={[styles.statValue, { color: accent }]}>{value}</Text><Text style={styles.statLabel}>{label}</Text></View>;
+}
+
+const makeStyles = (c: any) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: c.background },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingVertical: 11, backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border }, back: { padding: 6, marginRight: 9 }, title: { color: c.text, fontSize: 19, fontWeight: '900' }, subtitle: { color: c.subText, fontSize: 11, marginTop: 2 }, todayButton: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: c.primary + '14' }, todayButtonText: { color: c.primary, fontSize: 11, fontWeight: '900' }, content: { padding: 15, paddingBottom: 25 },
+  calendarCard: { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 17, overflow: 'hidden' }, monthHeader: { height: 66, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12 }, monthArrow: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 11, backgroundColor: c.mutedSurface }, monthCopy: { alignItems: 'center' }, bsMonth: { color: c.text, fontSize: 15, fontWeight: '900' }, adMonth: { color: c.subText, fontSize: 10, marginTop: 3 }, weekHeader: { flexDirection: 'row', backgroundColor: c.mutedSurface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: c.border }, weekdayCell: { flex: 1, height: 33, alignItems: 'center', justifyContent: 'center' }, weekday: { color: c.subText, fontSize: 10, fontWeight: '900' }, saturday: { color: c.danger }, weekRow: { flexDirection: 'row' }, dayCell: { width: '14.2857%', height: 53, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: c.border, position: 'relative' }, selectedDay: { backgroundColor: c.primary + '12', borderWidth: 1, borderColor: c.primary }, bsDay: { fontSize: 14, fontWeight: '800' }, todayDay: { textDecorationLine: 'underline' }, adDay: { color: c.subText, fontSize: 8, position: 'absolute', bottom: 4, right: 5 }, selectedAd: { color: c.primary, fontWeight: '800' }, statusDot: { width: 5, height: 5, borderRadius: 3, position: 'absolute', bottom: 3, left: 5 }, legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 11, paddingVertical: 11, borderTopWidth: 1, borderColor: c.border }, legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 }, legendDot: { width: 7, height: 7, borderRadius: 4 }, legendLabel: { color: c.subText, fontSize: 8, fontWeight: '700' },
+  statsRow: { flexDirection: 'row', gap: 7, marginTop: 13 }, statCard: { flex: 1, minHeight: 68, paddingVertical: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 12 }, statValue: { fontSize: 17, fontWeight: '900' }, statLabel: { color: c.subText, fontSize: 8, fontWeight: '800', marginTop: 3 }, overviewCard: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 12, marginTop: 10, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14 }, rateRing: { width: 48, height: 48, borderWidth: 4, borderRadius: 24, alignItems: 'center', justifyContent: 'center' }, rateText: { color: c.text, fontSize: 11, fontWeight: '900' }, overviewCopy: { flex: 1 }, overviewTitle: { color: c.text, fontSize: 12, fontWeight: '900' }, overviewHint: { color: c.subText, fontSize: 9, marginTop: 4 }, daySectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 21, marginBottom: 10 }, sectionTitle: { color: c.text, fontSize: 15, fontWeight: '900' }, sectionSubtitle: { color: c.subText, fontSize: 9, marginTop: 3 }, recordCard: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 12, marginBottom: 7, borderRadius: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.border }, recordMarker: { width: 8, height: 29, borderRadius: 5 }, recordSubject: { color: c.text, fontSize: 11, fontWeight: '800' }, recordRemarks: { color: c.subText, fontSize: 9, marginTop: 3 }, recordStatus: { fontSize: 9, fontWeight: '900' }, emptyCard: { flexDirection: 'row', gap: 8, alignItems: 'center', padding: 13, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 12 }, emptyText: { color: c.subText, fontSize: 10, flex: 1 }, loading: { minHeight: 150, alignItems: 'center', justifyContent: 'center', gap: 8 }, muted: { color: c.subText, fontSize: 10 }, errorCard: { minHeight: 150, alignItems: 'center', justifyContent: 'center', gap: 8 }, errorText: { color: c.subText, textAlign: 'center', fontSize: 10, lineHeight: 15 }, retry: { color: c.primary, fontSize: 11, fontWeight: '900' },
 });

@@ -2,12 +2,14 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View, Text, SafeAreaView } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../../core/theme/ThemeContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
 export default function SplashScreen({ navigation }: Props) {
+  const { colors } = useTheme();
   useEffect(() => {
     // Navigate to Onboarding after 2 seconds
     const timer = setTimeout(() => {
@@ -17,13 +19,13 @@ export default function SplashScreen({ navigation }: Props) {
   }, [navigation]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <Ionicons name="school" size={80} color="#2F80ED" />
+          <Ionicons name="school" size={80} color={colors.primary} />
         </View>
-        <Text style={styles.title}>eSkool</Text>
-        <Text style={styles.subtitle}>Learn • Manage • Grow</Text>
+        <Text style={[styles.title, { color: colors.primary }]}>eSkool</Text>
+        <Text style={[styles.subtitle, { color: colors.subText }]}>Learn • Manage • Grow</Text>
       </View>
       
       <View style={styles.illustrationContainer}>

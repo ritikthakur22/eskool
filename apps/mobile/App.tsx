@@ -1,6 +1,8 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { ThemeProvider } from "./src/core/theme/ThemeContext";
+import { useTheme } from './src/core/theme/ThemeContext';
+import { StatusBar } from 'expo-status-bar';
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 GoogleSignin.configure({
@@ -26,13 +28,30 @@ import GeneralSettingsScreen from "./src/features/profile/screens/GeneralSetting
 import TermsScreen from "./src/features/profile/screens/TermsScreen";
 import FeedbackScreen from "./src/features/profile/screens/FeedbackScreen";
 import AppInfoScreen from "./src/features/profile/screens/AppInfoScreen";
+import ProfileDetailsScreen from './src/features/profile/screens/ProfileDetailsScreen';
+import FeesScreen from './src/features/fees/screens/FeesScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
     <ThemeProvider>
-      <NavigationContainer>
+      <ThemedApp />
+    </ThemeProvider>
+  );
+}
+
+function ThemedApp() {
+  const { isDark, colors } = useTheme();
+
+  return (
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <NavigationContainer theme={{
+        dark: isDark,
+        colors: { primary: colors.primary, background: colors.background, card: colors.card, text: colors.text, border: colors.border, notification: colors.danger },
+        fonts: { regular: { fontFamily: 'System', fontWeight: '400' }, medium: { fontFamily: 'System', fontWeight: '500' }, bold: { fontFamily: 'System', fontWeight: '700' }, heavy: { fontFamily: 'System', fontWeight: '800' } },
+      }}>
       <Stack.Navigator initialRouteName="Onboarding" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
@@ -40,10 +59,12 @@ export default function App() {
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Routine" component={RoutineScreen} />
         <Stack.Screen name="Attendance" component={AttendanceScreen} />
+        <Stack.Screen name="Fees" component={FeesScreen} />
         <Stack.Screen name="Notice" component={NoticeScreen} />
         <Stack.Screen name="Homework" component={HomeworkScreen} />
         <Stack.Screen name="Result" component={ResultScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="ProfileDetails" component={ProfileDetailsScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="OnlineClass" component={OnlineClassScreen} />
         <Stack.Screen name="Library" component={LibraryScreen} />
@@ -55,6 +76,6 @@ export default function App() {
         <Stack.Screen name="App Info" component={AppInfoScreen} />
       </Stack.Navigator>
     </NavigationContainer>
-    </ThemeProvider>
+    </>
   );
 }

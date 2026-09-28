@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, FlatList, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTheme } from '../../../core/theme/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -37,6 +38,7 @@ type Props = {
 };
 
 export default function OnboardingScreen({ navigation }: Props) {
+  const { colors } = useTheme();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -51,8 +53,8 @@ export default function OnboardingScreen({ navigation }: Props) {
   const renderItem = ({ item }: { item: any }) => {
     return (
       <View style={styles.slide}>
-        <View style={styles.imagePlaceholder}>
-          <Ionicons name={item.icon} size={120} color="#2F80ED" />
+        <View style={[styles.imagePlaceholder, { backgroundColor: colors.mutedSurface }]}>
+          <Ionicons name={item.icon} size={120} color={colors.primary} />
           <View style={styles.floatingIcons}>
             <Ionicons name="documents" size={30} color="#F59E0B" style={styles.icon1} />
             <Ionicons name="chatbubbles" size={30} color="#10B981" style={styles.icon2} />
@@ -60,18 +62,18 @@ export default function OnboardingScreen({ navigation }: Props) {
           </View>
         </View>
         
-        <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.subtitle}>{item.subtitle}</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
+        <Text style={[styles.subtitle, { color: colors.subText }]}>{item.subtitle}</Text>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.replace('Login')}>
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={[styles.skipText, { color: colors.subText }]}>Skip</Text>
         </TouchableOpacity>
       </View>
 
@@ -97,14 +99,14 @@ export default function OnboardingScreen({ navigation }: Props) {
               key={idx} 
               style={[
                 styles.dot, 
-                currentIndex === idx && styles.activeDot
+                currentIndex === idx && [styles.activeDot, { backgroundColor: colors.primary }]
               ]} 
             />
           ))}
         </View>
 
         <TouchableOpacity 
-          style={styles.button}
+          style={[styles.button, { backgroundColor: colors.primary }]}
           onPress={handleNext}
         >
           <Text style={styles.buttonText}>

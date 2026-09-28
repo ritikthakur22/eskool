@@ -1,32 +1,35 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, Alert, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../../core/theme/ThemeContext';
 
 export default function FeedbackScreen({ navigation }: any) {
+  const { colors } = useTheme();
   const [feedback, setFeedback] = useState('');
 
-  const submitFeedback = () => {
-    if (!feedback) return;
-    Alert.alert('Thank You', 'Your feedback has been submitted to the administration.', [
-      { text: 'OK', onPress: () => navigation.goBack() }
-    ]);
+  const submitFeedback = async () => {
+    if (!feedback.trim()) { Alert.alert('Write a message', 'Add your feedback before opening your email app.'); return; }
+    const url = `mailto:contact@eskool.com?subject=${encodeURIComponent('eSkool app feedback')}&body=${encodeURIComponent(feedback.trim())}`;
+    try { await Linking.openURL(url); }
+    catch { Alert.alert('Email unavailable', 'Set up an email app, then try sending your feedback again.'); }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1F2937" />
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Send Feedback</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Send Feedback</Text>
         <View style={{ width: 24 }} />
       </View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.content}>
-        <Text style={styles.label}>How can we improve the app?</Text>
+        <Text style={[styles.label, { color: colors.text }]}>How can we improve the app?</Text>
         <TextInput 
-          style={styles.input} 
+          style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
           multiline 
           placeholder="Type your suggestions here..."
+          placeholderTextColor={colors.subText}
           value={feedback}
           onChangeText={setFeedback}
           textAlignVertical="top"

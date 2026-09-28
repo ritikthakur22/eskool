@@ -1,169 +1,56 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, TextInput, ActivityIndicator } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Modal, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../../../core/networking/api';
+import { api } from '../../../core/networking/api';
+import { useTheme } from '../../../core/theme/ThemeContext';
+
+type Notice = { id: string; title: string; content: string; category: string; date: string; author?: any };
+const categories = ['All', 'Important', 'Academic', 'Exam', 'Holiday', 'Event', 'General'];
 
 export default function NoticeScreen({ navigation }: any) {
-  const [activeTab, setActiveTab] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [allNotices, setAllNotices] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const tabs = ['All', 'Important', 'Academic', 'Exam'];
-
-  useEffect(() => {
-    fetchNotices();
+  const { colors } = useTheme(); const s = makeStyles(colors);
+  const [activeCategory, setActiveCategory] = useState('All'); const [search, setSearch] = useState('');
+  const [notices, setNotices] = useState<Notice[]>([]); const [readIds, setReadIds] = useState<string[]>([]);
+  const [selected, setSelected] = useState<Notice | null>(null); const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); const [error, setError] = useState('');
+  const fetchNotices = useCallback(async (refresh = false) => {
+    refresh ? setRefreshing(true) : setLoading(true); setError('');
+    try { const { data } = await api.get('/notices'); setNotices((data || []).map((n: any) => ({ ...n, content: n.content || '', category: n.category || 'General' }))); }
+    catch (e: any) { setError(e.response?.status === 401 ? 'Your session expired. Please log in again.' : 'Could not load notices. Check your connection and try again.'); }
+    finally { setLoading(false); setRefreshing(false); }
   }, []);
-
-  const fetchNotices = async () => {
-    try {
-      const response = await api.get('/notices');
-      const mappedNotices = response.data.map((n: any) => {
-        let icon = 'document-text';
-        let iconBg = '#EBF3FE';
-        let iconColor = '#2F80ED';
-        let badge = null;
-        let badgeStyle = null;
-        
-        if (n.category === 'Important') {
-          icon = 'alert-circle'; iconBg = '#EBF3FE'; iconColor = '#2F80ED'; badge = 'Important'; badgeStyle = 'important';
-        } else if (n.category === 'Exam') {
-          icon = 'document-text'; iconBg = '#EBF3FE'; iconColor = '#2F80ED'; badge = 'Exam'; badgeStyle = 'exam';
-        } else if (n.category === 'Academic') {
-          icon = 'book'; iconBg = '#EBF3FE'; iconColor = '#2F80ED';
-        } else if (n.category === 'Holiday') {
-          icon = 'home'; iconBg = '#E7F8F2'; iconColor = '#10B981'; badge = 'Holiday'; badgeStyle = 'holiday';
-        } else if (n.category === 'Event') {
-          icon = 'calendar'; iconBg = '#F3E8FF'; iconColor = '#8B5CF6'; badge = 'Event'; badgeStyle = 'event';
-        }
-
-        return {
-          id: n.id,
-          title: n.title,
-          subtitle: n.content,
-          date: new Date(n.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-          badge: badge,
-          badgeStyle: badgeStyle,
-          category: n.category,
-          icon,
-          iconBg,
-          iconColor
-        };
-      });
-      setAllNotices(mappedNotices);
-    } catch (error) {
-      console.error('Failed to fetch notices:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  useEffect(() => { fetchNotices(); }, [fetchNotices]);
+  const filtered = useMemo(() => notices.filter(n => {
+    const matchesCategory = activeCategory === 'All' || n.category.toLowerCase() === activeCategory.toLowerCase();
+    const query = search.trim().toLowerCase(); return matchesCategory && (!query || n.title.toLowerCase().includes(query) || n.content.toLowerCase().includes(query));
+  }), [activeCategory, notices, search]);
+  const featured = notices.find(n => ['important', 'emergency'].includes(n.category.toLowerCase()));
+  const openNotice = (n: Notice) => { if (!readIds.includes(n.id)) setReadIds(ids => [...ids, n.id]); setSelected(n); };
+  const iconFor = (category: string) => {
+    const key = category.toLowerCase();
+    if (['important', 'emergency'].includes(key)) return { name: 'alert-circle', color: colors.danger, bg: colors.danger + '18' };
+    if (key === 'exam') return { name: 'document-text', color: colors.primary, bg: colors.primary + '18' };
+    if (key === 'holiday') return { name: 'sunny', color: colors.warning, bg: colors.warning + '20' };
+    if (key === 'event') return { name: 'calendar', color: '#8B5CF6', bg: '#8B5CF618' };
+    return { name: 'school', color: colors.success, bg: colors.success + '18' };
   };
-
-  const filteredNotices = allNotices.filter(notice => {
-    const matchesTab = activeTab === 'All' || notice.category === activeTab;
-    const matchesSearch = notice.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          notice.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTab && matchesSearch;
-  });
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notice</Text>
-        <View style={{ width: 24 }} />
+  return <SafeAreaView style={s.screen}>
+    <ScrollView stickyHeaderIndices={[1]} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchNotices(true)} tintColor={colors.primary} />}>
+      <View style={s.topHeader}><TouchableOpacity accessibilityLabel="Go back" onPress={() => navigation.goBack()} style={s.back}><Ionicons name="chevron-back" size={23} color={colors.text} /></TouchableOpacity><View style={{ flex: 1 }}><Text style={s.eyebrow}>YOUR SCHOOL, IN THE LOOP</Text><Text style={s.title}>Notices</Text></View><TouchableOpacity accessibilityLabel="Refresh notices" onPress={() => fetchNotices(true)} style={s.refresh}><Ionicons name="refresh-outline" size={20} color={colors.primary} /></TouchableOpacity></View>
+      <View style={s.sticky}><View style={s.search}><Ionicons name="search-outline" size={19} color={colors.subText} /><TextInput value={search} onChangeText={setSearch} placeholder="Search updates" placeholderTextColor={colors.subText} style={s.searchInput} returnKeyType="search" />{search.length > 0 && <TouchableOpacity onPress={() => setSearch('')}><Ionicons name="close-circle" size={18} color={colors.subText} /></TouchableOpacity>}</View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.categories}>{categories.map(category => <TouchableOpacity key={category} onPress={() => setActiveCategory(category)} style={[s.chip, activeCategory === category && s.chipActive]}><Text style={[s.chipText, activeCategory === category && s.chipTextActive]}>{category}</Text></TouchableOpacity>)}</ScrollView></View>
+      <View style={s.content}>
+        {featured && <TouchableOpacity activeOpacity={0.9} onPress={() => openNotice(featured)} style={s.featured}><View style={s.featuredTop}><View style={s.urgentTag}><Ionicons name="warning" size={12} color="#fff" /><Text style={s.urgentText}>IMPORTANT UPDATE</Text></View><Ionicons name="chevron-forward" size={20} color="#fff" /></View><Text style={s.featuredTitle} numberOfLines={2}>{featured.title}</Text><Text style={s.featuredPreview} numberOfLines={2}>{featured.content}</Text><Text style={s.featuredDate}>{new Date(featured.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text></TouchableOpacity>}
+        <View style={s.sectionHeading}><View><Text style={s.sectionTitle}>{activeCategory === 'All' ? 'Recent updates' : activeCategory}</Text><Text style={s.sectionSubtitle}>{filtered.length} {filtered.length === 1 ? 'notice' : 'notices'} from your school</Text></View><View style={s.count}><Text style={s.countText}>{filtered.length}</Text></View></View>
+        {loading ? <View style={s.state}><ActivityIndicator size="large" color={colors.primary} /><Text style={s.stateText}>Bringing you the latest updates…</Text></View> : error ? <View style={s.state}><Ionicons name="cloud-offline-outline" size={42} color={colors.subText} /><Text style={s.stateTitle}>Notices unavailable</Text><Text style={s.stateText}>{error}</Text><TouchableOpacity style={s.retry} onPress={() => fetchNotices()}><Text style={s.retryText}>Try again</Text></TouchableOpacity></View> : filtered.length === 0 ? <View style={s.empty}><View style={s.emptyIcon}><Ionicons name="notifications-off-outline" size={25} color={colors.primary} /></View><Text style={s.stateTitle}>Nothing to show</Text><Text style={s.stateText}>{search ? 'Try a different search phrase or clear your search.' : 'New school updates will appear here when they’re posted.'}</Text></View> : filtered.map(notice => {
+          const icon = iconFor(notice.category); const unread = !readIds.includes(notice.id);
+          return <TouchableOpacity accessibilityRole="button" key={notice.id} style={s.noticeCard} onPress={() => openNotice(notice)}><View style={[s.noticeIcon, { backgroundColor: icon.bg }]}><Ionicons name={icon.name as any} size={21} color={icon.color} /></View><View style={s.noticeBody}><View style={s.categoryLine}><Text style={[s.categoryLabel, { color: icon.color }]}>{notice.category}</Text>{unread && <View style={s.newTag}><View style={s.dot} /><Text style={s.newText}>NEW</Text></View>}</View><Text style={[s.noticeTitle, unread && { fontWeight: '800' }]} numberOfLines={2}>{notice.title}</Text><Text style={s.preview} numberOfLines={2}>{notice.content}</Text><Text style={s.date}>{new Date(notice.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Text></View><Ionicons name="chevron-forward" size={17} color={colors.subText} /></TouchableOpacity>;
+        })}
       </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContainer}>
-        {tabs.map((tab) => (
-          <TouchableOpacity 
-            key={tab} 
-            style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#6B7280" style={styles.searchIcon} />
-        <TextInput 
-          style={styles.searchInput}
-          placeholder="Search notices..."
-          placeholderTextColor="#6B7280"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.listContainer}>
-        {isLoading ? (
-          <ActivityIndicator size="large" color="#2F80ED" style={{ marginTop: 50 }} />
-        ) : filteredNotices.length === 0 ? (
-          <Text style={{ textAlign: 'center', marginTop: 50, color: '#6B7280' }}>No notices found.</Text>
-        ) : (
-          filteredNotices.map((notice) => (
-            <TouchableOpacity key={notice.id} style={styles.noticeCard}>
-              <View style={[styles.iconContainer, { backgroundColor: notice.iconBg }]}>
-                <Ionicons name={notice.icon as any} size={24} color={notice.iconColor} />
-              </View>
-              <View style={styles.noticeContent}>
-                <View style={styles.noticeHeaderRow}>
-                  <Text style={styles.noticeTitle}>{notice.title}</Text>
-                  {notice.badge && (
-                    <View style={[styles.badge, 
-                      notice.badgeStyle === 'important' && { backgroundColor: '#FEE2E2' },
-                      notice.badgeStyle === 'exam' && { backgroundColor: '#DBEAFE' },
-                      notice.badgeStyle === 'holiday' && { backgroundColor: '#D1FAE5' },
-                      notice.badgeStyle === 'event' && { backgroundColor: '#F3E8FF' },
-                    ]}>
-                      <Text style={[styles.badgeText, 
-                        notice.badgeStyle === 'important' && { color: '#EF4444' },
-                        notice.badgeStyle === 'exam' && { color: '#2F80ED' },
-                        notice.badgeStyle === 'holiday' && { color: '#10B981' },
-                        notice.badgeStyle === 'event' && { color: '#8B5CF6' },
-                      ]}>
-                        {notice.badge}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={styles.noticeSubtitle} numberOfLines={2}>{notice.subtitle}</Text>
-                <Text style={styles.noticeDate}>{notice.date}</Text>
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
-    </SafeAreaView>
-  );
+    </ScrollView>
+    <Modal visible={!!selected} animationType="slide" transparent onRequestClose={() => setSelected(null)}><View style={s.modalOverlay}><View style={s.modalCard}><View style={s.modalHandle} /><View style={s.modalHeader}><View style={[s.modalBadge, { backgroundColor: selected ? iconFor(selected.category).bg : colors.mutedSurface }]}><Text style={[s.modalCategory, { color: selected ? iconFor(selected.category).color : colors.primary }]}>{selected?.category}</Text></View><TouchableOpacity accessibilityLabel="Close notice" style={s.close} onPress={() => setSelected(null)}><Ionicons name="close" size={22} color={colors.text} /></TouchableOpacity></View><Text style={s.modalTitle}>{selected?.title}</Text><Text style={s.modalDate}>{selected && new Date(selected.date).toLocaleDateString('en-US', { dateStyle: 'long' })}</Text><ScrollView><Text style={s.modalContent}>{selected?.content}</Text></ScrollView></View></View></Modal>
+  </SafeAreaView>;
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingTop: 40, backgroundColor: '#FFFFFF' },
-  backButton: { padding: 5 },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1F2937' },
-  
-  tabsContainer: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 10, height: 40, alignItems: 'center' },
-  tabButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 9999, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', marginRight: 12 },
-  tabButtonActive: { backgroundColor: '#EBF3FE', borderColor: '#2F80ED' },
-  tabText: { fontSize: 13, color: '#6B7280', fontWeight: '600' },
-  tabTextActive: { color: '#2F80ED' },
-  
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', marginHorizontal: 20, marginBottom: 16, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' },
-  searchIcon: { marginRight: 10 },
-  searchInput: { flex: 1, paddingVertical: 14, fontSize: 14, color: '#1F2937' },
-  
-  listContainer: { paddingHorizontal: 20, paddingBottom: 20 },
-  noticeCard: { flexDirection: 'row', padding: 16, marginBottom: 12, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },
-  iconContainer: { width: 48, height: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 16 },
-  noticeContent: { flex: 1, justifyContent: 'center' },
-  noticeHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  noticeTitle: { fontSize: 15, fontWeight: '700', color: '#1F2937', flex: 1, marginRight: 8 },
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 9999 },
-  badgeText: { fontSize: 11, fontWeight: '700' },
-  noticeSubtitle: { fontSize: 13, color: '#6B7280', marginBottom: 8, lineHeight: 18 },
-  noticeDate: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' }
+const makeStyles = (c: any) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: c.background }, topHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18, paddingTop: 10, paddingBottom: 16, backgroundColor: c.background }, back: { height: 40, width: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 13, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, marginRight: 12 }, eyebrow: { color: c.primary, fontSize: 9, letterSpacing: 1.4, fontWeight: '900' }, title: { color: c.text, fontSize: 26, fontWeight: '900', marginTop: 2 }, refresh: { height: 40, width: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 13, backgroundColor: c.card, borderWidth: 1, borderColor: c.border }, sticky: { backgroundColor: c.background, paddingTop: 2, paddingBottom: 4 }, search: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 18, marginBottom: 12, paddingHorizontal: 14, height: 48, borderRadius: 15, backgroundColor: c.card, borderWidth: 1, borderColor: c.border }, searchInput: { flex: 1, color: c.text, fontSize: 14, marginLeft: 9 }, categories: { paddingHorizontal: 18, paddingBottom: 11, gap: 8 }, chip: { paddingVertical: 8, paddingHorizontal: 14, borderRadius: 18, backgroundColor: c.card, borderWidth: 1, borderColor: c.border }, chipActive: { backgroundColor: c.text, borderColor: c.text }, chipText: { color: c.subText, fontSize: 12, fontWeight: '700' }, chipTextActive: { color: c.background }, content: { paddingHorizontal: 18, paddingBottom: 30 }, featured: { padding: 17, borderRadius: 19, backgroundColor: c.danger, marginTop: 5, marginBottom: 22 }, featuredTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, urgentTag: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#FFFFFF28', borderRadius: 20, paddingHorizontal: 9, paddingVertical: 6 }, urgentText: { color: '#fff', fontSize: 9, fontWeight: '900', letterSpacing: 0.8 }, featuredTitle: { color: '#fff', fontSize: 19, lineHeight: 24, fontWeight: '900', marginTop: 13 }, featuredPreview: { color: '#FFFFFFDF', fontSize: 12, lineHeight: 18, marginTop: 6 }, featuredDate: { color: '#FFFFFFB8', fontSize: 10, fontWeight: '700', marginTop: 12 }, sectionHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }, sectionTitle: { color: c.text, fontSize: 19, fontWeight: '900' }, sectionSubtitle: { color: c.subText, fontSize: 11, marginTop: 3 }, count: { minWidth: 32, height: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: c.mutedSurface, borderRadius: 10, paddingHorizontal: 8 }, countText: { color: c.text, fontSize: 12, fontWeight: '800' }, noticeCard: { flexDirection: 'row', alignItems: 'flex-start', padding: 14, borderRadius: 17, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, marginBottom: 10 }, noticeIcon: { height: 42, width: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginRight: 12 }, noticeBody: { flex: 1, marginRight: 8 }, categoryLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }, categoryLabel: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.7 }, newTag: { flexDirection: 'row', alignItems: 'center', gap: 4 }, dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: c.primary }, newText: { color: c.primary, fontSize: 9, fontWeight: '900' }, noticeTitle: { color: c.text, fontSize: 14, lineHeight: 19, fontWeight: '700' }, preview: { color: c.subText, fontSize: 12, lineHeight: 18, marginTop: 5 }, date: { color: c.subText, fontSize: 10, fontWeight: '600', marginTop: 9 }, state: { alignItems: 'center', paddingVertical: 55, paddingHorizontal: 24 }, stateTitle: { color: c.text, fontSize: 16, fontWeight: '800', marginTop: 12, textAlign: 'center' }, stateText: { color: c.subText, fontSize: 12, lineHeight: 19, textAlign: 'center', marginTop: 6 }, retry: { paddingHorizontal: 19, paddingVertical: 10, borderRadius: 12, backgroundColor: c.primary, marginTop: 14 }, retryText: { color: '#fff', fontWeight: '800' }, empty: { alignItems: 'center', paddingTop: 45, paddingBottom: 60, paddingHorizontal: 20 }, emptyIcon: { width: 55, height: 55, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary + '15' }, modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000070' }, modalCard: { maxHeight: '84%', minHeight: '45%', backgroundColor: c.card, borderTopLeftRadius: 25, borderTopRightRadius: 25, paddingHorizontal: 22, paddingBottom: 25 }, modalHandle: { width: 38, height: 4, borderRadius: 2, backgroundColor: c.subText + '70', alignSelf: 'center', marginTop: 10, marginBottom: 16 }, modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, modalBadge: { borderRadius: 20, paddingHorizontal: 11, paddingVertical: 7 }, modalCategory: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.8 }, close: { padding: 7, borderRadius: 20, backgroundColor: c.mutedSurface }, modalTitle: { color: c.text, fontSize: 23, lineHeight: 29, fontWeight: '900', marginTop: 18 }, modalDate: { color: c.subText, fontSize: 12, marginTop: 7 }, modalContent: { color: c.text, fontSize: 14, lineHeight: 23, marginTop: 21, paddingBottom: 25 },
 });

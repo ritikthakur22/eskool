@@ -8,7 +8,7 @@ interface ThemeContextType {
   themeMode: ThemeMode;
   setThemeMode: (mode: ThemeMode) => void;
   isDark: boolean;
-  colors: any;
+  colors: typeof lightColors;
 }
 
 const lightColors = {
@@ -19,6 +19,9 @@ const lightColors = {
   border: '#F3F4F6',
   primary: '#2F80ED',
   danger: '#EF4444',
+  success: '#10B981',
+  warning: '#F59E0B',
+  mutedSurface: '#F3F4F6',
 };
 
 const darkColors = {
@@ -29,6 +32,9 @@ const darkColors = {
   border: '#374151',
   primary: '#3B82F6',
   danger: '#F87171',
+  success: '#34D399',
+  warning: '#FBBF24',
+  mutedSurface: '#374151',
 };
 
 const ThemeContext = createContext<ThemeContextType>({} as ThemeContextType);

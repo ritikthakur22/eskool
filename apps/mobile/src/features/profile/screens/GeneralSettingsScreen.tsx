@@ -1,11 +1,37 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Switch, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../core/theme/ThemeContext';
+import * as SecureStore from 'expo-secure-store';
+import * as LocalAuthentication from 'expo-local-authentication';
 
 export default function GeneralSettingsScreen({ navigation }: any) {
   const [biometricEnabled, setBiometricEnabled] = useState(false);
   const { themeMode, setThemeMode, isDark, colors } = useTheme();
+
+  useEffect(() => {
+    SecureStore.getItemAsync('biometric_enabled').then(value => setBiometricEnabled(value === 'true'));
+  }, []);
+
+  const updateBiometric = async (enabled: boolean) => {
+    if (enabled) {
+      const [hardware, enrolled, token] = await Promise.all([
+        LocalAuthentication.hasHardwareAsync(),
+        LocalAuthentication.isEnrolledAsync(),
+        SecureStore.getItemAsync('access_token'),
+      ]);
+      if (!hardware || !enrolled) {
+        Alert.alert('Biometrics unavailable', 'Set up face or fingerprint unlock in your device settings first.');
+        return;
+      }
+      if (!token) {
+        Alert.alert('Log in first', 'Log in to your school account before enabling biometric login.');
+        return;
+      }
+    }
+    setBiometricEnabled(enabled);
+    await SecureStore.setItemAsync('biometric_enabled', enabled ? 'true' : 'false');
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -52,7 +78,7 @@ export default function GeneralSettingsScreen({ navigation }: any) {
           
           <View style={[styles.settingItem, { backgroundColor: colors.card }]}>
             <Text style={[styles.settingText, { color: colors.text }]}>Biometric Login</Text>
-            <Switch value={biometricEnabled} onValueChange={setBiometricEnabled} trackColor={{ false: '#D1D5DB', true: colors.primary }} />
+            <Switch value={biometricEnabled} onValueChange={updateBiometric} trackColor={{ false: '#D1D5DB', true: colors.primary }} />
           </View>
 
           <TouchableOpacity style={[styles.settingButton, { backgroundColor: colors.card }]} onPress={() => Alert.alert('Change Password', 'Password change flow coming soon.')}>

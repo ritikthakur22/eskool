@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../../core/theme/ThemeContext';
 
 export default function ChatScreen({ navigation }: any) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [activeTab, setActiveTab] = useState('Teachers');
   const tabs = ['Teachers', 'Classmates', 'Groups'];
 
@@ -15,10 +18,10 @@ export default function ChatScreen({ navigation }: any) {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.card }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color="#1A202C" />
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chat</Text>
         <View style={{ width: 24 }} />
@@ -68,28 +71,28 @@ export default function ChatScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+const makeStyles = (c: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingTop: 40 },
   backButton: { padding: 5 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A202C' },
-  tabsContainer: { flexDirection: 'row', justifyContent: 'space-around', borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: c.text },
+  tabsContainer: { flexDirection: 'row', justifyContent: 'space-around', borderBottomWidth: 1, borderBottomColor: c.border },
   tabButton: { paddingVertical: 15, paddingHorizontal: 20 },
-  tabButtonActive: { borderBottomWidth: 2, borderBottomColor: '#3182CE' },
-  tabText: { fontSize: 14, color: '#718096', fontWeight: '500' },
-  tabTextActive: { color: '#3182CE', fontWeight: 'bold' },
+  tabButtonActive: { borderBottomWidth: 2, borderBottomColor: c.primary },
+  tabText: { fontSize: 14, color: c.subText, fontWeight: '500' },
+  tabTextActive: { color: c.primary, fontWeight: 'bold' },
   listContainer: { padding: 20 },
-  chatCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F7FAFC' },
+  chatCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: c.border },
   avatar: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   chatContent: { flex: 1 },
   chatHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  chatName: { fontSize: 16, fontWeight: 'bold', color: '#1A202C' },
-  chatTime: { fontSize: 12, color: '#A0AEC0' },
-  chatTimeUnread: { color: '#3182CE', fontWeight: 'bold' },
-  chatRole: { fontSize: 12, color: '#718096', marginBottom: 4 },
+  chatName: { fontSize: 16, fontWeight: 'bold', color: c.text },
+  chatTime: { fontSize: 12, color: c.subText },
+  chatTimeUnread: { color: c.primary, fontWeight: 'bold' },
+  chatRole: { fontSize: 12, color: c.subText, marginBottom: 4 },
   chatMessageRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  chatMessage: { flex: 1, fontSize: 14, color: '#4A5568', marginRight: 10 },
-  unreadBadge: { backgroundColor: '#E53E3E', borderRadius: 12, paddingHorizontal: 6, paddingVertical: 2, minWidth: 24, alignItems: 'center' },
+  chatMessage: { flex: 1, fontSize: 14, color: c.subText, marginRight: 10 },
+  unreadBadge: { backgroundColor: c.danger, borderRadius: 12, paddingHorizontal: 6, paddingVertical: 2, minWidth: 24, alignItems: 'center' },
   unreadText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' },
-  fab: { position: 'absolute', bottom: 30, right: 30, width: 60, height: 60, borderRadius: 30, backgroundColor: '#3182CE', justifyContent: 'center', alignItems: 'center', shadowColor: '#3182CE', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }
+  fab: { position: 'absolute', bottom: 30, right: 30, width: 60, height: 60, borderRadius: 30, backgroundColor: c.primary, justifyContent: 'center', alignItems: 'center', shadowColor: c.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 5 }
 });

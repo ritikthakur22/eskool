@@ -1,7 +1,10 @@
 import React from 'react';
 import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
+import { useTheme } from '../../../core/theme/ThemeContext';
 
 export default function ResultScreen({ navigation }: any) {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const results = [
     {
       id: '1',
@@ -32,8 +35,8 @@ export default function ResultScreen({ navigation }: any) {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.card }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
@@ -83,29 +86,29 @@ export default function ResultScreen({ navigation }: any) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, backgroundColor: '#FFFFFF' },
+const makeStyles = (c: any) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: c.background },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, backgroundColor: c.card },
   backButton: { padding: 5 },
-  backIcon: { fontSize: 24, color: '#1A202C' },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A202C' },
+  backIcon: { fontSize: 24, color: c.text },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: c.text },
   content: { padding: 20 },
-  overviewCard: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 16, alignItems: 'center', marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  overviewTitle: { fontSize: 16, fontWeight: 'bold', color: '#1A202C', marginBottom: 15 },
-  progressCircle: { width: 100, height: 100, borderRadius: 50, borderWidth: 8, borderColor: '#3182CE', justifyContent: 'center', alignItems: 'center' },
-  progressText: { fontSize: 24, fontWeight: 'bold', color: '#2B6CB0' },
-  progressSubText: { fontSize: 12, color: '#718096' },
-  examCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  examHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', paddingBottom: 15 },
-  examTitle: { fontSize: 16, fontWeight: 'bold', color: '#1A202C', marginBottom: 4 },
-  examDate: { fontSize: 12, color: '#A0AEC0' },
-  examOverallBadge: { backgroundColor: '#EBF8FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  examOverallText: { color: '#3182CE', fontWeight: 'bold', fontSize: 16 },
-  tableHeader: { flexDirection: 'row', marginBottom: 10, paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: '#F7FAFC' },
-  tableHeaderText: { fontSize: 12, color: '#A0AEC0', fontWeight: 'bold' },
-  tableRow: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F7FAFC' },
-  tableRowText: { fontSize: 14, color: '#4A5568' },
-  tableGradeText: { fontSize: 14, fontWeight: 'bold', color: '#38A169' },
+  overviewCard: { backgroundColor: c.card, padding: 20, borderRadius: 16, alignItems: 'center', marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  overviewTitle: { fontSize: 16, fontWeight: 'bold', color: c.text, marginBottom: 15 },
+  progressCircle: { width: 100, height: 100, borderRadius: 50, borderWidth: 8, borderColor: c.primary, justifyContent: 'center', alignItems: 'center' },
+  progressText: { fontSize: 24, fontWeight: 'bold', color: c.primary },
+  progressSubText: { fontSize: 12, color: c.subText },
+  examCard: { backgroundColor: c.card, borderRadius: 16, padding: 20, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
+  examHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15, borderBottomWidth: 1, borderBottomColor: c.border, paddingBottom: 15 },
+  examTitle: { fontSize: 16, fontWeight: 'bold', color: c.text, marginBottom: 4 },
+  examDate: { fontSize: 12, color: c.subText },
+  examOverallBadge: { backgroundColor: c.primary + '18', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  examOverallText: { color: c.primary, fontWeight: 'bold', fontSize: 16 },
+  tableHeader: { flexDirection: 'row', marginBottom: 10, paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: c.border },
+  tableHeaderText: { fontSize: 12, color: c.subText, fontWeight: 'bold' },
+  tableRow: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: c.border },
+  tableRowText: { fontSize: 14, color: c.text },
+  tableGradeText: { fontSize: 14, fontWeight: 'bold', color: c.success },
   colLeft: { flex: 2 },
   colCenter: { flex: 1, textAlign: 'center' },
   colRight: { flex: 1, textAlign: 'right' }
