@@ -15,12 +15,12 @@ export default function AppInfoScreen({ navigation }: any) {
       
       <View style={styles.content}>
         <Ionicons name="school" size={80} color="#2F80ED" style={styles.logo} />
-        <Text style={styles.appName}>eSchooling</Text>
+        <Text style={styles.appName}>eSkool</Text>
         <Text style={styles.version}>Version 1.0.0</Text>
         
         <View style={styles.details}>
-          <Text style={styles.detailText}>Developed by: eSchooling Inc.</Text>
-          <Text style={styles.detailText}>Support: contact@eschooling.com</Text>
+          <Text style={styles.detailText}>Developed by: eSkool Inc.</Text>
+          <Text style={styles.detailText}>Support: contact@eskool.com</Text>
         </View>
       </View>
     </SafeAreaView>

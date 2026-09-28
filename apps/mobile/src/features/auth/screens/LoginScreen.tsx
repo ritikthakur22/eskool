@@ -97,7 +97,7 @@ export default function LoginScreen({ navigation }: Props) {
           <View style={styles.logoIcon}>
             <Ionicons name="school" size={40} color="#2F80ED" />
           </View>
-          <Text style={styles.logoText}>eSchooling</Text>
+          <Text style={styles.logoText}>eSkool</Text>
           <Text style={styles.subText}>Login to continue</Text>
         </View>
 

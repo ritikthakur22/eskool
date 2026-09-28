@@ -22,7 +22,7 @@ export default function SplashScreen({ navigation }: Props) {
         <View style={styles.logoContainer}>
           <Ionicons name="school" size={80} color="#2F80ED" />
         </View>
-        <Text style={styles.title}>eSchooling</Text>
+        <Text style={styles.title}>eSkool</Text>
         <Text style={styles.subtitle}>Learn • Manage • Grow</Text>
       </View>
       

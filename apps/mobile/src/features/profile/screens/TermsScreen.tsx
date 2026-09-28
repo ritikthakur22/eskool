@@ -13,7 +13,7 @@ export default function TermsScreen({ navigation }: any) {
         <View style={{ width: 24 }} />
       </View>
       <ScrollView style={styles.content}>
-        <Text style={styles.paragraph}>By using eSchooling, you agree to these terms. All educational data is strictly confidential and managed according to regional privacy laws.</Text>
+        <Text style={styles.paragraph}>By using eSkool, you agree to these terms. All educational data is strictly confidential and managed according to regional privacy laws.</Text>
         <Text style={styles.paragraph}>Information collected is only used for academic purposes within the school premises.</Text>
       </ScrollView>
     </SafeAreaView>
