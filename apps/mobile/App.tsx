@@ -1,5 +1,10 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+
+GoogleSignin.configure({
+  webClientId: "228295306473-t6cv4gac9pn81pbcgk6av05roi9j2662.apps.googleusercontent.com",
+});
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from './src/features/auth/screens/LoginScreen';
 import DashboardScreen from './src/features/home/screens/DashboardScreen';
@@ -22,7 +27,7 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator initialRouteName="Onboarding" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />

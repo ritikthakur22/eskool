@@ -8,11 +8,7 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 export default function ProfileScreen({ navigation }: any) {
   const [isLinking, setIsLinking] = useState(false);
 
-  useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: '228295306473-t6cv4gac9pn81pbcgk6av05roi9j2662.apps.googleusercontent.com',
-    });
-  }, []);
+
   
   const handleLogout = async () => {
     try {
