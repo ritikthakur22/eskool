@@ -15,12 +15,17 @@ export default function ProfileScreen({ navigation }: any) {
   }, []);
   
   const handleLogout = async () => {
-    await SecureStore.deleteItemAsync('access_token');
-    await SecureStore.deleteItemAsync('user_data');
-    if (auth().currentUser) {
-      await auth().signOut();
+    try {
+      await SecureStore.deleteItemAsync('access_token');
+      await SecureStore.deleteItemAsync('user_data');
+      if (auth().currentUser) {
+        await auth().signOut();
+      }
+    } catch (e) {
+      console.log('Firebase signout error, but clearing local session anyway.', e);
+    } finally {
+      navigation.replace('Login');
     }
-    navigation.replace('Login');
   };
 
   const handleLinkGoogle = async () => {
@@ -42,13 +47,17 @@ export default function ProfileScreen({ navigation }: any) {
     }
   };
 
+  const showComingSoon = (title: string) => {
+    Alert.alert(title, 'This page is coming soon!');
+  };
+
   const settingsItems = [
     { label: 'Link Google Account', subtext: 'Connect Firebase Google Sign-In', icon: 'logo-google', color: '#2F80ED', onPress: handleLinkGoogle },
-    { label: 'General Settings', subtext: 'Password, biometric, theme', icon: 'settings', color: '#2F80ED' },
-    { label: 'Terms & Privacy Policy', subtext: 'Read our terms', icon: 'document-text', color: '#8B5CF6' },
-    { label: 'Send Feedback', subtext: 'Let us know your suggestions', icon: 'paper-plane', color: '#2F80ED' },
-    { label: 'Rate Our App', subtext: 'If you love our app, rate it.', icon: 'star', color: '#2F80ED' },
-    { label: 'App Info', subtext: 'Version 1.2.1 • Check for updates', icon: 'information-circle', color: '#10B981' },
+    { label: 'General Settings', subtext: 'Password, biometric, theme', icon: 'settings', color: '#2F80ED', onPress: () => showComingSoon('General Settings') },
+    { label: 'Terms & Privacy Policy', subtext: 'Read our terms', icon: 'document-text', color: '#8B5CF6', onPress: () => showComingSoon('Terms & Privacy Policy') },
+    { label: 'Send Feedback', subtext: 'Let us know your suggestions', icon: 'paper-plane', color: '#2F80ED', onPress: () => showComingSoon('Send Feedback') },
+    { label: 'Rate Our App', subtext: 'If you love our app, rate it.', icon: 'star', color: '#2F80ED', onPress: () => showComingSoon('Rate Our App') },
+    { label: 'App Info', subtext: 'Version 1.2.1 • Check for updates', icon: 'information-circle', color: '#10B981', onPress: () => showComingSoon('App Info') },
   ];
 
   return (
