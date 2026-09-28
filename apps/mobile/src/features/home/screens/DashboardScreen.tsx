@@ -113,7 +113,28 @@ export default function DashboardScreen({ navigation }: Props) {
         </View>
 
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Dashboard')}>
+          <Ionicons name="home" size={24} color="#2F80ED" />
+          <Text style={styles.navTextActive}>Home</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Notice')}>
+          <Ionicons name="notifications-outline" size={24} color="#9CA3AF" />
+          <Text style={styles.navText}>Notice</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('OnlineClass')}>
+          <Ionicons name="laptop-outline" size={24} color="#9CA3AF" />
+          <Text style={styles.navText}>Classes</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
+          <Ionicons name="person-outline" size={24} color="#9CA3AF" />
+          <Text style={styles.navText}>Profile</Text>
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
+
   );
 }
 
@@ -152,5 +173,12 @@ const styles = StyleSheet.create({
   noticeDetails: { flex: 1 },
   noticeCategory: { fontSize: 12, fontWeight: '600', color: '#1F2937', marginBottom: 4 },
   noticeTitle: { fontSize: 14, fontWeight: '700', color: '#4B5563', marginBottom: 6 },
-  noticeDate: { fontSize: 12, color: '#9CA3AF' }
+  
+  noticeDate: { fontSize: 12, color: '#9CA3AF' },
+  
+  bottomNav: { flexDirection: 'row', backgroundColor: '#FFFFFF', paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#E5E7EB' },
+  navItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  navTextActive: { fontSize: 11, color: '#2F80ED', marginTop: 4, fontWeight: '600' },
+  navText: { fontSize: 11, color: '#6B7280', marginTop: 4, fontWeight: '500' }
 });
+
