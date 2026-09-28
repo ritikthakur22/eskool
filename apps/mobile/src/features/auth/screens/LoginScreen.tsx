@@ -92,6 +92,7 @@ export default function LoginScreen({ navigation }: Props) {
     setError('');
     try {
       const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
+      GoogleSignin.configure({ webClientId: '228295306473-t6cv4gac9pn81pbcgk6av05roi9j2662.apps.googleusercontent.com' });
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const response: any = await GoogleSignin.signIn();
       const idToken = response?.data?.idToken || response?.idToken;

@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+GoogleSignin.configure({ webClientId: '228295306473-t6cv4gac9pn81pbcgk6av05roi9j2662.apps.googleusercontent.com' });
 import { API_BASE_URL, api } from '../../../core/networking/api';
 import { getInMemoryAccessToken, getInMemoryRefreshToken, setInMemoryAccessToken, setInMemoryRefreshToken } from '../../../core/networking/session';
 import { useTheme } from '../../../core/theme/ThemeContext';
