@@ -44,10 +44,11 @@ export default function ProfileScreen({ navigation }: any) {
 
   const settingsItems = [
     { label: 'Link Google Account', subtext: 'Connect Firebase Google Sign-In', icon: 'logo-google', color: '#2F80ED', onPress: handleLinkGoogle },
-    { label: 'Profile', subtext: 'View and edit your profile', icon: 'person', color: '#2F80ED' },
-    { label: 'General Settings', subtext: 'Change password, biometric, dark mode', icon: 'settings', color: '#EF4444' },
-    { label: 'Notifications', subtext: 'Manage notification preferences', icon: 'notifications', color: '#8B5CF6' },
-    { label: 'App Info', subtext: 'Version 1.0.0 • Check for updates', icon: 'information-circle', color: '#10B981' },
+    { label: 'General Settings', subtext: 'Password, biometric, theme', icon: 'settings', color: '#2F80ED' },
+    { label: 'Terms & Privacy Policy', subtext: 'Read our terms', icon: 'document-text', color: '#8B5CF6' },
+    { label: 'Send Feedback', subtext: 'Let us know your suggestions', icon: 'paper-plane', color: '#2F80ED' },
+    { label: 'Rate Our App', subtext: 'If you love our app, rate it.', icon: 'star', color: '#2F80ED' },
+    { label: 'App Info', subtext: 'Version 1.2.1 • Check for updates', icon: 'information-circle', color: '#10B981' },
   ];
 
   return (
