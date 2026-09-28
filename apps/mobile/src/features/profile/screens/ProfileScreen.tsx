@@ -32,7 +32,13 @@ export default function ProfileScreen({ navigation }: any) {
     try {
       setIsLinking(true);
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const { idToken } = await GoogleSignin.signIn();
+      const response: any = await GoogleSignin.signIn();
+      
+      const idToken = response?.data?.idToken || response?.idToken;
+      if (!idToken) {
+        throw new Error('Google Sign-In failed to return an ID token.');
+      }
+
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
       
       // Sign in or link using Firebase Auth
