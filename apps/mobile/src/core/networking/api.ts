@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 // Use local network IP if testing on physical device, or localhost for simulator
 const getBaseUrl = () => {
   // Replace this with your computer's local IP address (e.g. 192.168.1.17)
-  const LOCAL_IP = '192.168.1.17'; 
+  const LOCAL_IP = '192.168.1.77'; 
   
   if (Platform.OS === 'android') {
     // Android emulator alias for localhost is 10.0.2.2, but for physical device on WiFi it's the LAN IP
