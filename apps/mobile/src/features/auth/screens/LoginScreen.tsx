@@ -44,6 +44,33 @@ export default function LoginScreen({ navigation }: Props) {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const response: any = await GoogleSignin.signIn();
+      
+      const idToken = response?.data?.idToken || response?.idToken;
+      if (!idToken) throw new Error('No ID token from Google');
+
+      const apiResponse = await api.post('/auth/google', { idToken });
+
+      if (apiResponse.data?.access_token) {
+        await SecureStore.setItemAsync('access_token', apiResponse.data.access_token);
+        await SecureStore.setItemAsync('user_data', JSON.stringify(apiResponse.data.user));
+        navigation.replace('Dashboard');
+      }
+    } catch (err: any) {
+      console.log('Google login error:', err);
+      setError(err.response?.data?.message || err.message || 'Google Login failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBiometricAuth = async () => {
     const savedToken = await SecureStore.getItemAsync('access_token');
     if (!savedToken) {
@@ -115,7 +142,7 @@ export default function LoginScreen({ navigation }: Props) {
 
           <Text style={styles.orText}>or</Text>
 
-          <TouchableOpacity style={styles.socialButton}>
+          <TouchableOpacity style={styles.socialButton} onPress={handleGoogleLogin} disabled={loading}>
             <Ionicons name="logo-google" size={20} color="#EA4335" />
             <Text style={styles.socialButtonText}>Continue with Google</Text>
           </TouchableOpacity>
