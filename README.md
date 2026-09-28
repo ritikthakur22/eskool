@@ -184,6 +184,66 @@ Want to test the app? Use our default testing environment credentials:
 
 ---
 
+
+---
+
+## 💻 Installation & Setup Guide
+
+Want to run the eSkool platform locally? Follow these steps for **Windows** and **Linux**.
+
+### 1️⃣ Prerequisites
+Ensure you have the following installed on your machine:
+*   **[Node.js](https://nodejs.org/en/)** (v18 or higher)
+*   **[Git](https://git-scm.com/)**
+*   **Java JDK 17** & **Android Studio** (For building the mobile app)
+*   *Windows Users:* We highly recommend using **WSL2** (Windows Subsystem for Linux) for the smoothest experience.
+
+### 2️⃣ Clone the Repository
+Open your terminal (or PowerShell) and run:
+```bash
+git clone https://github.com/eskool33/eskool-software.git
+cd eskool-software
+```
+
+### 3️⃣ Backend Setup (NestJS)
+First, set up the API server and database.
+```bash
+cd apps/backend
+
+# 1. Install all dependencies
+npm install
+
+# 2. Configure Environment Variables
+# Create a .env file in the backend folder and add:
+# DATABASE_URL="your-postgresql-url"
+# JWT_SECRET="your-super-secret-key"
+
+# 3. Generate Prisma Client & Run Migrations
+npx prisma generate
+npx prisma migrate dev
+
+# 4. Start the Development Server (Runs on port 3000)
+npm run start:dev
+```
+
+### 4️⃣ Mobile App Setup (React Native Expo)
+Open a **new** terminal window (keep the backend running).
+```bash
+cd apps/mobile
+
+# 1. Install all dependencies
+npm install
+
+# 2. Start the Expo Metro Bundler
+npx expo start -c
+```
+*   Press `a` in the terminal to open the app in an Android Emulator.
+*   Or download the **Expo Go** app on your physical phone and scan the QR code!
+
+> **Linux Pro-Tip:** If you encounter a `System limit for number of file watchers reached` error while running Expo on Linux, run this command:
+> `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
+
+
 ## ⚖️ License & Copyright
 
 <img align="right" src="https://cdn-icons-png.flaticon.com/512/901/901026.png" width="100" />
