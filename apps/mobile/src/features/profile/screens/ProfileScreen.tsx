@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
-import auth, { GoogleAuthProvider, signInWithCredential, signOut } from '@react-native-firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithCredential, signOut } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 export default function ProfileScreen({ navigation }: any) {
@@ -14,8 +14,9 @@ export default function ProfileScreen({ navigation }: any) {
     try {
       await SecureStore.deleteItemAsync('access_token');
       await SecureStore.deleteItemAsync('user_data');
-      if (auth().currentUser) {
-        await signOut(auth());
+      const auth = getAuth();
+      if (auth.currentUser) {
+        await signOut(auth);
       }
     } catch (e) {
       console.log('Firebase signout error, but clearing local session anyway.', e);
@@ -38,7 +39,7 @@ export default function ProfileScreen({ navigation }: any) {
       const googleCredential = GoogleAuthProvider.credential(idToken);
       
       // Sign in or link using Firebase Auth
-      await signInWithCredential(auth(), googleCredential);
+      await signInWithCredential(getAuth(), googleCredential);
       
       Alert.alert('Success', 'Google Account successfully linked via Firebase!');
     } catch (error: any) {
