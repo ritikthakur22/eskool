@@ -2,6 +2,8 @@
   <img src="https://capsule-render.vercel.app/api?type=waving&color=0b5394&height=250&section=header&text=🎓%20eSkool%20Platform&fontSize=60&fontAlignY=35&desc=The%20Next%20Generation%20School%20Management%20System&descAlignY=55&descAlign=60&animation=twinkling" />
   
   <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&pause=1000&color=0EA5E9&center=true&vCenter=true&width=800&lines=Revolutionizing+Digital+Education;Empowering+Teachers,+Students,+and+Parents;Seamless.+Fast.+Secure." />
+
+  <img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/docs/assets/promotional.png" width="100%"/>
 </div>
 
 ---
