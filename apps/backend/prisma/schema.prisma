@@ -32,6 +32,8 @@ model User {
   googleEmail              String?
   profilePicture           Bytes?
   profilePictureMimeType   String?
+  profilePictureUrl        String?
+  profilePicturePublicId   String?
   adminProfile             AdminProfile?
   studentAttendances       Attendance[]         @relation("StudentAttendance")
   markedAttendances        Attendance[]         @relation("TeacherAttendance")
@@ -45,6 +47,21 @@ model User {
   studentProfile           StudentProfile?
   teacherProfile           TeacherProfile?
   school                   School               @relation(fields: [schoolId], references: [id])
+  sessions                 AuthSession[]
+}
+
+model AuthSession {
+  id           String    @id @default(uuid())
+  userId       String
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+  revokedAt    DateTime?
+  replacedById String?
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt, expiresAt])
 }
 
 model FeeInvoice {
@@ -74,6 +91,8 @@ model RoutineDocument {
   fileName   String
   mimeType   String
   content    Bytes
+  storageUrl String?
+  publicId   String?
   createdAt  DateTime @default(now())
   school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   uploader   User     @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
@@ -107,6 +126,8 @@ model FeePaymentProofFile {
   fileName String
   mimeType String
   content  Bytes
+  storageUrl String?
+  publicId   String?
   proof    FeePaymentProof @relation(fields: [proofId], references: [id], onDelete: Cascade)
 
   @@index([proofId])

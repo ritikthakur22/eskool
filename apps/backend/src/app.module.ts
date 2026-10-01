@@ -10,9 +10,10 @@ import { HomeworkModule } from './homework/homework.module.js';
 import { ExamsModule } from './exams/exams.module.js';
 import { RoutineModule } from './routine/routine.module.js';
 import { FeesModule } from './fees/fees.module.js';
+import { StorageModule } from './storage/storage.module.js';
 
 @Module({
-  imports: [PrismaModule, UsersModule, AuthModule, AttendanceModule, NoticesModule, HomeworkModule, ExamsModule, RoutineModule, FeesModule],
+  imports: [PrismaModule, StorageModule, UsersModule, AuthModule, AttendanceModule, NoticesModule, HomeworkModule, ExamsModule, RoutineModule, FeesModule],
   controllers: [AppController],
   providers: [AppService],
 })

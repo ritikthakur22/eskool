@@ -6,6 +6,7 @@ import { Role } from '@prisma/client';
 import { OAuth2Client } from 'google-auth-library';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { createHash, randomBytes } from 'node:crypto';
 
 const client = new OAuth2Client({
   clientId: '228295306473-t6cv4gac9pn81pbcgk6av05roi9j2662.apps.googleusercontent.com',
@@ -93,25 +94,38 @@ export class AuthService {
   }
 
   async refreshSession(refreshToken: string) {
-    let payload: any;
-    try {
-      payload = this.jwtService.verify(refreshToken);
-    } catch {
-      throw new UnauthorizedException('Your saved sign-in expired. Please sign in with your password again.');
+    const [session] = await this.prisma.$queryRaw<Array<{ id: string; userId: string; tokenHash: string; expiresAt: Date; revokedAt: Date | null; email: string; role: Role; schoolId: string }>>(Prisma.sql`
+      SELECT s."id", s."userId", s."tokenHash", s."expiresAt", s."revokedAt", u."email", u."role", u."schoolId"
+      FROM "AuthSession" s JOIN "User" u ON u."id" = s."userId"
+      WHERE s."tokenHash" = ${this.hashRefreshToken(refreshToken)} LIMIT 1
+    `);
+    if (!session || session.revokedAt || session.expiresAt <= new Date()) throw new UnauthorizedException('Your saved sign-in expired. Please sign in with your password again.');
+    const next = await this.createSession({ id: session.userId, email: session.email, role: session.role, schoolId: session.schoolId });
+    const [replacement] = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "AuthSession" WHERE "tokenHash" = ${this.hashRefreshToken(next.refresh_token)} LIMIT 1`);
+    const revoked = await this.prisma.$executeRaw(Prisma.sql`UPDATE "AuthSession" SET "revokedAt" = NOW(), "lastUsedAt" = NOW(), "replacedById" = ${replacement?.id || null} WHERE "id" = ${session.id} AND "revokedAt" IS NULL`);
+    if (!revoked) {
+      await this.prisma.$executeRaw(Prisma.sql`UPDATE "AuthSession" SET "revokedAt" = NOW() WHERE "id" = ${replacement!.id}`);
+      throw new UnauthorizedException('This saved sign-in was already used. Please sign in again.');
     }
-    if (payload.tokenUse !== 'refresh' || !payload.sub) {
-      throw new UnauthorizedException('Invalid saved sign-in. Please sign in with your password again.');
-    }
-    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
-    if (!user) throw new UnauthorizedException('This account is no longer available.');
-    return this.createSession(user);
+    return next;
   }
 
-  private createSession(user: any) {
+  async logout(refreshToken: string) {
+    await this.prisma.$executeRaw(Prisma.sql`UPDATE "AuthSession" SET "revokedAt" = NOW() WHERE "tokenHash" = ${this.hashRefreshToken(refreshToken)} AND "revokedAt" IS NULL`);
+    return { success: true };
+  }
+
+  private hashRefreshToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private async createSession(user: any) {
     const payload = { email: user.email, sub: user.id, role: user.role, schoolId: user.schoolId };
+    const refreshToken = randomBytes(48).toString('base64url');
+    await this.prisma.$executeRaw(Prisma.sql`INSERT INTO "AuthSession" ("id", "userId", "tokenHash", "expiresAt") VALUES (${randomBytes(16).toString('hex')}, ${user.id}, ${this.hashRefreshToken(refreshToken)}, ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)})`);
     return {
-      access_token: this.jwtService.sign(payload),
-      refresh_token: this.jwtService.sign({ ...payload, tokenUse: 'refresh' }, { expiresIn: '30d' }),
+      access_token: this.jwtService.sign(payload, { expiresIn: '15m' }),
+      refresh_token: refreshToken,
       user: payload,
     };
   }

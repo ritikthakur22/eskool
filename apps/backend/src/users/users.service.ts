@@ -2,10 +2,11 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException, 
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import { CloudinaryService } from '../storage/cloudinary.service.js';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private readonly cloudinary: CloudinaryService) {}
 
   async findByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { email } });
@@ -18,7 +19,7 @@ export class UsersService {
   async getOwnProfile(userId: string) {
     const [user] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`
       SELECT u."id", u."email", u."role"::text AS "role", s."name" AS "schoolName",
-             (u."profilePicture" IS NOT NULL) AS "hasProfilePicture"
+             (u."profilePicture" IS NOT NULL OR u."profilePictureUrl" IS NOT NULL) AS "hasProfilePicture"
       FROM "User" u JOIN "School" s ON s."id" = u."schoolId" WHERE u."id" = ${userId} LIMIT 1
     `);
     if (!user) throw new NotFoundException('User not found');
@@ -114,14 +115,28 @@ export class UsersService {
   }
 
   async getProfilePhoto(userId: string) {
-    const [photo] = await this.prisma.$queryRaw<Array<{ profilePicture: Uint8Array | null; profilePictureMimeType: string | null }>>(Prisma.sql`
-      SELECT "profilePicture", "profilePictureMimeType" FROM "User" WHERE "id" = ${userId} LIMIT 1
+    const [photo] = await this.prisma.$queryRaw<Array<{ profilePicture: Uint8Array | null; profilePictureMimeType: string | null; profilePictureUrl: string | null }>>(Prisma.sql`
+      SELECT "profilePicture", "profilePictureMimeType", "profilePictureUrl" FROM "User" WHERE "id" = ${userId} LIMIT 1
     `);
-    if (!photo?.profilePicture) throw new NotFoundException('No profile photo has been uploaded.');
+    if (!photo) throw new NotFoundException('No profile photo has been uploaded.');
+    if (photo.profilePictureUrl) {
+      const response = await fetch(photo.profilePictureUrl);
+      if (!response.ok) throw new NotFoundException('Profile photo is temporarily unavailable.');
+      return { buffer: Buffer.from(await response.arrayBuffer()), mimeType: response.headers.get('content-type') || 'image/jpeg' };
+    }
+    if (!photo.profilePicture) throw new NotFoundException('No profile photo has been uploaded.');
     return { buffer: Buffer.from(photo.profilePicture), mimeType: photo.profilePictureMimeType || 'image/jpeg' };
   }
 
   async updateProfilePhoto(userId: string, file: { buffer: Buffer; mimetype: string }) {
+    if (this.cloudinary.isConfigured()) {
+      const uploaded = await this.cloudinary.upload(file.buffer, { folder: 'eskool/profile-photos', resourceType: 'image' });
+      await this.prisma.$executeRaw(Prisma.sql`
+        UPDATE "User" SET "profilePicture" = NULL, "profilePictureMimeType" = ${file.mimetype}, "profilePictureUrl" = ${uploaded.secure_url}, "profilePicturePublicId" = ${uploaded.public_id}
+        WHERE "id" = ${userId}
+      `);
+      return { success: true, profilePictureUrl: '/users/me/photo', storage: 'cloudinary' };
+    }
     const updated = await this.prisma.$executeRaw(Prisma.sql`
       UPDATE "User" SET "profilePicture" = ${file.buffer}, "profilePictureMimeType" = ${file.mimetype}
       WHERE "id" = ${userId}

@@ -55,6 +55,10 @@ export class UsersController {
   async createUser(@Body() data: any, @Request() req: any) {
     const creatorRole = req.user.role;
     const targetRole = data.role || Role.STUDENT;
+    if (!Object.values(Role).includes(targetRole)) throw new BadRequestException('Invalid user role.');
+    if (typeof data.email !== 'string' || !data.email.trim() || typeof data.password !== 'string' || data.password.length < 8 || data.password.length > 128) {
+      throw new BadRequestException('A valid email and password of 8–128 characters are required.');
+    }
 
     // RBAC Hierarchy Enforcement
     if (creatorRole === Role.TEACHER && (targetRole === Role.ADMIN || targetRole === Role.SUPER_ADMIN || targetRole === Role.TEACHER)) {
@@ -70,19 +74,15 @@ export class UsersController {
     }
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
+    const schoolId = creatorRole === Role.SUPER_ADMIN && typeof data.schoolId === 'string' ? data.schoolId : req.user.schoolId;
     const user = await this.usersService.create({
-      email: data.email,
+      email: data.email.trim().toLowerCase(),
       password: hashedPassword,
       role: targetRole,
-      school: {
-        connectOrCreate: {
-          where: { id: data.schoolId || 'default-school-id' },
-          create: {
-            id: data.schoolId || 'default-school-id',
-            name: 'Default School'
-          }
-        }
-      }
+      school: { connect: { id: schoolId } },
+      ...(targetRole === Role.STUDENT ? { studentProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Student', grade: data.grade, section: data.section, rollNo: data.rollNo } } } : {}),
+      ...(targetRole === Role.TEACHER ? { teacherProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Teacher', subjects: Array.isArray(data.subjects) ? data.subjects.filter((subject: unknown): subject is string => typeof subject === 'string').slice(0, 20) : [] } } } : {}),
+      ...([Role.ADMIN, Role.SUPER_ADMIN].includes(targetRole) ? { adminProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Admin', department: data.department } } } : {}),
     });
 
     const { password, ...result } = user;

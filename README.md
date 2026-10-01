@@ -32,10 +32,10 @@
 *   **For Parents:** Offer absolute transparency regarding their child's academic progress and fee statements.
 
 ### 🚀 Why eSkool? (The Pros)
-✨ **Lightning Fast:** Built on edge-ready architecture for instant data delivery.  
-✨ **Bank-Grade Security:** Biometric logins and encrypted JWT session management.  
-✨ **Offline-Capable:** Intelligent local caching so students never lose their work.  
-✨ **Beautiful Interface:** Rich, intuitive, custom-themed UI that adapts to system Dark/Light modes.  
+✨ **Responsive:** Built with Expo and React Native for Android, iOS, and web-oriented development.
+✨ **Secure by default:** JWT authentication, SecureStore-backed mobile session storage, and role/tenant checks on protected API operations.
+✨ **School-focused:** Attendance, notices, homework, exams, routine, fees, profile, and academic-calendar workflows.
+✨ **Themeable:** Light, dark, and system theme support.
 
 ---
 
@@ -104,7 +104,7 @@ graph TD;
 |------|---------|-----------------|
 | <img src="https://img.shields.io/badge/React_Native-20232A?style=flat&logo=react&logoColor=61DAFB" /> | `v0.86.3` | Native performance with a single codebase for both iOS and Android. |
 | <img src="https://img.shields.io/badge/Expo-000020?style=flat&logo=expo&logoColor=white" /> | `SDK 57` | Accelerated development with incredible native module bridging (Biometrics, Document Picker). |
-| <img src="https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white" /> | `v5.7.3` | Strict type-safety completely prevents runtime crashes before they happen. |
+| <img src="https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white" /> | `v6.x` | Type-safe application code and build-time checks. |
 
 ### ⚙️ Backend (API & Logic)
 | Tech | Version | Why We Chose It |
@@ -114,9 +114,9 @@ graph TD;
 | <img src="https://img.shields.io/badge/PostgreSQL-316192?style=flat&logo=postgresql&logoColor=white" /> | `NeonDB` | Serverless PostgreSQL that scales instantly without server management. |
 
 ### ☁️ Infrastructure & Deployments
-*   **Backend Hosting:** <img src="https://img.shields.io/badge/Render-46E3B7?style=flat&logo=render&logoColor=white" /> (Zero-downtime automated API deployments)
+*   **Backend Hosting:** Render-compatible NestJS deployment configuration; verify the active service and release process before production use.
 *   **Authentication:** <img src="https://img.shields.io/badge/Google_Auth-4285F4?style=flat&logo=google&logoColor=white" /> (Verified, one-tap institutional Google logins)
-*   **File Storage:** Local buffer streams + robust server-side processing for documents.
+*   **File Storage:** Cloudinary-backed media storage when `CLOUDINARY_*` variables are configured, with a temporary PostgreSQL fallback for existing environments.
 
 ---
 
@@ -157,7 +157,7 @@ eskool-software/
 │   │   ├── 📂 src/
 │   │   │   ├── 📂 core/      # Core logic (Theme, Networking, API config)
 │   │   │   ├── 📂 features/  # Feature-sliced modules (Auth, Dashboard, Notices)
-│   │   │   └── 📄 App.tsx    # Root Navigation & Context Providers
+│   │   │   └── 📂 app/        # Expo Router routes and layouts
 │   │   └── 📄 package.json
 │   │
 │   └── ⚙️ backend/       # NestJS API Server
@@ -173,30 +173,63 @@ eskool-software/
 
 ---
 
-## 🔑 Demo & Testing Credentials
+## 🔑 Demo and testing access
 
-Want to test the app? Use our default testing environment credentials:
+This repository is for the development team. These are disposable development accounts only; never reuse them for production and rotate them if this repository is shared outside the team.
 
-| 🧑‍💼 Role / Class | 📧 Login ID | 🔒 Password |
+| Role / class | Login ID | Password |
 | :--- | :--- | :--- |
-| **Super Admin** | `superadmin@eskool.com` | `5PWa-hkB1LQzZFpIvEFf` |
-| **Admin** | `admin1@eskool.com` | `7IQfwMK6AbW3FKj4MzKO` |
-| **Admin** | `admin2@eskool.com` | `VVZ7BV9hFgfjrFOnV0iv` |
-| **Teacher** | `teacher1@eskool.com` | `8uisHMgShYLCOAZkB64S` |
-| **Class 10-A** | `student10a1@eskool.com` | `nvlfPKpY2NGorf6r874L` |
-| **Class 10-A** | `student10a2@eskool.com` | `LxbSyVx6buG5FaJlftom` |
-| **Class 11-A** | `student11a1@eskool.com` | `yAJUkncQD2jiMzcuJV6e` |
-| **Class 11-A** | `student11a2@eskool.com` | `818dOl3_VY4w8DxO1AxF` |
-| **Class 11-A** | `student11a3@eskool.com` | `1Yp6rHJm_rB0SlazcVr9` |
-| **Class 12-A** | `student12a1@eskool.com` | `tz7XqNO3A9g1yugV5Z2K` |
-| **Class 12-A** | `student12a2@eskool.com` | `eVULpqxOrCJzDiYR70oh` |
-| **Class 12-A** | `student12a3@eskool.com` | `CcZqP0UsXjwexuLn6aXu` |
-| **Class 12-B** | `student12b1@eskool.com` | `dC-kHVE3N9YRyJ2JXUxD` |
-| **Class 12-B** | `student12b2@eskool.com` | `VvEKN7zqoZ_kWiHqF2Gn` |
+| Super Admin | `superadmin@eskool.com` | `5PWa-hkB1LQzZFpIvEFf` |
+| Admin | `admin1@eskool.com` | `7IQfwMK6AbW3FKj4MzKO` |
+| Admin | `admin2@eskool.com` | `VVZ7BV9hFgfjrFOnV0iv` |
+| Teacher | `teacher1@eskool.com` | `8uisHMgShYLCOAZkB64S` |
+| Class 10-A | `student10a1@eskool.com` | `nvlfPKpY2NGorf6r874L` |
+| Class 10-A | `student10a2@eskool.com` | `LxbSyVx6buG5FaJlftom` |
+| Class 11-A | `student11a1@eskool.com` | `yAJUkncQD2jiMzcuJV6e` |
+| Class 11-A | `student11a2@eskool.com` | `818dOl3_VY4w8DxO1AxF` |
+| Class 11-A | `student11a3@eskool.com` | `1Yp6rHJm_rB0SlazcVr9` |
+| Class 12-A | `student12a1@eskool.com` | `tz7XqNO3A9g1yugV5Z2K` |
+| Class 12-A | `student12a2@eskool.com` | `eVULpqxOrCJzDiYR70oh` |
+| Class 12-A | `student12a3@eskool.com` | `CcZqP0UsXjwexuLn6aXu` |
+| Class 12-B | `student12b1@eskool.com` | `dC-kHVE3N9YRyJ2JXUxD` |
+| Class 12-B | `student12b2@eskool.com` | `VvEKN7zqoZ_kWiHqF2Gn` |
 
-1. Download the [Latest APK](https://github.com/eskool33/eskool-software/releases/latest).
-2. Install it on any Android device.
-3. Login using any of the credentials above to explore the respective dashboards!
+Download links and release artifacts should be added only after verifying that the corresponding GitHub release and signed build exist.
+
+---
+
+## 🔌 API reference
+
+The API base URL is configured in the mobile client with `EXPO_PUBLIC_API_URL`; the deployed default is `https://eskool-api.onrender.com`. Protected requests use `Authorization: Bearer <access_token>`.
+
+| Method | Endpoint | Auth | Purpose |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/auth/login` | Public | Email/password login |
+| `POST` | `/auth/google` | Public | Login with a linked Google account |
+| `POST` | `/auth/refresh` | Public | Rotate a refresh session and issue a new access token |
+| `POST` | `/auth/logout` | Bearer | Revoke the current refresh session |
+| `GET` | `/auth/me` | Bearer | Read the current token user |
+| `GET` | `/users/me` | Bearer | Read the current profile |
+| `PATCH` | `/users/me` | Bearer | Update allowed profile fields |
+| `PATCH` | `/users/me/password` | Bearer | Change password |
+| `GET` | `/notices?limit=8` | Bearer | Read school-scoped notices |
+| `POST` | `/notices` | Admin/teacher | Create a notice as the current user |
+| `GET` | `/attendance/student/:id` | Bearer | Read own attendance; staff may read students in their school |
+| `POST` | `/attendance/mark` | Admin/teacher | Mark attendance for a student in the same school |
+| `GET` | `/homework/class/:classId` | Bearer | Read school-scoped homework |
+| `POST` | `/homework` | Admin/teacher | Create homework as the current teacher/admin |
+| `POST` | `/homework/submit` | Student | Submit homework as the current student |
+| `PATCH` | `/homework/grade/:submissionId` | Admin/teacher | Grade a submission in the same school |
+| `GET` | `/exams/student/:studentId` | Bearer | Read own results; staff may read same-school students |
+| `POST` | `/exams` | Admin/teacher | Create an exam |
+| `POST` | `/exams/result` | Admin/teacher | Add a validated result for a same-school student |
+| `GET` | `/fees/me` | Student | Read invoices and payment status |
+| `POST` | `/fees/:invoiceId/payment-proofs` | Student | Submit payment proof |
+| `GET` | `/routine/document` | Bearer | Read the latest school routine |
+| `POST` | `/routine/document` | Admin/teacher | Upload a routine document |
+| `GET` | `/health` | Public | Check API/database health |
+
+Responses use JSON unless an endpoint explicitly returns a file. API changes should preserve school scoping, role checks, and server-derived actor IDs.
 
 ---
 
@@ -241,16 +274,22 @@ npm install
 echo 'DATABASE_URL="postgresql://user:pass@ep-rest-of-url.neon.tech/eskool?sslmode=require"' > .env
 echo 'JWT_SECRET="your-super-secret-key"' >> .env
 
-# 3. Generate Prisma Client & Run Migrations
+# 3. Generate Prisma Client & Run migrations
 npx prisma generate
 npx prisma migrate dev
 
-# 4. Seed the Database with Default Roles
-# This will inject the default Super Admin so you can log in!
-npm run seed
+# Create test users through the authenticated admin workflow or a private seed tool.
+# Do not commit passwords or run a shared-password seed against production.
 
 # 5. Start the Development Server (Runs on port 3000)
 npm run start:dev
+```
+
+Run backend checks with:
+
+```bash
+npm run build
+npm test
 ```
 
 
@@ -260,9 +299,11 @@ npm run start:dev
 Open a **new** terminal window (keep the backend running).
 
 **Network Configuration:**
-By default, the app is pointed at the live cloud server. To test locally:
-1. Open `apps/mobile/src/core/networking/api.ts`
-2. Change the URL to your computer's local IP (e.g., `http://192.168.1.5:3000`)
+By default, the app uses the configured deployed API URL. To test locally, set the API URL at runtime:
+
+```bash
+export EXPO_PUBLIC_API_URL="http://192.168.1.5:3000"
+```
 
 ```bash
 cd apps/mobile
@@ -274,7 +315,7 @@ npm install
 npx expo start -c
 ```
 *   Press `a` in the terminal to open the app in an Android Emulator.
-*   Or download the **Expo Go** app on your physical phone and scan the QR code! (Make sure your phone and PC are on the same Wi-Fi).
+*   For native Firebase and Google Sign-In features, use a development build (`npx expo run:android` or an EAS development build). Expo Go does not include every native module used by this project.
 
 > **Linux Pro-Tip:** If you encounter a `System limit for number of file watchers reached` error while running Expo on Linux, run this command:
 > `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`

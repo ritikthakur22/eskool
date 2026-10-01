@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { CloudinaryService } from '../storage/cloudinary.service.js';
 
 export type RoutineUploadFile = {
   originalname: string;
@@ -11,9 +12,18 @@ export type RoutineUploadFile = {
 
 @Injectable()
 export class RoutineService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly cloudinary: CloudinaryService) {}
 
   async upload(file: RoutineUploadFile, schoolId: string, uploaderId: string) {
+    if (this.cloudinary.isConfigured()) {
+      const uploaded = await this.cloudinary.upload(file.buffer, { folder: `eskool/routines/${schoolId}`, resourceType: 'auto' });
+      const [document] = await this.prisma.$queryRaw<Array<{ id: string; fileName: string; mimeType: string; createdAt: Date }>>(Prisma.sql`
+        INSERT INTO "RoutineDocument" ("id", "schoolId", "uploaderId", "fileName", "mimeType", "content", "storageUrl", "publicId", "createdAt")
+        VALUES (${randomUUID()}, ${schoolId}, ${uploaderId}, ${file.originalname}, ${file.mimetype}, ${Buffer.alloc(0)}, ${uploaded.secure_url}, ${uploaded.public_id}, NOW())
+        RETURNING "id", "fileName", "mimeType", "createdAt"
+      `);
+      return document;
+    }
     const [document] = await this.prisma.$queryRaw<Array<{ id: string; fileName: string; mimeType: string; createdAt: Date }>>(Prisma.sql`
       INSERT INTO "RoutineDocument" ("id", "schoolId", "uploaderId", "fileName", "mimeType", "content", "createdAt")
       VALUES (${randomUUID()}, ${schoolId}, ${uploaderId}, ${file.originalname}, ${file.mimetype}, ${file.buffer}, NOW())
@@ -28,16 +38,22 @@ export class RoutineService {
       fileName: string;
       mimeType: string;
       content: Uint8Array;
+      storageUrl: string | null;
       createdAt: Date;
     }>>(Prisma.sql`
-      SELECT "id", "fileName", "mimeType", "content", "createdAt"
+      SELECT "id", "fileName", "mimeType", "content", "storageUrl", "createdAt"
       FROM "RoutineDocument"
       WHERE "schoolId" = ${schoolId}
       ORDER BY "createdAt" DESC
       LIMIT 1
     `);
     if (!document) throw new NotFoundException('No routine has been uploaded for this school yet.');
-    const { content, ...metadata } = document;
+    const { content, storageUrl, ...metadata } = document;
+    if (storageUrl) {
+      const response = await fetch(storageUrl);
+      if (!response.ok) throw new NotFoundException('The routine file is temporarily unavailable.');
+      return { ...metadata, base64: Buffer.from(await response.arrayBuffer()).toString('base64') };
+    }
     return { ...metadata, base64: Buffer.from(content).toString('base64') };
   }
 }

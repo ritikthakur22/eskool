@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Notice } from '@prisma/client';
 
@@ -6,12 +6,12 @@ import { Prisma, Notice } from '@prisma/client';
 export class NoticesService {
   constructor(private prisma: PrismaService) {}
 
-  async createNotice(data: Prisma.NoticeUncheckedCreateInput): Promise<Notice> {
-    return this.prisma.notice.create({ data });
+  async createNotice(data: Prisma.NoticeUncheckedCreateInput, actor: { id: string }): Promise<Notice> {
+    return this.prisma.notice.create({ data: { title: data.title, content: data.content, category: data.category, date: data.date, authorId: actor.id } });
   }
 
-  async getAllNotices(category?: string, limit?: number): Promise<Notice[]> {
-    const where = category ? { category } : {};
+  async getAllNotices(category?: string, limit?: number, actor?: { schoolId: string }): Promise<Notice[]> {
+    const where: Prisma.NoticeWhereInput = { ...(category ? { category } : {}), ...(actor ? { author: { schoolId: actor.schoolId } } : {}) };
     return this.prisma.notice.findMany({
       where,
       ...(limit ? { take: limit } : {}),
@@ -27,7 +27,9 @@ export class NoticesService {
     });
   }
 
-  async getNoticeById(id: string): Promise<Notice | null> {
-    return this.prisma.notice.findUnique({ where: { id } });
+  async getNoticeById(id: string, actor: { schoolId: string }): Promise<Notice> {
+    const notice = await this.prisma.notice.findFirst({ where: { id, author: { schoolId: actor.schoolId } } });
+    if (!notice) throw new NotFoundException('Notice not found.');
+    return notice;
   }
 }

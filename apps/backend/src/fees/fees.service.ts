@@ -2,12 +2,13 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { CloudinaryService } from '../storage/cloudinary.service.js';
 
 export type PaymentProofUpload = { buffer: Buffer; size: number; mimetype: string; originalname: string };
 
 @Injectable()
 export class FeesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly cloudinary: CloudinaryService) {}
 
   async getInvoicesForUser(userId: string, schoolId: string) {
     const invoices = await this.prisma.$queryRaw<Array<{
@@ -64,9 +65,12 @@ export class FeesService {
         VALUES (${proofId}, ${user.schoolId}, ${user.id}, ${invoiceId}, ${mobileNumber}, ${method}::"FeePaymentMethod", ${transactionId}, ${new Prisma.Decimal(amount)}, 'PENDING'::"FeePaymentProofStatus", ${submittedAt})
       `);
       for (const file of files) {
+        const uploaded = this.cloudinary.isConfigured()
+          ? await this.cloudinary.upload(file.buffer, { folder: `eskool/payment-proofs/${user.schoolId}`, resourceType: file.mimetype === 'application/pdf' ? 'raw' : 'image' })
+          : null;
         await tx.$executeRaw(Prisma.sql`
-          INSERT INTO "FeePaymentProofFile" ("id", "proofId", "fileName", "mimeType", "content")
-          VALUES (${randomUUID()}, ${proofId}, ${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'payment-proof'}, ${file.mimetype}, ${file.buffer})
+          INSERT INTO "FeePaymentProofFile" ("id", "proofId", "fileName", "mimeType", "content", "storageUrl", "publicId")
+          VALUES (${randomUUID()}, ${proofId}, ${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'payment-proof'}, ${file.mimetype}, ${uploaded ? Buffer.alloc(0) : file.buffer}, ${uploaded?.secure_url || null}, ${uploaded?.public_id || null})
         `);
       }
     });

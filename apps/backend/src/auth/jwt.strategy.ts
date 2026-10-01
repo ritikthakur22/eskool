@@ -1,6 +1,7 @@
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PassportStrategy } from '@nestjs/passport';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service.js';
 
 const jwtSecret: string = process.env.JWT_SECRET ?? '';
 if (!jwtSecret) {
@@ -9,7 +10,7 @@ if (!jwtSecret) {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(private readonly prisma: PrismaService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -21,6 +22,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (payload.tokenUse === 'refresh') {
       throw new UnauthorizedException('Refresh tokens cannot be used as access tokens');
     }
-    return { id: payload.sub, email: payload.email, role: payload.role, schoolId: payload.schoolId };
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub }, select: { id: true, email: true, role: true, schoolId: true } });
+    if (!user) throw new UnauthorizedException('Account is no longer available.');
+    return user;
   }
 }
