@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { getInMemoryAccessToken, getInMemoryRefreshToken } from '../../../core/networking/session';
 
 export default function GeneralSettingsScreen({ navigation }: any) {
   const [biometricEnabled, setBiometricEnabled] = useState(false);
@@ -24,10 +25,18 @@ export default function GeneralSettingsScreen({ navigation }: any) {
         Alert.alert('Biometrics unavailable', 'Set up face or fingerprint unlock in your device settings first.');
         return;
       }
-      if (!token) {
+      const accessToken = getInMemoryAccessToken() || token;
+      const refreshToken = getInMemoryRefreshToken() || await SecureStore.getItemAsync('refresh_token');
+      if (!accessToken || !refreshToken) {
         Alert.alert('Log in first', 'Log in to your school account before enabling biometric login.');
         return;
       }
+      const result = await LocalAuthentication.authenticateAsync({ promptMessage: 'Confirm biometric login setup', cancelLabel: 'Cancel', disableDeviceFallback: true });
+      if (!result.success) return;
+      await Promise.all([
+        SecureStore.setItemAsync('access_token', accessToken),
+        SecureStore.setItemAsync('refresh_token', refreshToken),
+      ]);
     }
     setBiometricEnabled(enabled);
     await SecureStore.setItemAsync('biometric_enabled', enabled ? 'true' : 'false');
