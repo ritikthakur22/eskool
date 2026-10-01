@@ -14,53 +14,53 @@ model School {
   phone            String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
-  users            User[]
-  routineDocuments RoutineDocument[]
   feeInvoices      FeeInvoice[]
   feePaymentProofs FeePaymentProof[]
+  routineDocuments RoutineDocument[]
+  users            User[]
 }
 
 model User {
   id                       String               @id @default(uuid())
   email                    String               @unique
-  googleSubject            String?              @unique
-  googleEmail              String?
   password                 String
   role                     Role
   schoolId                 String
-  profilePicture           Bytes?
-  profilePictureMimeType   String?
   createdAt                DateTime             @default(now())
   updatedAt                DateTime             @updatedAt
+  googleSubject            String?              @unique
+  googleEmail              String?
+  profilePicture           Bytes?
+  profilePictureMimeType   String?
   adminProfile             AdminProfile?
   studentAttendances       Attendance[]         @relation("StudentAttendance")
   markedAttendances        Attendance[]         @relation("TeacherAttendance")
   studentResults           ExamResult[]         @relation("StudentResults")
+  feeInvoices              FeeInvoice[]         @relation("StudentFeeInvoices")
+  feePaymentProofs         FeePaymentProof[]    @relation("StudentFeePaymentProofs")
   teacherHomeworks         Homework[]           @relation("TeacherHomework")
   studentSubmissions       HomeworkSubmission[] @relation("StudentSubmission")
   authoredNotices          Notice[]             @relation("NoticeAuthor")
+  uploadedRoutineDocuments RoutineDocument[]
   studentProfile           StudentProfile?
   teacherProfile           TeacherProfile?
   school                   School               @relation(fields: [schoolId], references: [id])
-  uploadedRoutineDocuments RoutineDocument[]
-  feeInvoices              FeeInvoice[]        @relation("StudentFeeInvoices")
-  feePaymentProofs         FeePaymentProof[]    @relation("StudentFeePaymentProofs")
 }
 
 model FeeInvoice {
-  id            String           @id @default(uuid())
+  id            String            @id @default(uuid())
   schoolId      String
   studentId     String
   invoiceNumber String
   title         String
   description   String?
-  amount        Decimal          @db.Decimal(10, 2)
+  amount        Decimal           @db.Decimal(10, 2)
   dueDate       DateTime
-  status        FeeInvoiceStatus @default(DUE)
-  issuedAt      DateTime         @default(now())
+  status        FeeInvoiceStatus  @default(DUE)
+  issuedAt      DateTime          @default(now())
   paidAt        DateTime?
-  school        School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  student       User             @relation("StudentFeeInvoices", fields: [studentId], references: [id], onDelete: Cascade)
+  school        School            @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student       User              @relation("StudentFeeInvoices", fields: [studentId], references: [id], onDelete: Cascade)
   paymentProofs FeePaymentProof[]
 
   @@unique([schoolId, invoiceNumber])
@@ -90,11 +90,11 @@ model FeePaymentProof {
   method        FeePaymentMethod
   transactionId String
   amount        Decimal               @db.Decimal(10, 2)
-  status        FeePaymentProofStatus  @default(PENDING)
+  status        FeePaymentProofStatus @default(PENDING)
   submittedAt   DateTime              @default(now())
+  invoice       FeeInvoice            @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   school        School                @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   student       User                  @relation("StudentFeePaymentProofs", fields: [studentId], references: [id], onDelete: Cascade)
-  invoice       FeeInvoice            @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   files         FeePaymentProofFile[]
 
   @@index([schoolId, studentId, submittedAt])
@@ -102,12 +102,12 @@ model FeePaymentProof {
 }
 
 model FeePaymentProofFile {
-  id        String          @id @default(uuid())
-  proofId   String
-  fileName  String
-  mimeType  String
-  content   Bytes
-  proof     FeePaymentProof @relation(fields: [proofId], references: [id], onDelete: Cascade)
+  id       String          @id @default(uuid())
+  proofId  String
+  fileName String
+  mimeType String
+  content  Bytes
+  proof    FeePaymentProof @relation(fields: [proofId], references: [id], onDelete: Cascade)
 
   @@index([proofId])
 }
@@ -155,22 +155,22 @@ model Attendance {
 }
 
 model StudentProfile {
-  id                String    @id @default(uuid())
-  userId            String    @unique
-  firstName         String
-  lastName          String
-  grade             String?
-  section           String?
-  dob               DateTime?
-  rollNo            String?
-  phone             String?
-  gender            String?
-  address           String?
-  profilePicture    Bytes?
+  id                     String    @id @default(uuid())
+  userId                 String    @unique
+  firstName              String
+  lastName               String
+  grade                  String?
+  section                String?
+  dob                    DateTime?
+  rollNo                 String?
+  phone                  String?
+  gender                 String?
+  address                String?
+  profilePicture         Bytes?
   profilePictureMimeType String?
-  parentName        String?
-  parentPhone       String?
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentName             String?
+  parentPhone            String?
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model TeacherProfile {
