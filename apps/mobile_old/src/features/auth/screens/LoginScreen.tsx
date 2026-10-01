@@ -57,12 +57,15 @@ export default function LoginScreen({ navigation }: Props) {
     const persistenceTasks = [
       SecureStore.setItemAsync('keep_signed_in', keepSignedIn ? 'true' : 'false'),
       SecureStore.setItemAsync('user_data', JSON.stringify(data.user)),
-      persistSession && data.refresh_token
-        ? Promise.all([
-            SecureStore.setItemAsync('access_token', data.access_token),
-            SecureStore.setItemAsync('refresh_token', data.refresh_token),
-          ])
-        : Promise.all([SecureStore.deleteItemAsync('access_token'), SecureStore.deleteItemAsync('refresh_token')]),
+      // A refresh token is required for biometric login and must not depend on
+      // the optional "Keep me signed in" checkbox. The access token remains
+      // controlled by the checkbox/biometric preference.
+      data.refresh_token
+        ? SecureStore.setItemAsync('refresh_token', data.refresh_token)
+        : Promise.resolve(),
+      persistSession && data.access_token
+        ? SecureStore.setItemAsync('access_token', data.access_token)
+        : SecureStore.deleteItemAsync('access_token'),
     ];
     await Promise.all(persistenceTasks);
     setInMemoryRefreshToken(data.refresh_token || null);
