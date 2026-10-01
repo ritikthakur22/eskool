@@ -71,7 +71,15 @@ export default function ProfileScreen({ navigation }: any) {
   const handleLogout = async () => {
     setInMemoryAccessToken(null);
     setInMemoryRefreshToken(null);
-    try { await SecureStore.deleteItemAsync('access_token'); await SecureStore.deleteItemAsync('refresh_token'); await SecureStore.deleteItemAsync('user_data'); await GoogleSignin.signOut(); }
+    const biometricIsEnabled = (await SecureStore.getItemAsync('biometric_enabled')) === 'true';
+    try {
+      await SecureStore.deleteItemAsync('access_token');
+      // Keep the refresh token so the user can authenticate with biometrics
+      // after signing out. Disable biometric login first for a full sign-out.
+      if (!biometricIsEnabled) await SecureStore.deleteItemAsync('refresh_token');
+      await SecureStore.deleteItemAsync('user_data');
+      await GoogleSignin.signOut();
+    }
     catch (e) { console.log('Google signout error; clearing local session anyway.', e); }
     finally { navigation.replace('Login'); }
   };
