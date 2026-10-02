@@ -23,7 +23,6 @@
     },
     "plugins": [
       "expo-secure-store",
-      "@react-native-firebase/app",
       "@react-native-google-signin/google-signin",
       "expo-document-picker",
       "expo-sharing",
