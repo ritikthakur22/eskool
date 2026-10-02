@@ -24,7 +24,7 @@ export class AppController {
   @Get('ready')
   async getReadiness() {
     try {
-      await this.prisma.$queryRaw`
+      const requiredColumns = await this.prisma.$queryRaw<Array<{ '?column?': number }>>`
         SELECT 1
         FROM information_schema.columns
         WHERE table_schema = current_schema()
@@ -33,7 +33,9 @@ export class AppController {
         GROUP BY table_name
         HAVING COUNT(*) = 3
       `;
-      await this.prisma.$queryRaw`
+      if (!requiredColumns.length) throw new Error('required auth columns are missing');
+
+      const requiredTables = await this.prisma.$queryRaw<Array<{ '?column?': number }>>`
         SELECT 1
         FROM information_schema.tables
         WHERE table_schema = current_schema()
@@ -41,6 +43,7 @@ export class AppController {
         GROUP BY table_schema
         HAVING COUNT(*) = 2
       `;
+      if (!requiredTables.length) throw new Error('required tables are missing');
       return { status: 'ok', database: 'ok', schema: 'ok' };
     } catch {
       throw new ServiceUnavailableException('The school database schema is not ready.');

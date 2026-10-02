@@ -34,7 +34,7 @@ describe('AppController', () => {
   });
 
   it('returns service unavailable when the schema readiness check fails', async () => {
-    queryRaw.mockRejectedValueOnce(new Error('missing required schema'));
+    queryRaw.mockResolvedValueOnce([]);
     await expect(appController.getReadiness()).rejects.toMatchObject({ status: 503 });
   });
 });
