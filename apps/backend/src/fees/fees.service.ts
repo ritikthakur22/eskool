@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { FeeInvoiceStatus, FeePaymentProofStatus, Prisma, Role } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -47,6 +47,7 @@ export class FeesService {
   }
 
   async submitPaymentProof(invoiceId: string, user: { id: string; schoolId: string; role: string }, body: SubmitPaymentProofDto, files: PaymentProofUpload[]) {
+    if (!this.cloudinary.isConfigured()) throw new ServiceUnavailableException('Cloudinary storage is not configured.');
     if (user.role !== 'STUDENT') throw new ForbiddenException('Only students can submit fee payment proof.');
     const mobileNumber = typeof body.mobileNumber === 'string' ? body.mobileNumber.trim() : '';
     if (!/^\+?[0-9()\-\s]{7,20}$/.test(mobileNumber) || mobileNumber.replace(/\D/g, '').length < 7) {
@@ -77,12 +78,10 @@ export class FeesService {
         VALUES (${proofId}, ${user.schoolId}, ${user.id}, ${invoiceId}, ${mobileNumber}, ${method}::"FeePaymentMethod", ${transactionId}, ${new Prisma.Decimal(amount)}, 'PENDING'::"FeePaymentProofStatus", ${submittedAt})
       `);
       for (const file of files) {
-        const uploaded = this.cloudinary.isConfigured()
-          ? await this.cloudinary.upload(file.buffer, { folder: `eskool/payment-proofs/${user.schoolId}`, resourceType: file.mimetype === 'application/pdf' ? 'raw' : 'image' })
-          : null;
+        const uploaded = await this.cloudinary.upload(file.buffer, { folder: `eskool/payment-proofs/${user.schoolId}`, resourceType: file.mimetype === 'application/pdf' ? 'raw' : 'image' });
         await tx.$executeRaw(Prisma.sql`
-          INSERT INTO "FeePaymentProofFile" ("id", "proofId", "fileName", "mimeType", "content", "storageUrl", "publicId")
-          VALUES (${randomUUID()}, ${proofId}, ${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'payment-proof'}, ${file.mimetype}, ${uploaded ? Buffer.alloc(0) : file.buffer}, ${uploaded?.secure_url || null}, ${uploaded?.public_id || null})
+          INSERT INTO "FeePaymentProofFile" ("id", "proofId", "fileName", "mimeType", "storageUrl", "publicId")
+          VALUES (${randomUUID()}, ${proofId}, ${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'payment-proof'}, ${file.mimetype}, ${uploaded.secure_url}, ${uploaded.public_id})
         `);
       }
     });
