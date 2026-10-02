@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 GoogleSignin.configure({
-  webClientId: "228295306473-t6cv4gac9pn81pbcgk6av05roi9j2662.apps.googleusercontent.com",
+  webClientId: "615870071152-rgua2dekn9bk7s537ippt172u9ktgcgr.apps.googleusercontent.com",
 });
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from './src/features/auth/screens/LoginScreen';

@@ -9,7 +9,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { createHash, randomBytes } from 'node:crypto';
 
 const client = new OAuth2Client({
-  clientId: '228295306473-t6cv4gac9pn81pbcgk6av05roi9j2662.apps.googleusercontent.com',
+  clientId: '615870071152-rgua2dekn9bk7s537ippt172u9ktgcgr.apps.googleusercontent.com',
   transporterOptions: { timeout: 8_000 },
 });
 
@@ -78,7 +78,7 @@ export class AuthService {
 
   private async verifyGoogleIdentity(idToken: string) {
     try {
-      const ticket = await client.verifyIdToken({ idToken, audience: '228295306473-t6cv4gac9pn81pbcgk6av05roi9j2662.apps.googleusercontent.com' });
+      const ticket = await client.verifyIdToken({ idToken, audience: '615870071152-rgua2dekn9bk7s537ippt172u9ktgcgr.apps.googleusercontent.com' });
       const payload = ticket.getPayload();
       const email = payload?.email?.trim().toLowerCase();
       if (!payload?.sub || !email || payload.email_verified !== true) throw new UnauthorizedException('Use a verified Google account to continue.');
