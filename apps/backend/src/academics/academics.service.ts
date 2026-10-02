@@ -19,6 +19,19 @@ export class AcademicsService {
     return { academicYears, classes, subjects, assignments };
   }
 
+  async getSectionStudents(sectionId: string, actor: { id: string; role: Role; schoolId: string }) {
+    const section = await this.prisma.section.findFirst({
+      where: { id: sectionId, schoolId: actor.schoolId, ...(actor.role === Role.TEACHER ? { teacherAssignments: { some: { teacherId: actor.id } } } : {}) },
+      select: { id: true },
+    });
+    if (!section) throw new NotFoundException('Section not found or you are not assigned to it.');
+    return this.prisma.enrollment.findMany({
+      where: { sectionId, academicYear: { isCurrent: true }, student: { schoolId: actor.schoolId, role: Role.STUDENT, status: 'ACTIVE' } },
+      orderBy: [{ rollNo: 'asc' }, { student: { studentProfile: { lastName: 'asc' } } }],
+      select: { studentId: true, rollNo: true, student: { select: { email: true, studentProfile: { select: { firstName: true, lastName: true, grade: true, section: true, rollNo: true } } } } },
+    });
+  }
+
   async createAcademicYear(data: CreateAcademicYearDto, schoolId: string, actorId: string) {
     const startDate = new Date(data.startDate);
     const endDate = new Date(data.endDate);

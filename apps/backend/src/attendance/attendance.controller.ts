@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
 import { AttendanceService } from './attendance.service.js';
-import { CorrectAttendanceDto, MarkAttendanceDto } from './dto/attendance.dto.js';
+import { BulkMarkAttendanceDto, CorrectAttendanceDto, MarkAttendanceDto } from './dto/attendance.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -15,6 +15,12 @@ export class AttendanceController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   async markAttendance(@Body() data: MarkAttendanceDto, @Request() req: any) {
     return this.attendanceService.markAttendance(data, req.user);
+  }
+
+  @Post('register/bulk')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  bulkMarkAttendance(@Body() data: BulkMarkAttendanceDto, @Request() req: any) {
+    return this.attendanceService.bulkMarkAttendance(data, req.user);
   }
 
   @Patch(':id')

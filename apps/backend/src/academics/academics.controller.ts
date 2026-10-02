@@ -16,6 +16,11 @@ export class AcademicsController {
     return this.academics.getStructure(req.user.schoolId, { id: req.user.id, role: req.user.role });
   }
 
+  @Get('sections/:sectionId/students')
+  getSectionStudents(@Param('sectionId', new ParseUUIDPipe()) sectionId: string, @Request() req: any) {
+    return this.academics.getSectionStudents(sectionId, { id: req.user.id, role: req.user.role, schoolId: req.user.schoolId });
+  }
+
   @Get('children')
   @Roles(Role.PARENT)
   getChildren(@Request() req: any) { return this.academics.getChildren(req.user.id, req.user.schoolId); }

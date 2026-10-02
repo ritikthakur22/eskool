@@ -1,7 +1,7 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Attendance, Role } from '@prisma/client';
-import { CorrectAttendanceDto, MarkAttendanceDto } from './dto/attendance.dto.js';
+import { BulkMarkAttendanceDto, CorrectAttendanceDto, MarkAttendanceDto } from './dto/attendance.dto.js';
 import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
@@ -32,6 +32,33 @@ export class AttendanceService {
     }
     void this.audit.record({ action: 'ATTENDANCE_MARKED', entity: 'Attendance', entityId: attendance.id, userId: actor.id, schoolId: actor.schoolId, details: { studentId: student.id, status: data.status } });
     return attendance;
+  }
+
+  async bulkMarkAttendance(data: BulkMarkAttendanceDto, actor: { id: string; schoolId: string; role: Role }) {
+    const section = await this.prisma.section.findFirst({
+      where: { id: data.sectionId, schoolId: actor.schoolId, ...(actor.role === Role.TEACHER ? { teacherAssignments: { some: { teacherId: actor.id, ...(data.subjectId ? { subjectId: data.subjectId } : {}) } } } : {}) },
+      select: { id: true },
+    });
+    if (!section) throw new ForbiddenException('You are not assigned to this attendance section.');
+    if (actor.role === Role.TEACHER && !data.subjectId) throw new ForbiddenException('Teachers must select an assigned subject.');
+    let subjectName: string | null = null;
+    if (data.subjectId) {
+      const subject = await this.prisma.subject.findFirst({ where: { id: data.subjectId, schoolId: actor.schoolId }, select: { name: true } });
+      if (!subject) throw new NotFoundException('Subject not found in your school.');
+      subjectName = subject.name;
+    }
+    const studentIds = [...new Set(data.records.map(record => record.studentId))];
+    const enrolled = await this.prisma.enrollment.findMany({ where: { sectionId: section.id, studentId: { in: studentIds }, student: { schoolId: actor.schoolId, role: Role.STUDENT, status: 'ACTIVE' } }, select: { studentId: true } });
+    if (enrolled.length !== studentIds.length) throw new ForbiddenException('Every selected student must be active and enrolled in this section.');
+    const date = new Date(data.date);
+    try {
+      const result = await this.prisma.$transaction(tx => tx.attendance.createMany({ data: data.records.map(record => ({ studentId: record.studentId, teacherId: actor.id, schoolId: actor.schoolId, date, status: record.status, subject: subjectName, remarks: record.remarks?.trim() || null })) }));
+      void this.audit.record({ action: 'ATTENDANCE_BULK_MARKED', entity: 'Attendance', userId: actor.id, schoolId: actor.schoolId, details: { sectionId: section.id, date: date.toISOString(), count: result.count } });
+      return { count: result.count, date };
+    } catch (error: any) {
+      if (error?.code === 'P2002') throw new ConflictException('At least one student already has attendance for this date. Use correction instead.');
+      throw error;
+    }
   }
 
   async getStudentAttendance(studentId: string, month: number | undefined, year: number | undefined, actor: { id: string; schoolId: string; role: Role }): Promise<Attendance[]> {
