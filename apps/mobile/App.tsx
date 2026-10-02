@@ -4,9 +4,10 @@ import { ThemeProvider } from "./src/core/theme/ThemeContext";
 import { useTheme } from './src/core/theme/ThemeContext';
 import { StatusBar } from 'expo-status-bar';
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { GOOGLE_WEB_CLIENT_ID } from './src/core/auth/google';
 
 GoogleSignin.configure({
-  webClientId: "615870071152-rgua2dekn9bk7s537ippt172u9ktgcgr.apps.googleusercontent.com",
+  webClientId: GOOGLE_WEB_CLIENT_ID,
 });
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from './src/features/auth/screens/LoginScreen';
