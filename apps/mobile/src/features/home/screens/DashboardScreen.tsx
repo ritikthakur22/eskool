@@ -35,7 +35,7 @@ const operationalQuickFeatures: Feature[] = [
   { name: 'Class routine', icon: 'calendar-outline', route: 'Routine', accent: '#16B86A' },
   { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#8B5CF6' },
   { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#64748B' },
-  { name: 'Attendance register', icon: 'checkmark-circle-outline', accent: '#10A981', note: 'Management coming soon', disabled: true },
+  { name: 'Attendance register', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#10A981' },
   { name: 'Homework manager', icon: 'document-text-outline', accent: '#2389F5', note: 'Management coming soon', disabled: true },
   { name: 'Exams & results', icon: 'podium-outline', accent: '#F39A19', note: 'Management coming soon', disabled: true },
   { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
@@ -71,7 +71,7 @@ const operationalMoreFeatureGroups: { title: string; features: Feature[] }[] = [
   { title: 'School operations', features: [
     { name: 'Online class', icon: 'videocam-outline', route: 'OnlineClass', accent: '#0EA5E9' },
     { name: 'Class chat', icon: 'chatbubbles-outline', route: 'Chat', accent: '#8B5CF6', note: 'Coming soon', disabled: true },
-    { name: 'Attendance register', icon: 'checkmark-circle-outline', accent: '#16A36A', note: 'Management coming soon', disabled: true },
+    { name: 'Attendance register', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#16A36A' },
     { name: 'Fees review', icon: 'receipt-outline', accent: '#D18A0A', note: 'Management coming soon', disabled: true },
   ] },
   { title: 'Account', features: [

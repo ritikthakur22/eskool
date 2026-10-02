@@ -64,7 +64,7 @@ export class AttendanceService {
     });
   }
 
-  async getSchoolRegister(filters: { schoolId: string; date?: string; sectionId?: string }) {
+  async getSchoolRegister(filters: { schoolId: string; date?: string; sectionId?: string; actorId?: string; actorRole?: Role }) {
     const where: Prisma.AttendanceWhereInput = { schoolId: filters.schoolId };
     if (filters.date) {
       const start = new Date(`${filters.date}T00:00:00.000Z`);
@@ -73,9 +73,10 @@ export class AttendanceService {
       end.setUTCDate(end.getUTCDate() + 1);
       where.date = { gte: start, lt: end };
     }
-    if (filters.sectionId) {
-      where.student = { enrollments: { some: { sectionId: filters.sectionId, section: { schoolId: filters.schoolId } } } };
-    }
+    const sectionScope = filters.sectionId
+      ? { sectionId: filters.sectionId, section: { schoolId: filters.schoolId, ...(filters.actorRole === Role.TEACHER && filters.actorId ? { teacherAssignments: { some: { teacherId: filters.actorId } } } : {}) } }
+      : { section: { schoolId: filters.schoolId, ...(filters.actorRole === Role.TEACHER && filters.actorId ? { teacherAssignments: { some: { teacherId: filters.actorId } } } : {}) } };
+    where.student = { enrollments: { some: sectionScope } };
     return this.prisma.attendance.findMany({
       where,
       orderBy: [{ date: 'desc' }, { student: { studentProfile: { lastName: 'asc' } } }],

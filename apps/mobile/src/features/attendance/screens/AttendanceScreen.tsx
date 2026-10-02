@@ -10,7 +10,8 @@ import BottomNavigation from '../../../core/components/BottomNavigation';
 import { currentBsMonth, getBsMonthDays, getBsMonthLabels, getGregorianMonthsForBsMonth, shiftBsMonth, type BsMonth } from '../../../core/utils/bsCalendar';
 import { getSelectedChildId } from '../../../core/utils/childSelection';
 
-type RecordItem = { id: string; date: string; status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY'; subject?: string | null; remarks?: string | null };
+type RecordItem = { id: string; date: string; createdAt?: string; status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY'; subject?: string | null; remarks?: string | null };
+type ManagedRecord = RecordItem & { student?: { email?: string; studentProfile?: { firstName?: string; lastName?: string; rollNo?: string; grade?: string; section?: string } }; teacher?: { email?: string; teacherProfile?: { firstName?: string; lastName?: string }; adminProfile?: { firstName?: string; lastName?: string } } };
 const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
@@ -93,7 +94,7 @@ export default function AttendanceScreen({ navigation }: any) {
   const absentCount = records.filter(item => item.status === 'ABSENT').length;
   const otherCount = records.filter(item => item.status === 'LATE' || item.status === 'HALF_DAY').length;
   const attendanceRate = records.length ? Math.round((presentCount / records.length) * 100) : 0;
-  if (role && role !== 'STUDENT' && role !== 'PARENT') return <SafeAreaView style={s.screen}><View style={s.header}><TouchableOpacity accessibilityLabel="Go back" onPress={() => navigation.goBack()} style={s.back}><Ionicons name="chevron-back" size={23} color={colors.text} /></TouchableOpacity><View style={{ flex: 1 }}><Text style={s.title}>Attendance</Text><Text style={s.subtitle}>Role-scoped access</Text></View></View><View style={s.errorCard}><Ionicons name="lock-closed-outline" size={25} color={colors.subText} /><Text style={s.errorText}>This screen is for student or selected-child attendance. Staff attendance registers are available from the management workflow.</Text></View><BottomNavigation navigation={navigation} activeRoute="Attendance" colors={colors} role={role} /></SafeAreaView>;
+  if (role && role !== 'STUDENT' && role !== 'PARENT') return <StaffAttendanceRegister navigation={navigation} role={role} colors={colors} styles={s} />;
   const selectedBs = new NepaliDate(selectedDate).format('ddd, DD MMMM YYYY');
   const selectedAd = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -140,6 +141,34 @@ export default function AttendanceScreen({ navigation }: any) {
       </>}
     </ScrollView>
     <BottomNavigation navigation={navigation} activeRoute="Attendance" colors={colors} role={role} />
+  </SafeAreaView>;
+}
+
+function StaffAttendanceRegister({ navigation, role, colors, styles: s }: any) {
+  const [rows, setRows] = useState<ManagedRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const date = dateKey(new Date());
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const { data } = await api.get('/attendance/register', { params: { date } });
+      setRows(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setError(err.response?.status === 403 ? 'You do not have access to this attendance register.' : 'Could not load the attendance register.');
+      setRows([]);
+    } finally { setLoading(false); }
+  }, [date]);
+  useEffect(() => { load(); }, [load]);
+  const nameFor = (row: ManagedRecord) => [row.student?.studentProfile?.firstName, row.student?.studentProfile?.lastName].filter(Boolean).join(' ') || row.student?.email || 'Student';
+  const markerFor = (row: ManagedRecord) => { const profile = row.teacher?.teacherProfile || row.teacher?.adminProfile; return [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || row.teacher?.email || 'System'; };
+  const statusColor = (status: string) => status === 'PRESENT' ? colors.success : status === 'ABSENT' ? colors.danger : colors.warning;
+  return <SafeAreaView style={s.screen}>
+    <View style={s.header}><TouchableOpacity accessibilityLabel="Go back" onPress={() => navigation.goBack()} style={s.back}><Ionicons name="chevron-back" size={23} color={colors.text} /></TouchableOpacity><View style={{ flex: 1 }}><Text style={s.title}>Attendance register</Text><Text style={s.subtitle}>{role === 'TEACHER' ? 'Assigned students' : 'School register'} · {new Date().toLocaleDateString()}</Text></View><TouchableOpacity accessibilityLabel="Refresh attendance register" onPress={load} style={s.todayButton}><Ionicons name="refresh" size={17} color={colors.primary} /></TouchableOpacity></View>
+    <ScrollView contentContainerStyle={s.content}>
+      <View style={s.overviewCard}><Ionicons name="people-outline" size={23} color={colors.primary} /><View style={s.overviewCopy}><Text style={s.overviewTitle}>{rows.length} recorded sessions</Text><Text style={s.overviewHint}>Marked by and time are shown for each record.</Text></View></View>
+      {loading ? <View style={s.loading}><ActivityIndicator size="large" color={colors.primary} /><Text style={s.muted}>Loading register…</Text></View> : error ? <View style={s.errorCard}><Ionicons name="lock-closed-outline" size={25} color={colors.subText} /><Text style={s.errorText}>{error}</Text><TouchableOpacity onPress={load}><Text style={s.retry}>Retry</Text></TouchableOpacity></View> : rows.length ? rows.map(row => <View key={row.id} style={s.recordCard}><View style={[s.recordMarker, { backgroundColor: statusColor(row.status) }]} /><View style={{ flex: 1 }}><Text style={s.recordSubject}>{nameFor(row)}</Text><Text style={s.recordRemarks}>{[row.student?.studentProfile?.rollNo && `Roll ${row.student.studentProfile.rollNo}`, row.student?.studentProfile?.grade && `Class ${row.student.studentProfile.grade}${row.student.studentProfile.section ? ` · ${row.student.studentProfile.section}` : ''}`].filter(Boolean).join(' · ') || 'Student record'}</Text><Text style={s.recordRemarks}>Marked by {markerFor(row)} · {new Date(row.createdAt || row.date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</Text></View><Text style={[s.recordStatus, { color: statusColor(row.status) }]}>{row.status.replace('_', ' ')}</Text></View>) : <View style={s.emptyCard}><Ionicons name="calendar-outline" size={20} color={colors.subText} /><Text style={s.emptyText}>No attendance has been recorded for today.</Text></View>}
+    </ScrollView><BottomNavigation navigation={navigation} activeRoute="Attendance" colors={colors} role={role} />
   </SafeAreaView>;
 }
 
