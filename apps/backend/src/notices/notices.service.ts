@@ -54,4 +54,13 @@ export class NoticesService {
     } });
     return updated;
   }
+
+  async deleteNotice(id: string, actor: { id: string; schoolId: string; role: Role }) {
+    const existing = await this.prisma.notice.findFirst({ where: { id, schoolId: actor.schoolId } });
+    if (!existing) throw new NotFoundException('Notice not found.');
+    if (actor.role === Role.TEACHER && existing.authorId !== actor.id) throw new NotFoundException('Notice not found.');
+    await this.prisma.notice.delete({ where: { id: existing.id } });
+    void this.audit.record({ action: 'NOTICE_DELETED', entity: 'Notice', entityId: existing.id, userId: actor.id, schoolId: actor.schoolId });
+    return { success: true };
+  }
 }

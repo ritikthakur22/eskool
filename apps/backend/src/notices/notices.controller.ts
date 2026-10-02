@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
 import { NoticesService } from './notices.service.js';
 import { CreateNoticeDto, UpdateNoticeDto } from './dto/notice.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
@@ -21,6 +21,12 @@ export class NoticesController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   updateNotice(@Param('id', new ParseUUIDPipe()) id: string, @Body() data: UpdateNoticeDto, @Request() req: any) {
     return this.noticesService.updateNotice(id, data, req.user);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  deleteNotice(@Param('id', new ParseUUIDPipe()) id: string, @Request() req: any) {
+    return this.noticesService.deleteNotice(id, req.user);
   }
 
   @Get()
