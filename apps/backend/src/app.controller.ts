@@ -26,12 +26,11 @@ export class AppController {
     try {
       const [schema] = await this.prisma.$queryRaw<Array<{ userReady: boolean; sessionsReady: boolean; auditReady: boolean }>>`
         SELECT
-          to_regclass('"User"') IS NOT NULL
-          AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('"User"') AND attname = 'googleSubject' AND NOT attisdropped)
-          AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('"User"') AND attname = 'profilePictureUrl' AND NOT attisdropped)
-          AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('"User"') AND attname = 'tokenVersion' AND NOT attisdropped) AS "userReady",
-          to_regclass('"AuthSession"') IS NOT NULL AS "sessionsReady",
-          to_regclass('"AuditLog"') IS NOT NULL AS "auditReady"
+          EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'User' AND column_name = 'googleSubject')
+          AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'User' AND column_name = 'profilePictureUrl')
+          AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'User' AND column_name = 'tokenVersion') AS "userReady",
+          EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'AuthSession') AS "sessionsReady",
+          EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'AuditLog') AS "auditReady"
       `;
       if (!schema?.userReady || !schema.sessionsReady || !schema.auditReady) throw new Error('required database schema is missing');
       return { status: 'ok', database: 'ok', schema: 'ok' };
