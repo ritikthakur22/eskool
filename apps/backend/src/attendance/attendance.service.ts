@@ -1,22 +1,36 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Attendance, Role } from '@prisma/client';
+import { MarkAttendanceDto } from './dto/attendance.dto.js';
 
 @Injectable()
 export class AttendanceService {
   constructor(private prisma: PrismaService) {}
 
-  async markAttendance(data: Prisma.AttendanceUncheckedCreateInput, actor: { id: string; schoolId: string; role: Role }): Promise<Attendance> {
+  async markAttendance(data: MarkAttendanceDto, actor: { id: string; schoolId: string; role: Role }): Promise<Attendance> {
     const student = await this.prisma.user.findFirst({ where: { id: data.studentId, schoolId: actor.schoolId, role: Role.STUDENT }, select: { id: true } });
     if (!student) throw new NotFoundException('Student not found in your school.');
+    
+    if (actor.role === Role.TEACHER) {
+      const enrollments = await this.prisma.enrollment.findMany({ where: { studentId: student.id }, select: { sectionId: true } });
+      const sectionIds = enrollments.map(e => e.sectionId);
+      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId: { in: sectionIds } } });
+      if (!assignment) throw new ForbiddenException('You are not assigned to teach this student.');
+    }
+
+    const dateObj = new Date(data.date);
     return this.prisma.attendance.create({ data: {
       studentId: student.id, teacherId: actor.role === Role.TEACHER ? actor.id : undefined,
-      date: data.date, status: data.status, subject: data.subject, remarks: data.remarks, schoolId: actor.schoolId
+      date: dateObj, status: data.status, subject: data.subject, remarks: data.remarks, schoolId: actor.schoolId
     } });
   }
 
   async getStudentAttendance(studentId: string, month: number | undefined, year: number | undefined, actor: { id: string; schoolId: string; role: Role }): Promise<Attendance[]> {
     if (actor.role === Role.STUDENT && actor.id !== studentId) throw new ForbiddenException('You can only view your own attendance.');
+    if (actor.role === Role.PARENT) {
+      const link = await this.prisma.parentStudent.findUnique({ where: { parentId_studentId: { parentId: actor.id, studentId } } });
+      if (!link) throw new ForbiddenException('You are not linked to this student.');
+    }
     const student = await this.prisma.user.findFirst({ where: { id: studentId, schoolId: actor.schoolId, role: Role.STUDENT }, select: { id: true } });
     if (!student) throw new NotFoundException('Student not found in your school.');
     let whereClause: Prisma.AttendanceWhereInput = { studentId: student.id };

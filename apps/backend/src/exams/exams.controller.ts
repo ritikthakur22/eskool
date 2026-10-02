@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { ExamsService } from './exams.service.js';
-import { Prisma } from '@prisma/client';
+import { CreateExamDto, AddExamResultDto } from './dto/exam.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -13,14 +13,13 @@ export class ExamsController {
 
   @Post()
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
-  async createExam(@Body() data: Prisma.ExamUncheckedCreateInput, @Request() req: any) {
-    if (typeof data.date === 'string') data.date = new Date(data.date);
+  async createExam(@Body() data: CreateExamDto, @Request() req: any) {
     return this.examsService.createExam(data, req.user);
   }
 
   @Post('result')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
-  async addExamResult(@Body() data: Prisma.ExamResultUncheckedCreateInput, @Request() req: any) {
+  async addExamResult(@Body() data: AddExamResultDto, @Request() req: any) {
     return this.examsService.addExamResult(data, req.user);
   }
 

@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AttendanceService } from './attendance.service.js';
-import { Prisma } from '@prisma/client';
+import { MarkAttendanceDto } from './dto/attendance.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -13,11 +13,7 @@ export class AttendanceController {
 
   @Post('mark')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
-  async markAttendance(@Body() data: Prisma.AttendanceUncheckedCreateInput, @Request() req: any) {
-    // Convert string date to Date object if needed
-    if (typeof data.date === 'string') {
-      data.date = new Date(data.date);
-    }
+  async markAttendance(@Body() data: MarkAttendanceDto, @Request() req: any) {
     return this.attendanceService.markAttendance(data, req.user);
   }
 

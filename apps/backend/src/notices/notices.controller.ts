@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { NoticesService } from './notices.service.js';
-import { Prisma } from '@prisma/client';
+import { CreateNoticeDto } from './dto/notice.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -13,7 +13,7 @@ export class NoticesController {
 
   @Post()
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
-  async createNotice(@Body() data: Prisma.NoticeUncheckedCreateInput, @Request() req: any) {
+  async createNotice(@Body() data: CreateNoticeDto, @Request() req: any) {
     return this.noticesService.createNotice(data, req.user);
   }
 
