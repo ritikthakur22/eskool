@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CloudinaryService } from '../storage/cloudinary.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { SubmitPaymentProofDto } from './dto/payment-proof.dto.js';
 
 export type PaymentProofUpload = { buffer: Buffer; size: number; mimetype: string; originalname: string };
 
@@ -35,7 +36,7 @@ export class FeesService {
     };
   }
 
-  async submitPaymentProof(invoiceId: string, user: { id: string; schoolId: string; role: string }, body: any, files: PaymentProofUpload[]) {
+  async submitPaymentProof(invoiceId: string, user: { id: string; schoolId: string; role: string }, body: SubmitPaymentProofDto, files: PaymentProofUpload[]) {
     if (user.role !== 'STUDENT') throw new ForbiddenException('Only students can submit fee payment proof.');
     const mobileNumber = typeof body.mobileNumber === 'string' ? body.mobileNumber.trim() : '';
     if (!/^\+?[0-9()\-\s]{7,20}$/.test(mobileNumber) || mobileNumber.replace(/\D/g, '').length < 7) {

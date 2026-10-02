@@ -1,12 +1,13 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Homework, HomeworkSubmission, Role } from '@prisma/client';
 import { CreateHomeworkDto, SubmitHomeworkDto } from './dto/homework.dto.js';
 import { AuditService } from '../audit/audit.service.js';
+import { CloudinaryService } from '../storage/cloudinary.service.js';
 
 @Injectable()
 export class HomeworkService {
-  constructor(private prisma: PrismaService, private readonly audit: AuditService) {}
+  constructor(private prisma: PrismaService, private readonly audit: AuditService, private readonly cloudinary: CloudinaryService) {}
 
   async createHomework(data: CreateHomeworkDto, actor: { id: string; schoolId: string; role: Role }): Promise<Homework> {
     const section = await this.prisma.section.findFirst({ where: { id: data.sectionId, schoolId: actor.schoolId }, select: { id: true } });
@@ -55,6 +56,20 @@ export class HomeworkService {
     if (existing) throw new ForbiddenException('You have already submitted this homework.');
     const submission = await this.prisma.homeworkSubmission.create({ data: { homeworkId: homework.id, studentId: actor.id, content: data.content, fileUrl: data.fileUrl, status: 'SUBMITTED', schoolId: actor.schoolId } });
     void this.audit.record({ action: 'HOMEWORK_SUBMITTED', entity: 'HomeworkSubmission', entityId: submission.id, userId: actor.id, schoolId: actor.schoolId, details: { homeworkId: homework.id } });
+    return submission;
+  }
+
+  async submitHomeworkAttachment(homeworkId: string, actor: { id: string; schoolId: string }, file: { buffer: Buffer; mimetype: string; originalname: string }) {
+    if (!this.cloudinary.isConfigured()) throw new ServiceUnavailableException('Cloudinary storage is not configured.');
+    const homework = await this.prisma.homework.findFirst({ where: { id: homeworkId, schoolId: actor.schoolId }, select: { id: true, sectionId: true } });
+    if (!homework?.sectionId) throw new NotFoundException('Homework not found in your school.');
+    const enrollment = await this.prisma.enrollment.findFirst({ where: { studentId: actor.id, sectionId: homework.sectionId }, select: { id: true } });
+    if (!enrollment) throw new ForbiddenException('You are not enrolled in this homework section.');
+    const existing = await this.prisma.homeworkSubmission.findFirst({ where: { homeworkId: homework.id, studentId: actor.id }, select: { id: true } });
+    if (existing) throw new ForbiddenException('You have already submitted this homework.');
+    const uploaded = await this.cloudinary.upload(file.buffer, { folder: `eskool/homework/${actor.schoolId}`, resourceType: file.mimetype === 'application/pdf' ? 'raw' : 'image' });
+    const submission = await this.prisma.homeworkSubmission.create({ data: { homeworkId: homework.id, studentId: actor.id, fileUrl: uploaded.secure_url, status: 'SUBMITTED', schoolId: actor.schoolId } });
+    void this.audit.record({ action: 'HOMEWORK_ATTACHMENT_SUBMITTED', entity: 'HomeworkSubmission', entityId: submission.id, userId: actor.id, schoolId: actor.schoolId, details: { homeworkId: homework.id, publicId: uploaded.public_id } });
     return submission;
   }
 

@@ -3,6 +3,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { FeesService, type PaymentProofUpload } from './fees.service.js';
 import { assertFileSignature } from '../storage/file-validation.js';
+import { SubmitPaymentProofDto } from './dto/payment-proof.dto.js';
 
 const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const maxProofSize = 5 * 1024 * 1024;
@@ -33,7 +34,7 @@ export class FeesController {
       callback(null, true);
     },
   }))
-  submitPaymentProof(@Param('invoiceId', new ParseUUIDPipe()) invoiceId: string, @Body() body: any, @UploadedFiles() files: PaymentProofUpload[] | undefined, @Request() req: any) {
+  submitPaymentProof(@Param('invoiceId', new ParseUUIDPipe()) invoiceId: string, @Body() body: SubmitPaymentProofDto, @UploadedFiles() files: PaymentProofUpload[] | undefined, @Request() req: any) {
     if (!files?.length) throw new BadRequestException('Attach at least one payment screenshot or PDF.');
     if (files.reduce((sum, file) => sum + file.size, 0) > maxProofSize) {
       throw new BadRequestException('The combined upload size must be 5 MB or less.');

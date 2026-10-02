@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { assertFileSignature } from '../storage/file-validation.js';
+import { ChangePasswordDto, CreateUserDto, UpdateProfileDto } from './dto/user.dto.js';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -26,12 +27,12 @@ export class UsersController {
   }
 
   @Patch('me')
-  updateOwnProfile(@Body() data: any, @Request() req: any) {
+  updateOwnProfile(@Body() data: UpdateProfileDto, @Request() req: any) {
     return this.usersService.updateOwnProfile(req.user.id, data);
   }
 
   @Patch('me/password')
-  changeOwnPassword(@Body() data: any, @Request() req: any) {
+  changeOwnPassword(@Body() data: ChangePasswordDto, @Request() req: any) {
     return this.usersService.changeOwnPassword(req.user.id, data.currentPassword, data.newPassword);
   }
 
@@ -54,7 +55,7 @@ export class UsersController {
 
   @Post('admin/create-user')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.TEACHER)
-  async createUser(@Body() data: any, @Request() req: any) {
+  async createUser(@Body() data: CreateUserDto, @Request() req: any) {
     const creatorRole = req.user.role;
     const targetRole = data.role || Role.STUDENT;
     if (!Object.values(Role).includes(targetRole)) throw new BadRequestException('Invalid user role.');
@@ -84,7 +85,7 @@ export class UsersController {
       school: { connect: { id: schoolId } },
       ...(targetRole === Role.STUDENT ? { studentProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Student', grade: data.grade, section: data.section, rollNo: data.rollNo } } } : {}),
       ...(targetRole === Role.TEACHER ? { teacherProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Teacher', subjects: Array.isArray(data.subjects) ? data.subjects.filter((subject: unknown): subject is string => typeof subject === 'string').slice(0, 20) : [] } } } : {}),
-      ...([Role.ADMIN, Role.SUPER_ADMIN].includes(targetRole) ? { adminProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Admin', department: data.department } } } : {}),
+      ...(([Role.ADMIN, Role.SUPER_ADMIN] as Role[]).includes(targetRole) ? { adminProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Admin', department: data.department } } } : {}),
     });
 
     const { password: _password, ...result } = user;

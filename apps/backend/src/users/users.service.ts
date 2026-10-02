@@ -4,6 +4,7 @@ import { Prisma, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { CloudinaryService } from '../storage/cloudinary.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import type { UpdateProfileDto } from './dto/user.dto.js';
 
 @Injectable()
 export class UsersService {
@@ -44,7 +45,7 @@ export class UsersService {
     return { ...userDetails, profilePictureUrl };
   }
 
-  async updateOwnProfile(userId: string, input: Record<string, unknown>) {
+  async updateOwnProfile(userId: string, input: UpdateProfileDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { role: true, studentProfile: { select: { userId: true } }, teacherProfile: { select: { userId: true } }, adminProfile: { select: { userId: true } } },
@@ -92,11 +93,11 @@ export class UsersService {
       }
       if (setClauses.length) await this.prisma.$executeRaw(Prisma.sql`UPDATE "StudentProfile" SET ${Prisma.join(setClauses, ', ')} WHERE "userId" = ${userId}`);
     } else if (user.role === 'TEACHER' && user.teacherProfile) {
-      if (['studentId', 'phone', 'gender', 'address', 'parentName', 'parentPhone'].some(key => input[key] !== undefined)) throw new BadRequestException('These details are only available for student profiles');
+      if ((['studentId', 'phone', 'gender', 'address', 'parentName', 'parentPhone'] as const).some(key => input[key] !== undefined)) throw new BadRequestException('These details are only available for student profiles');
       if (input.dob !== undefined) throw new BadRequestException('Only students can update date of birth');
       if (Object.keys(fields).length) await this.prisma.teacherProfile.update({ where: { userId }, data: fields });
     } else if ((user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && user.adminProfile) {
-      if (['studentId', 'phone', 'gender', 'address', 'parentName', 'parentPhone'].some(key => input[key] !== undefined)) throw new BadRequestException('These details are only available for student profiles');
+      if ((['studentId', 'phone', 'gender', 'address', 'parentName', 'parentPhone'] as const).some(key => input[key] !== undefined)) throw new BadRequestException('These details are only available for student profiles');
       if (input.dob !== undefined) throw new BadRequestException('Date of birth cannot be updated for this account');
       if (Object.keys(fields).length) await this.prisma.adminProfile.update({ where: { userId }, data: fields });
     } else if (Object.values(values).some(value => value !== email) || input.dob !== undefined) {

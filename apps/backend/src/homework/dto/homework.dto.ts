@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsDateString, IsOptional, MaxLength, IsUUID } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString, IsOptional, MaxLength, IsUUID, IsUrl } from 'class-validator';
 
 export class CreateHomeworkDto {
   @IsString()
@@ -37,7 +37,7 @@ export class SubmitHomeworkDto {
   @MaxLength(5000)
   content?: string;
 
-  @IsString()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
   @IsOptional()
   fileUrl?: string;
 }
