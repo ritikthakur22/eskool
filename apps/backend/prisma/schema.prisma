@@ -200,7 +200,6 @@ model RoutineDocument {
   uploaderId String
   fileName   String
   mimeType   String
-  content    Bytes
   storageUrl String?
   publicId   String?
   createdAt  DateTime @default(now())
@@ -235,7 +234,6 @@ model FeePaymentProofFile {
   proofId    String
   fileName   String
   mimeType   String
-  content    Bytes
   storageUrl String?
   publicId   String?
   proof      FeePaymentProof @relation(fields: [proofId], references: [id], onDelete: Cascade)
