@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
 import { ExamsService } from './exams.service.js';
 import { CreateExamDto, AddExamResultDto } from './dto/exam.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
@@ -24,7 +24,7 @@ export class ExamsController {
   }
 
   @Get('student/:studentId')
-  async getStudentResults(@Param('studentId') studentId: string, @Request() req: any) {
+  async getStudentResults(@Param('studentId', new ParseUUIDPipe()) studentId: string, @Request() req: any) {
     return this.examsService.getStudentResults(studentId, req.user);
   }
 }

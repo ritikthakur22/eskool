@@ -1,8 +1,9 @@
-import { IsString, IsNotEmpty, IsDateString, IsNumber, IsOptional, Min, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString, IsNumber, IsOptional, Min, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateExamDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(160)
   title: string;
 
   @IsDateString()
@@ -11,20 +12,24 @@ export class CreateExamDto {
 
   @IsString()
   @IsNotEmpty()
+  @IsUUID()
   subjectId: string;
 
   @IsString()
   @IsNotEmpty()
+  @IsUUID()
   sectionId: string;
 }
 
 export class AddExamResultDto {
   @IsString()
   @IsNotEmpty()
+  @IsUUID()
   examId: string;
 
   @IsString()
   @IsNotEmpty()
+  @IsUUID()
   studentId: string;
 
   @IsNumber()
@@ -37,5 +42,6 @@ export class AddExamResultDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(20)
   grade?: string;
 }

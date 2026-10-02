@@ -29,6 +29,17 @@ const quickFeatures: Feature[] = [
   { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
 ];
 
+const operationalQuickFeatures: Feature[] = [
+  { name: 'Class routine', icon: 'calendar-outline', route: 'Routine', accent: '#16B86A' },
+  { name: 'Attendance', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#10A981' },
+  { name: 'Homework', icon: 'document-text-outline', route: 'Homework', accent: '#2389F5' },
+  { name: 'Exams', icon: 'calendar-clear-outline', route: 'Exams', accent: '#EF5261' },
+  { name: 'Results', icon: 'podium-outline', route: 'Result', accent: '#F39A19' },
+  { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#8B5CF6' },
+  { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#64748B' },
+  { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
+];
+
 const moreFeatureGroups: { title: string; features: Feature[] }[] = [
   { title: 'Learning', features: [
     { name: 'Online class', icon: 'videocam-outline', route: 'OnlineClass', accent: '#0EA5E9' },
@@ -141,6 +152,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const rate = attendance.length ? Math.round((presentCount / attendance.length) * 100) : 0;
   const monthLabels = getBsMonthLabels(currentBsMonth());
   const cardWidth = Math.min(520, Math.max(215, (width - 58) * 0.66));
+  const isOperationalRole = ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(profile?.role || '');
 
   const openFeature = (feature: Feature) => {
     if (feature.expand) { setShowAllFeatures(value => !value); return; }
@@ -168,7 +180,7 @@ export default function DashboardScreen({ navigation }: Props) {
         <View style={s.sectionHeader}>
           <Text style={s.sectionTitle}>Quick access</Text>
         </View>
-        <View style={s.quickGrid}>{quickFeatures.map(feature => <QuickTile key={feature.name} feature={feature} styles={s} onPress={() => openFeature(feature)} />)}</View>
+        <View style={s.quickGrid}>{(isOperationalRole ? operationalQuickFeatures : quickFeatures).map(feature => <QuickTile key={feature.name} feature={feature} styles={s} onPress={() => openFeature(feature)} />)}</View>
         {showAllFeatures && <View style={s.moreFeatures}>
           {moreFeatureGroups.map(group => <View key={group.title} style={s.moreGroup}>
             <Text style={s.moreGroupTitle}>{group.title}</Text>
@@ -211,7 +223,7 @@ export default function DashboardScreen({ navigation }: Props) {
         </ScrollView>}
       </View>
     </ScrollView>
-    <BottomNavigation navigation={navigation} activeRoute="Dashboard" colors={colors} />
+    <BottomNavigation navigation={navigation} activeRoute="Dashboard" colors={colors} role={profile?.role} />
   </SafeAreaView>;
 }
 

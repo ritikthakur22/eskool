@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Patch, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Patch, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
 import { HomeworkService } from './homework.service.js';
 import { CreateHomeworkDto, SubmitHomeworkDto, GradeHomeworkDto } from './dto/homework.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
@@ -18,7 +18,7 @@ export class HomeworkController {
   }
 
   @Get('class/:sectionId')
-  async getHomeworkForClass(@Param('sectionId') sectionId: string, @Request() req: any) {
+  async getHomeworkForClass(@Param('sectionId', new ParseUUIDPipe()) sectionId: string, @Request() req: any) {
     return this.homeworkService.getHomeworkForClass(sectionId, req.user);
   }
 
@@ -31,7 +31,7 @@ export class HomeworkController {
   @Patch('grade/:submissionId')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   async gradeSubmission(
-    @Param('submissionId') id: string,
+    @Param('submissionId', new ParseUUIDPipe()) id: string,
     @Body() body: GradeHomeworkDto,
     @Request() req: any
   ) {

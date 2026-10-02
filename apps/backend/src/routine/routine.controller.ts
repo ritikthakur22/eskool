@@ -15,6 +15,7 @@ import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { RoutineService } from './routine.service.js';
 import type { RoutineUploadFile } from './routine.service.js';
+import { assertFileSignature } from '../storage/file-validation.js';
 
 const allowedMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
 
@@ -44,6 +45,7 @@ export class RoutineController {
   async upload(@UploadedFile() file: RoutineUploadFile, @Request() req: any) {
     if (!file) throw new BadRequestException('Choose a routine file to upload.');
     if (!req.user.schoolId) throw new BadRequestException('Your account is not linked to a school.');
+    assertFileSignature(file);
     return this.routineService.upload(file, req.user.schoolId, req.user.id);
   }
 }

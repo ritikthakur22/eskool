@@ -4,7 +4,9 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  const hashedPassword = await bcrypt.hash('Password123', 10);
+  const rawPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!rawPassword || rawPassword.length < 12) throw new Error('SEED_ADMIN_PASSWORD must be set to a 12+ character development-only password.');
+  const hashedPassword = await bcrypt.hash(rawPassword, 10);
   
   await prisma.user.update({
     where: { email: 'admin@eskool.com' },
@@ -13,7 +15,7 @@ async function main() {
     },
   });
 
-  console.log('Password updated to Password123');
+  console.log('Development admin password updated.');
 }
 
 main()

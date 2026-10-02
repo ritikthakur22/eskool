@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const tabs = [
+const studentTabs = [
   { route: 'Dashboard', label: 'Home', icon: 'home-outline' },
   { route: 'Attendance', label: 'Attendance', icon: 'checkmark-circle-outline' },
   { route: 'Calendar', label: 'Calendar', icon: 'calendar-outline' },
@@ -10,8 +10,18 @@ const tabs = [
   { route: 'Profile', label: 'Settings', icon: 'person-outline' },
 ];
 
-export default function BottomNavigation({ navigation, activeRoute, colors }: any) {
-  return <View style={[styles.bar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+const operationalTabs = [
+  { route: 'Dashboard', label: 'Home', icon: 'home-outline' },
+  { route: 'Attendance', label: 'Attendance', icon: 'checkmark-circle-outline' },
+  { route: 'Calendar', label: 'Calendar', icon: 'calendar-outline' },
+  { route: 'Notice', label: 'Notices', icon: 'notifications-outline' },
+  { route: 'Profile', label: 'Settings', icon: 'person-outline' },
+];
+
+export default function BottomNavigation({ navigation, activeRoute, colors, role }: any) {
+  const tabs = role === 'TEACHER' || role === 'ADMIN' || role === 'SUPER_ADMIN' ? operationalTabs : studentTabs;
+  return (
+    <View style={[styles.bar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
     {tabs.map(tab => {
       const active = tab.route === activeRoute;
       const color = active ? colors.primary : colors.subText;
@@ -20,7 +30,8 @@ export default function BottomNavigation({ navigation, activeRoute, colors }: an
         <Text style={[styles.label, { color, fontWeight: active ? '900' : '700' }]}>{tab.label}</Text>
       </TouchableOpacity>;
     })}
-  </View>;
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

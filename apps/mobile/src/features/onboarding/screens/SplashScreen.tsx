@@ -1,9 +1,12 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../core/theme/ThemeContext';
+import { api } from '../../../core/networking/api';
+import { setInMemoryAccessToken, setInMemoryRefreshToken } from '../../../core/networking/session';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -12,11 +15,36 @@ type Props = {
 export default function SplashScreen({ navigation }: Props) {
   const { colors } = useTheme();
   useEffect(() => {
-    // Navigate to Onboarding after 2 seconds
-    const timer = setTimeout(() => {
-      navigation.replace('Onboarding');
-    }, 2500);
-    return () => clearTimeout(timer);
+    let cancelled = false;
+    const bootstrap = async () => {
+      try {
+        const [completed, refreshToken] = await Promise.all([
+          SecureStore.getItemAsync('onboarding_complete'),
+          SecureStore.getItemAsync('refresh_token'),
+        ]);
+        if (refreshToken) {
+          const { data } = await api.post('/auth/refresh', { refresh_token: refreshToken });
+          await Promise.all([
+            SecureStore.setItemAsync('access_token', data.access_token),
+            SecureStore.setItemAsync('refresh_token', data.refresh_token),
+            SecureStore.setItemAsync('user_data', JSON.stringify(data.user)),
+          ]);
+          setInMemoryAccessToken(data.access_token);
+          setInMemoryRefreshToken(data.refresh_token);
+          if (!cancelled) navigation.replace('Dashboard');
+          return;
+        }
+        if (!cancelled) navigation.replace(completed === 'true' ? 'Login' : 'Onboarding');
+      } catch {
+        await Promise.all([SecureStore.deleteItemAsync('access_token'), SecureStore.deleteItemAsync('refresh_token')]);
+        setInMemoryAccessToken(null);
+        setInMemoryRefreshToken(null);
+        const completed = await SecureStore.getItemAsync('onboarding_complete');
+        if (!cancelled) navigation.replace(completed === 'true' ? 'Login' : 'Onboarding');
+      }
+    };
+    bootstrap();
+    return () => { cancelled = true; };
   }, [navigation]);
 
   return (

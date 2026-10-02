@@ -1,9 +1,10 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Request, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post, Request, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { FeesService, type PaymentProofUpload } from './fees.service.js';
+import { assertFileSignature } from '../storage/file-validation.js';
 
-const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif', 'image/avif', 'image/bmp']);
+const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const maxProofSize = 5 * 1024 * 1024;
 
 @Controller('fees')
@@ -32,7 +33,7 @@ export class FeesController {
       callback(null, true);
     },
   }))
-  submitPaymentProof(@Param('invoiceId') invoiceId: string, @Body() body: any, @UploadedFiles() files: PaymentProofUpload[] | undefined, @Request() req: any) {
+  submitPaymentProof(@Param('invoiceId', new ParseUUIDPipe()) invoiceId: string, @Body() body: any, @UploadedFiles() files: PaymentProofUpload[] | undefined, @Request() req: any) {
     if (!files?.length) throw new BadRequestException('Attach at least one payment screenshot or PDF.');
     if (files.reduce((sum, file) => sum + file.size, 0) > maxProofSize) {
       throw new BadRequestException('The combined upload size must be 5 MB or less.');
@@ -41,6 +42,7 @@ export class FeesController {
     if ((hasPdf && files.length !== 1) || (!hasPdf && files.length > 2)) {
       throw new BadRequestException('Attach one PDF or up to two photos, not a combination.');
     }
+    files.forEach(assertFileSignature);
     return this.feesService.submitPaymentProof(invoiceId, req.user, body, files);
   }
 }

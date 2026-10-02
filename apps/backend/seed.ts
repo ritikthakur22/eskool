@@ -4,10 +4,12 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  const rawPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!rawPassword || rawPassword.length < 12) throw new Error('SEED_ADMIN_PASSWORD must be set to a 12+ character development-only password.');
   const users = await prisma.user.findMany();
   
   if (users.length === 0) {
-    const password = await bcrypt.hash('password123', 10);
+    const password = await bcrypt.hash(rawPassword, 10);
     const schools = await prisma.school.findMany();
     const school = schools[0] || await prisma.school.create({
       data: {
@@ -24,7 +26,7 @@ async function main() {
         schoolId: school.id,
       }
     });
-    console.log('Created admin:', admin.email, 'password123');
+    console.log('Created development admin:', admin.email);
   } else {
     for (const u of users) {
       console.log(`Role: ${u.role}, Email: ${u.email}`);

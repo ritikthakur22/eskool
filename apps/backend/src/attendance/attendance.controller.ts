@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
 import { AttendanceService } from './attendance.service.js';
 import { MarkAttendanceDto } from './dto/attendance.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
@@ -19,7 +19,7 @@ export class AttendanceController {
 
   @Get('student/:id')
   async getStudentAttendance(
-    @Param('id') studentId: string,
+    @Param('id', new ParseUUIDPipe()) studentId: string,
     @Query('month') month?: string,
     @Query('year') year?: string,
     @Request() req?: any

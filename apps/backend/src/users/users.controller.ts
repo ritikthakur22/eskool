@@ -6,6 +6,7 @@ import { Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
+import { assertFileSignature } from '../storage/file-validation.js';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -47,6 +48,7 @@ export class UsersController {
   }))
   updateProfilePhoto(@UploadedFile() file: { buffer: Buffer; mimetype: string } | undefined, @Request() req: any) {
     if (!file) throw new BadRequestException('Choose a profile photo to upload.');
+    assertFileSignature(file);
     return this.usersService.updateProfilePhoto(req.user.id, file);
   }
 
@@ -85,7 +87,7 @@ export class UsersController {
       ...([Role.ADMIN, Role.SUPER_ADMIN].includes(targetRole) ? { adminProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Admin', department: data.department } } } : {}),
     });
 
-    const { password, ...result } = user;
+    const { password: _password, ...result } = user;
     return result;
   }
 }

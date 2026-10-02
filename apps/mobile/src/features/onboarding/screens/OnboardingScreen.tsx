@@ -1,6 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useState, useRef } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, FlatList, Dimensions } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../../../core/theme/ThemeContext';
@@ -47,8 +48,13 @@ export default function OnboardingScreen({ navigation }: Props) {
     if (currentIndex < ONBOARDING_DATA.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
     } else {
-      navigation.replace('Login');
+      completeOnboarding();
     }
+  };
+
+  const completeOnboarding = async () => {
+    await SecureStore.setItemAsync('onboarding_complete', 'true');
+    navigation.replace('Login');
   };
 
   const renderItem = ({ item }: { item: any }) => {
@@ -73,7 +79,7 @@ export default function OnboardingScreen({ navigation }: Props) {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.replace('Login')}>
+        <TouchableOpacity onPress={completeOnboarding}>
           <Text style={[styles.skipText, { color: colors.subText }]}>Skip</Text>
         </TouchableOpacity>
       </View>

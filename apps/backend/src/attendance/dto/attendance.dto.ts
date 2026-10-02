@@ -1,9 +1,10 @@
-import { IsString, IsNotEmpty, IsDateString, IsEnum, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString, IsEnum, IsOptional, IsUUID, MaxLength } from 'class-validator';
 import { AttendanceStatus } from '@prisma/client';
 
 export class MarkAttendanceDto {
   @IsString()
   @IsNotEmpty()
+  @IsUUID()
   studentId: string;
 
   @IsDateString()
@@ -16,9 +17,11 @@ export class MarkAttendanceDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(120)
   subject?: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(1000)
   remarks?: string;
 }

@@ -29,7 +29,7 @@ jobs:
           java-version: '17'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build Android APK
         working-directory: ./apps/mobile/android

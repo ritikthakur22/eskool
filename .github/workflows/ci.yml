@@ -26,10 +26,16 @@ jobs:
           cache-dependency-path: ./apps/backend/package-lock.json
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci --ignore-scripts
 
       - name: Generate Prisma Client
         run: npx prisma generate
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+
+      - name: Verify lockfile is reproducible
+        run: git diff --exit-code -- package-lock.json
 
       - name: Run Build
         run: npm run build
@@ -56,7 +62,7 @@ jobs:
           cache-dependency-path: ./apps/mobile/package-lock.json
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
 
       - name: TypeScript Check
         run: npx tsc --noEmit

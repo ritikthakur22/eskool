@@ -3,10 +3,11 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { CloudinaryService } from '../storage/cloudinary.service.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService, private readonly cloudinary: CloudinaryService) {}
+  constructor(private prisma: PrismaService, private readonly cloudinary: CloudinaryService, private readonly audit: AuditService) {}
 
   async findByEmail(email: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { email } });
@@ -32,11 +33,13 @@ export class UsersService {
     }
     if (user.role === 'TEACHER') {
       const [profile] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`SELECT "firstName", "lastName", "subjects" FROM "TeacherProfile" WHERE "userId" = ${userId} LIMIT 1`);
-      return { ...userDetails, ...(profile || {}), profilePictureUrl };
+      if (!profile) return { ...userDetails, profilePictureUrl };
+      return { ...userDetails, ...profile, profilePictureUrl };
     }
     if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
       const [profile] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`SELECT "firstName", "lastName", "department" FROM "AdminProfile" WHERE "userId" = ${userId} LIMIT 1`);
-      return { ...userDetails, ...(profile || {}), profilePictureUrl };
+      if (!profile) return { ...userDetails, profilePictureUrl };
+      return { ...userDetails, ...profile, profilePictureUrl };
     }
     return { ...userDetails, profilePictureUrl };
   }
@@ -110,7 +113,12 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { password: true } });
     if (!user) throw new NotFoundException('User not found');
     if (!(await bcrypt.compare(currentPassword, user.password))) throw new UnauthorizedException('Current password is incorrect');
-    await this.prisma.user.update({ where: { id: userId }, data: { password: await bcrypt.hash(newPassword, 10) } });
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId }, data: { password: passwordHash, tokenVersion: { increment: 1 } } }),
+      this.prisma.authSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+    ]);
+    void this.audit.record({ action: 'PASSWORD_CHANGED', entity: 'User', entityId: userId, userId });
     return { success: true };
   }
 

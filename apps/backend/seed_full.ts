@@ -4,6 +4,15 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
+  const rawPasswords = process.env.DEMO_SEED_PASSWORDS_JSON;
+  if (!rawPasswords) throw new Error('DEMO_SEED_PASSWORDS_JSON must be set for the demo seed; refusing to use source-controlled passwords.');
+  let passwords: Record<string, string>;
+  try { passwords = JSON.parse(rawPasswords); } catch { throw new Error('DEMO_SEED_PASSWORDS_JSON must be valid JSON.'); }
+  const passwordFor = (email: string) => {
+    const password = passwords[email];
+    if (!password || password.length < 12) throw new Error(`Missing or weak demo password for ${email}.`);
+    return password;
+  };
   const school = await prisma.school.findFirst() || await prisma.school.create({ data: { name: 'Demo eSkool', address: '123 Test St' } });
   
   let year = await prisma.academicYear.findFirst();
@@ -23,27 +32,27 @@ async function main() {
   let sub = await prisma.subject.findFirst({ where: { code: 'GEN101' } }) || await prisma.subject.create({ data: { name: 'General', code: 'GEN101', schoolId: school.id } });
 
   const accounts = [
-    { email: 'superadmin@eskool.com', pass: '5PWa-hkB1LQzZFpIvEFf', role: Role.SUPER_ADMIN, name: 'Super Admin', section: null },
-    { email: 'admin1@eskool.com', pass: '7IQfwMK6AbW3FKj4MzKO', role: Role.ADMIN, name: 'Admin 1', section: null },
-    { email: 'admin2@eskool.com', pass: 'VVZ7BV9hFgfjrFOnV0iv', role: Role.ADMIN, name: 'Admin 2', section: null },
-    { email: 'teacher1@eskool.com', pass: '8uisHMgShYLCOAZkB64S', role: Role.TEACHER, name: 'Teacher 1', section: null },
-    { email: 'student10a1@eskool.com', pass: 'nvlfPKpY2NGorf6r874L', role: Role.STUDENT, name: 'Student 10A1', section: s10a },
-    { email: 'student10a2@eskool.com', pass: 'LxbSyVx6buG5FaJlftom', role: Role.STUDENT, name: 'Student 10A2', section: s10a },
-    { email: 'student11a1@eskool.com', pass: 'yAJUkncQD2jiMzcuJV6e', role: Role.STUDENT, name: 'Student 11A1', section: s11a },
-    { email: 'student11a2@eskool.com', pass: '818dOl3_VY4w8DxO1AxF', role: Role.STUDENT, name: 'Student 11A2', section: s11a },
-    { email: 'student11a3@eskool.com', pass: '1Yp6rHJm_rB0SlazcVr9', role: Role.STUDENT, name: 'Student 11A3', section: s11a },
-    { email: 'student12a1@eskool.com', pass: 'tz7XqNO3A9g1yugV5Z2K', role: Role.STUDENT, name: 'Student 12A1', section: s12a },
-    { email: 'student12a2@eskool.com', pass: 'eVULpqxOrCJzDiYR70oh', role: Role.STUDENT, name: 'Student 12A2', section: s12a },
-    { email: 'student12a3@eskool.com', pass: 'CcZqP0UsXjwexuLn6aXu', role: Role.STUDENT, name: 'Student 12A3', section: s12a },
-    { email: 'student12b1@eskool.com', pass: 'dC-kHVE3N9YRyJ2JXUxD', role: Role.STUDENT, name: 'Student 12B1', section: s12b },
-    { email: 'student12b2@eskool.com', pass: 'VvEKN7zqoZ_kWiHqF2Gn', role: Role.STUDENT, name: 'Student 12B2', section: s12b },
+    { email: 'superadmin@eskool.com', role: Role.SUPER_ADMIN, name: 'Super Admin', section: null },
+    { email: 'admin1@eskool.com', role: Role.ADMIN, name: 'Admin 1', section: null },
+    { email: 'admin2@eskool.com', role: Role.ADMIN, name: 'Admin 2', section: null },
+    { email: 'teacher1@eskool.com', role: Role.TEACHER, name: 'Teacher 1', section: null },
+    { email: 'student10a1@eskool.com', role: Role.STUDENT, name: 'Student 10A1', section: s10a },
+    { email: 'student10a2@eskool.com', role: Role.STUDENT, name: 'Student 10A2', section: s10a },
+    { email: 'student11a1@eskool.com', role: Role.STUDENT, name: 'Student 11A1', section: s11a },
+    { email: 'student11a2@eskool.com', role: Role.STUDENT, name: 'Student 11A2', section: s11a },
+    { email: 'student11a3@eskool.com', role: Role.STUDENT, name: 'Student 11A3', section: s11a },
+    { email: 'student12a1@eskool.com', role: Role.STUDENT, name: 'Student 12A1', section: s12a },
+    { email: 'student12a2@eskool.com', role: Role.STUDENT, name: 'Student 12A2', section: s12a },
+    { email: 'student12a3@eskool.com', role: Role.STUDENT, name: 'Student 12A3', section: s12a },
+    { email: 'student12b1@eskool.com', role: Role.STUDENT, name: 'Student 12B1', section: s12b },
+    { email: 'student12b2@eskool.com', role: Role.STUDENT, name: 'Student 12B2', section: s12b },
   ];
 
   for (const acc of accounts) {
     let u = await prisma.user.findUnique({ where: { email: acc.email } });
     
     if (!u) {
-      const pw = await bcrypt.hash(acc.pass, 10);
+      const pw = await bcrypt.hash(passwordFor(acc.email), 10);
       u = await prisma.user.create({
         data: {
           email: acc.email,
@@ -53,7 +62,7 @@ async function main() {
         }
       });
     } else {
-        const pw = await bcrypt.hash(acc.pass, 10);
+        const pw = await bcrypt.hash(passwordFor(acc.email), 10);
         await prisma.user.update({ where: { id: u.id }, data: { password: pw } });
     }
 

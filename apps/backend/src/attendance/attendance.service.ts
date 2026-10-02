@@ -33,7 +33,12 @@ export class AttendanceService {
     }
     const student = await this.prisma.user.findFirst({ where: { id: studentId, schoolId: actor.schoolId, role: Role.STUDENT }, select: { id: true } });
     if (!student) throw new NotFoundException('Student not found in your school.');
-    let whereClause: Prisma.AttendanceWhereInput = { studentId: student.id };
+    const whereClause: Prisma.AttendanceWhereInput = { studentId: student.id, schoolId: actor.schoolId };
+    if (actor.role === Role.TEACHER) {
+      const enrollments = await this.prisma.enrollment.findMany({ where: { studentId: student.id }, select: { sectionId: true } });
+      const assignments = await this.prisma.teacherAssignment.findMany({ where: { teacherId: actor.id, sectionId: { in: enrollments.map(enrollment => enrollment.sectionId) } }, select: { id: true } });
+      if (!assignments.length) throw new ForbiddenException('You are not assigned to this student.');
+    }
     
     if (month && year) {
       const startDate = new Date(year, month - 1, 1);

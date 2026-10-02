@@ -1,12 +1,12 @@
-import { ConflictException, Injectable, UnauthorizedException, BadRequestException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { ConflictException, Injectable, UnauthorizedException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UsersService } from '../users/users.service.js';
 import * as bcrypt from 'bcryptjs';
 import { Role } from '@prisma/client';
 import { OAuth2Client } from 'google-auth-library';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { createHash, randomBytes } from 'node:crypto';
+import { AuditService } from '../audit/audit.service.js';
 
 const client = new OAuth2Client({
   clientId: '615870071152-rgua2dekn9bk7s537ippt172u9ktgcgr.apps.googleusercontent.com',
@@ -16,15 +16,18 @@ const client = new OAuth2Client({
 @Injectable()
 export class AuthService {
   constructor(
-    private usersService: UsersService,
     private jwtService: JwtService,
     private prisma: PrismaService,
+    private audit: AuditService,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.usersService.findByEmail(email.trim().toLowerCase());
-    if (user && await bcrypt.compare(pass, user.password)) {
-      const { password, ...result } = user;
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.trim().toLowerCase() },
+      include: { school: { select: { status: true } } },
+    });
+    if (user && user.status === 'ACTIVE' && user.school.status === 'ACTIVE' && await bcrypt.compare(pass, user.password)) {
+      const { password: _password, ...result } = user;
       return result;
     }
     return null;
@@ -33,8 +36,10 @@ export class AuthService {
   async validateGoogleUser(idToken: string): Promise<any> {
     try {
       const identity = await this.verifyGoogleIdentity(idToken);
-      const [user] = await this.prisma.$queryRaw<Array<{ id: string; email: string; role: Role; schoolId: string }>>(Prisma.sql`
-        SELECT "id", "email", "role", "schoolId" FROM "User" WHERE "googleSubject" = ${identity.subject} LIMIT 1
+      const [user] = await this.prisma.$queryRaw<Array<{ id: string; email: string; role: Role; schoolId: string; tokenVersion: number }>>(Prisma.sql`
+        SELECT u."id", u."email", u."role", u."schoolId", u."tokenVersion"
+        FROM "User" u JOIN "School" s ON s."id" = u."schoolId"
+        WHERE u."googleSubject" = ${identity.subject} AND u."status" = 'ACTIVE' AND s."status" = 'ACTIVE' LIMIT 1
       `);
       if (!user) throw new UnauthorizedException('This Google account is not linked. Sign in with your school email and password, then link Google in Settings.');
       return user;
@@ -90,28 +95,42 @@ export class AuthService {
   }
 
   async login(user: any) {
-    return this.createSession(user);
+    const session = await this.createSession(user);
+    void this.audit.record({ action: 'LOGIN_SUCCESS', entity: 'User', entityId: user.id, userId: user.id, schoolId: user.schoolId });
+    return session;
   }
 
   async refreshSession(refreshToken: string) {
-    const [session] = await this.prisma.$queryRaw<Array<{ id: string; userId: string; tokenHash: string; expiresAt: Date; revokedAt: Date | null; email: string; role: Role; schoolId: string }>>(Prisma.sql`
-      SELECT s."id", s."userId", s."tokenHash", s."expiresAt", s."revokedAt", u."email", u."role", u."schoolId"
-      FROM "AuthSession" s JOIN "User" u ON u."id" = s."userId"
+    const [session] = await this.prisma.$queryRaw<Array<{ id: string; userId: string; tokenHash: string; expiresAt: Date; revokedAt: Date | null; email: string; role: Role; schoolId: string; tokenVersion: number }>>(Prisma.sql`
+      SELECT s."id", s."userId", s."tokenHash", s."expiresAt", s."revokedAt", u."email", u."role", u."schoolId", u."tokenVersion"
+      FROM "AuthSession" s JOIN "User" u ON u."id" = s."userId" JOIN "School" sc ON sc."id" = u."schoolId"
       WHERE s."tokenHash" = ${this.hashRefreshToken(refreshToken)} LIMIT 1
     `);
     if (!session || session.revokedAt || session.expiresAt <= new Date()) throw new UnauthorizedException('Your saved sign-in expired. Please sign in with your password again.');
-    const next = await this.createSession({ id: session.userId, email: session.email, role: session.role, schoolId: session.schoolId });
+    const [activeUser] = await this.prisma.$queryRaw<Array<{ status: string; schoolStatus: string }>>(Prisma.sql`
+      SELECT u."status", sc."status" AS "schoolStatus"
+      FROM "User" u JOIN "School" sc ON sc."id" = u."schoolId"
+      WHERE u."id" = ${session.userId} LIMIT 1
+    `);
+    if (!activeUser || activeUser.status !== 'ACTIVE' || activeUser.schoolStatus !== 'ACTIVE') throw new UnauthorizedException('This account or school is inactive.');
+    const next = await this.createSession({ id: session.userId, email: session.email, role: session.role, schoolId: session.schoolId, tokenVersion: session.tokenVersion });
     const [replacement] = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT "id" FROM "AuthSession" WHERE "tokenHash" = ${this.hashRefreshToken(next.refresh_token)} LIMIT 1`);
     const revoked = await this.prisma.$executeRaw(Prisma.sql`UPDATE "AuthSession" SET "revokedAt" = NOW(), "lastUsedAt" = NOW(), "replacedById" = ${replacement?.id || null} WHERE "id" = ${session.id} AND "revokedAt" IS NULL`);
     if (!revoked) {
       await this.prisma.$executeRaw(Prisma.sql`UPDATE "AuthSession" SET "revokedAt" = NOW() WHERE "id" = ${replacement!.id}`);
       throw new UnauthorizedException('This saved sign-in was already used. Please sign in again.');
     }
+    void this.audit.record({ action: 'REFRESH_ROTATED', entity: 'AuthSession', entityId: session.id, userId: session.userId, schoolId: session.schoolId });
     return next;
   }
 
   async logout(refreshToken: string) {
+    const [session] = await this.prisma.$queryRaw<Array<{ id: string; userId: string; schoolId: string }>>(Prisma.sql`
+      SELECT s."id", s."userId", u."schoolId" FROM "AuthSession" s JOIN "User" u ON u."id" = s."userId"
+      WHERE s."tokenHash" = ${this.hashRefreshToken(refreshToken)} AND s."revokedAt" IS NULL LIMIT 1
+    `);
     await this.prisma.$executeRaw(Prisma.sql`UPDATE "AuthSession" SET "revokedAt" = NOW() WHERE "tokenHash" = ${this.hashRefreshToken(refreshToken)} AND "revokedAt" IS NULL`);
+    if (session) void this.audit.record({ action: 'LOGOUT', entity: 'AuthSession', entityId: session.id, userId: session.userId, schoolId: session.schoolId });
     return { success: true };
   }
 
@@ -120,7 +139,7 @@ export class AuthService {
   }
 
   private async createSession(user: any) {
-    const payload = { email: user.email, sub: user.id, role: user.role, schoolId: user.schoolId };
+    const payload = { email: user.email, sub: user.id, role: user.role, schoolId: user.schoolId, tokenVersion: user.tokenVersion ?? 0 };
     const refreshToken = randomBytes(48).toString('base64url');
     await this.prisma.$executeRaw(Prisma.sql`INSERT INTO "AuthSession" ("id", "userId", "tokenHash", "expiresAt") VALUES (${randomBytes(16).toString('hex')}, ${user.id}, ${this.hashRefreshToken(refreshToken)}, ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)})`);
     return {

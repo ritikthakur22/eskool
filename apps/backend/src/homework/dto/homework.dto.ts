@@ -1,12 +1,14 @@
-import { IsString, IsNotEmpty, IsDateString, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString, IsOptional, MaxLength, IsUUID } from 'class-validator';
 
 export class CreateHomeworkDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(120)
   title: string;
 
   @IsString()
   @IsNotEmpty()
+  @MaxLength(5000)
   description: string;
 
   @IsDateString()
@@ -15,20 +17,24 @@ export class CreateHomeworkDto {
 
   @IsString()
   @IsNotEmpty()
+  @IsUUID()
   subjectId: string;
 
   @IsString()
-  @IsOptional()
-  sectionId?: string;
+  @IsNotEmpty()
+  @IsUUID()
+  sectionId: string;
 }
 
 export class SubmitHomeworkDto {
   @IsString()
   @IsNotEmpty()
+  @IsUUID()
   homeworkId: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(5000)
   content?: string;
 
   @IsString()
