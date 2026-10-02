@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsDateString, IsOptional, MaxLength, IsUUID, IsUrl } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString, IsOptional, MaxLength, IsUUID, IsUrl, Matches } from 'class-validator';
 
 export class CreateHomeworkDto {
   @IsString()
@@ -38,6 +38,7 @@ export class SubmitHomeworkDto {
   content?: string;
 
   @IsUrl({ protocols: ['https'], require_protocol: true })
+  @Matches(/^https:\/\/res\.cloudinary\.com\/[^/]+\/(?:image|raw)\/upload\//, { message: 'Homework attachments must use the school media storage.' })
   @IsOptional()
   fileUrl?: string;
 }

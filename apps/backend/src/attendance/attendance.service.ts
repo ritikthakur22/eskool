@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Attendance, Role } from '@prisma/client';
 import { CorrectAttendanceDto, MarkAttendanceDto } from './dto/attendance.dto.js';
@@ -20,10 +20,16 @@ export class AttendanceService {
     }
 
     const dateObj = new Date(data.date);
-    const attendance = await this.prisma.attendance.create({ data: {
-      studentId: student.id, teacherId: actor.id,
-      date: dateObj, status: data.status, subject: data.subject, remarks: data.remarks, schoolId: actor.schoolId
-    } });
+    let attendance: Attendance;
+    try {
+      attendance = await this.prisma.attendance.create({ data: {
+        studentId: student.id, teacherId: actor.id,
+        date: dateObj, status: data.status, subject: data.subject, remarks: data.remarks, schoolId: actor.schoolId
+      } });
+    } catch (error: any) {
+      if (error?.code === 'P2002') throw new ConflictException('Attendance has already been recorded for this student and date. Use correction instead.');
+      throw error;
+    }
     void this.audit.record({ action: 'ATTENDANCE_MARKED', entity: 'Attendance', entityId: attendance.id, userId: actor.id, schoolId: actor.schoolId, details: { studentId: student.id, status: data.status } });
     return attendance;
   }

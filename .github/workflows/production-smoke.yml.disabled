@@ -19,6 +19,7 @@ jobs:
             exit 1
           fi
           curl --fail --silent --show-error "$API_BASE_URL/health" > /dev/null
+          curl --fail --silent --show-error "$API_BASE_URL/ready" > /dev/null
 
           invalid_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
             -H 'Content-Type: application/json' \
@@ -32,13 +33,13 @@ jobs:
             -H 'Content-Type: application/json' \
             --data "$(jq -n --arg email "$SMOKE_EMAIL" --arg password "$SMOKE_PASSWORD" '{email:$email,password:$password}')" \
             "$API_BASE_URL/auth/login" > "$response_file"
-          access_token=$(jq -er '.accessToken' "$response_file")
-          refresh_token=$(jq -er '.refreshToken' "$response_file")
+          access_token=$(jq -er '.access_token' "$response_file")
+          refresh_token=$(jq -er '.refresh_token' "$response_file")
 
           curl --fail --silent --show-error \
             -H "Authorization: Bearer $access_token" \
             "$API_BASE_URL/auth/me" > /dev/null
           curl --fail --silent --show-error \
             -H 'Content-Type: application/json' \
-            --data "$(jq -n --arg refreshToken "$refresh_token" '{refreshToken:$refreshToken}')" \
+            --data "$(jq -n --arg refresh_token "$refresh_token" '{refresh_token:$refresh_token}')" \
             "$API_BASE_URL/auth/refresh" > /dev/null

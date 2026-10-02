@@ -24,26 +24,16 @@ export class AppController {
   @Get('ready')
   async getReadiness() {
     try {
-      const requiredColumns = await this.prisma.$queryRaw<Array<{ '?column?': number }>>`
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_schema = current_schema()
-          AND table_name = 'User'
-          AND column_name IN ('googleSubject', 'profilePictureUrl', 'tokenVersion')
-        GROUP BY table_name
-        HAVING COUNT(*) = 3
+      const [schema] = await this.prisma.$queryRaw<Array<{ userReady: boolean; sessionsReady: boolean; auditReady: boolean }>>`
+        SELECT
+          to_regclass('"User"') IS NOT NULL
+          AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('"User"') AND attname = 'googleSubject' AND NOT attisdropped)
+          AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('"User"') AND attname = 'profilePictureUrl' AND NOT attisdropped)
+          AND EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = to_regclass('"User"') AND attname = 'tokenVersion' AND NOT attisdropped) AS "userReady",
+          to_regclass('"AuthSession"') IS NOT NULL AS "sessionsReady",
+          to_regclass('"AuditLog"') IS NOT NULL AS "auditReady"
       `;
-      if (!requiredColumns.length) throw new Error('required auth columns are missing');
-
-      const requiredTables = await this.prisma.$queryRaw<Array<{ '?column?': number }>>`
-        SELECT 1
-        FROM information_schema.tables
-        WHERE table_schema = current_schema()
-          AND table_name IN ('AuthSession', 'AuditLog')
-        GROUP BY table_schema
-        HAVING COUNT(*) = 2
-      `;
-      if (!requiredTables.length) throw new Error('required tables are missing');
+      if (!schema?.userReady || !schema.sessionsReady || !schema.auditReady) throw new Error('required database schema is missing');
       return { status: 'ok', database: 'ok', schema: 'ok' };
     } catch {
       throw new ServiceUnavailableException('The school database schema is not ready.');
