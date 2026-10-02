@@ -179,20 +179,20 @@ This repository is for the development team. These are disposable development ac
 
 | Role / class | Login ID | Password |
 | :--- | :--- | :--- |
-| Super Admin | `superadmin@eskool.com` | `5PWa-hkB1LQzZFpIvEFf` |
-| Admin | `admin1@eskool.com` | `7IQfwMK6AbW3FKj4MzKO` |
-| Admin | `admin2@eskool.com` | `VVZ7BV9hFgfjrFOnV0iv` |
-| Teacher | `teacher1@eskool.com` | `8uisHMgShYLCOAZkB64S` |
-| Class 10-A | `student10a1@eskool.com` | `nvlfPKpY2NGorf6r874L` |
-| Class 10-A | `student10a2@eskool.com` | `LxbSyVx6buG5FaJlftom` |
-| Class 11-A | `student11a1@eskool.com` | `yAJUkncQD2jiMzcuJV6e` |
-| Class 11-A | `student11a2@eskool.com` | `818dOl3_VY4w8DxO1AxF` |
-| Class 11-A | `student11a3@eskool.com` | `1Yp6rHJm_rB0SlazcVr9` |
-| Class 12-A | `student12a1@eskool.com` | `tz7XqNO3A9g1yugV5Z2K` |
-| Class 12-A | `student12a2@eskool.com` | `eVULpqxOrCJzDiYR70oh` |
-| Class 12-A | `student12a3@eskool.com` | `CcZqP0UsXjwexuLn6aXu` |
-| Class 12-B | `student12b1@eskool.com` | `dC-kHVE3N9YRyJ2JXUxD` |
-| Class 12-B | `student12b2@eskool.com` | `VvEKN7zqoZ_kWiHqF2Gn` |
+| Super Admin | `superadmin@eskool.com` | <REDACTED> |
+| Admin | `admin1@eskool.com` | <REDACTED> |
+| Admin | `admin2@eskool.com` | <REDACTED> |
+| Teacher | `teacher1@eskool.com` | <REDACTED> |
+| Class 10-A | `student10a1@eskool.com` | <REDACTED> |
+| Class 10-A | `student10a2@eskool.com` | <REDACTED> |
+| Class 11-A | `student11a1@eskool.com` | <REDACTED> |
+| Class 11-A | `student11a2@eskool.com` | <REDACTED> |
+| Class 11-A | `student11a3@eskool.com` | <REDACTED> |
+| Class 12-A | `student12a1@eskool.com` | <REDACTED> |
+| Class 12-A | `student12a2@eskool.com` | <REDACTED> |
+| Class 12-A | `student12a3@eskool.com` | <REDACTED> |
+| Class 12-B | `student12b1@eskool.com` | <REDACTED> |
+| Class 12-B | `student12b2@eskool.com` | <REDACTED> |
 
 Download links and release artifacts should be added only after verifying that the corresponding GitHub release and signed build exist.
 

@@ -1,53 +1,37 @@
 {
   "expo": {
-    "name": "E-Skool",
-    "slug": "e-skool",
-    "version": "1.0.0",
-    "scheme": "eskool",
+    "name": "eSkool",
+    "slug": "eSkool",
+    "version": "0.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.eskool.crdy",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/adaptive-icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/splash.png",
-          "backgroundColor": "#ffffff"
-        }
-      ],
-      "expo-status-bar",
       "expo-secure-store",
-      "expo-font",
       "@react-native-firebase/app",
       "@react-native-google-signin/google-signin",
       "expo-document-picker",
       "expo-sharing"
-    ],
-    "experiments": {
-      "tsconfigPaths": true
-    },
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.eskool.app"
-    },
-    "android": {
-      "package": "com.eskool.crdy",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "googleServicesFile": "./google-services.json"
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "45953d1c-6ce6-4c87-9e21-afb83aa09954"
-      }
-    },
-    "owner": "e-skool"
+    ]
   }
 }

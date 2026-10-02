@@ -50,8 +50,7 @@ export class AuthController {
 
   @Post('google/link')
   @UseGuards(JwtAuthGuard)
-  async linkGoogleAccount(@Body() body: any, @Request() req: any) {
-    if (typeof body?.idToken !== 'string' || !body.idToken) throw new BadRequestException('idToken is required');
+  async linkGoogleAccount(@Body() body: GoogleLoginDto, @Request() req: any) {
     return this.authService.linkGoogleAccount(req.user.id, body.idToken);
   }
 

@@ -1,1 +1,0 @@
-// i want each any every data types coming from the backend, don't just write any data type.

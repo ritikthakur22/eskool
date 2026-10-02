@@ -1,1 +1,0 @@
-// use tankstack query to mutation, or query the data
