@@ -35,7 +35,7 @@ export class AuthService {
       return null;
     } catch (error) {
       console.error('auth_login_lookup_failed', error);
-      throw new ServiceUnavailableException('Authentication service is temporarily unavailable. Please try again later.');
+      throw new ServiceUnavailableException('Authentication service is temporarily unavailable: ' + (error instanceof Error ? error.message : String(error)));
     }
   }
 
