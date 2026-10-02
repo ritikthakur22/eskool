@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -15,10 +15,19 @@ import { AuditModule } from './audit/audit.module.js';
 import { AcademicsModule } from './academics/academics.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { ChatModule } from './chat/chat.module.js';
+import { ContextMiddleware } from './context/context.middleware.js';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
-  imports: [PrismaModule, StorageModule, AuditModule, UsersModule, AuthModule, AttendanceModule, NoticesModule, HomeworkModule, ExamsModule, RoutineModule, FeesModule, AcademicsModule, DashboardModule, ChatModule],
+  imports: [
+    ScheduleModule.forRoot(),
+    PrismaModule, StorageModule, AuditModule, UsersModule, AuthModule, AttendanceModule, NoticesModule, HomeworkModule, ExamsModule, RoutineModule, FeesModule, AcademicsModule, DashboardModule, ChatModule
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(ContextMiddleware).forRoutes('*');
+  }
+}

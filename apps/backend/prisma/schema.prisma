@@ -393,12 +393,24 @@ model AuditLog {
   details   Json?
   ipAddress String?
   userAgent String?
+  requestId String?
   createdAt DateTime @default(now())
   school    School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([schoolId, createdAt])
   @@index([userId, createdAt])
+}
+
+model AuditOutbox {
+  id        String   @id @default(uuid())
+  payload   Json
+  status    String   @default("PENDING") // PENDING, PROCESSED, FAILED
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
 }
 
 enum Role {

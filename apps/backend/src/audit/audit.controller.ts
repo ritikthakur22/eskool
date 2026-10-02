@@ -17,4 +17,15 @@ export class AuditController {
     const parsedOffset = Number.parseInt(offset || '', 10);
     return this.audit.list(req.user.schoolId, { limit: Number.isInteger(parsedLimit) ? parsedLimit : 100, offset: Number.isInteger(parsedOffset) ? parsedOffset : 0, action, entity, userId, from, to });
   }
+
+  @Get('export')
+  async exportLogs(@Query('format') format: string, @Request() req: any) {
+    const fmt = format === 'csv' ? 'csv' : 'json';
+    return this.audit.exportLogs(req.user.schoolId, fmt);
+  }
+
+  @Get('failures')
+  async getFailures() {
+    return this.audit.getFailures();
+  }
 }
