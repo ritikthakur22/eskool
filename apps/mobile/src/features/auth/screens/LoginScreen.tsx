@@ -1,5 +1,6 @@
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -171,9 +172,9 @@ export default function LoginScreen({ navigation }: Props) {
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={styles.biometricOption} onPress={() => setKeepSignedIn(value => !value)} disabled={loading} accessibilityRole="checkbox" accessibilityState={{ checked: keepSignedIn }}>
-              <View style={[styles.checkbox, keepSignedIn && styles.checkboxActive]}>{keepSignedIn && <Ionicons name="checkmark" size={14} color="#fff" />}</View>
-              <Text style={styles.optionText}>Keep me signed in on this device</Text>
-            </TouchableOpacity>
+            <View style={[styles.checkbox, keepSignedIn && styles.checkboxActive]}>{keepSignedIn && <Ionicons name="checkmark" size={14} color="#fff" />}</View>
+            <Text style={styles.optionText}>Keep me signed in on this device</Text>
+          </TouchableOpacity>
           {!!error && <Text style={styles.error}>{error}</Text>}
           <TouchableOpacity style={[styles.primaryButton, loading && styles.disabled]} onPress={handleLogin} disabled={loading}>
             {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Log in</Text>}
@@ -202,5 +203,5 @@ const makeStyles = (colors: any) => StyleSheet.create({
   inputBox: { height: 56, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, marginBottom: 12 }, input: { flex: 1, color: colors.text, fontSize: 15 },
   biometricOption: { flexDirection: 'row', alignItems: 'center', marginVertical: 5 }, checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 1.5, borderColor: colors.border, marginRight: 9, alignItems: 'center', justifyContent: 'center' }, checkboxActive: { backgroundColor: colors.primary, borderColor: colors.primary }, optionText: { color: colors.subText, fontSize: 13, flex: 1 }, error: { color: colors.danger, fontSize: 13, marginTop: 10, lineHeight: 19 },
   primaryButton: { height: 54, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, marginTop: 16 }, disabled: { opacity: 0.65 }, primaryText: { color: '#fff', fontSize: 16, fontWeight: '800' }, forgot: { alignSelf: 'flex-end', marginTop: 14 }, link: { color: colors.primary, fontWeight: '700', fontSize: 13 }, divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 }, line: { flex: 1, height: 1, backgroundColor: colors.border }, or: { color: colors.subText, fontSize: 12 },
-  secondaryButton: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, marginBottom: 10 }, secondaryText: { color: colors.text, fontSize: 14, fontWeight: '700' }, footer: { textAlign: 'center', color: colors.subText, fontSize: 12, marginTop: 22 },
+  secondaryButton: { height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, marginBottom: 10 }, secondaryText: { color: colors.text, fontSize: 14, fontWeight: '700' }, footer: { textAlign: 'center', color: colors.subText, fontSize: 12, marginTop: 0 },
 });

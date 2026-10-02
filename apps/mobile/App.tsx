@@ -39,9 +39,7 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-          <ThemedApp />
-        </SafeAreaView>
+        <ThemedApp />
       </ThemeProvider>
     </SafeAreaProvider>
   );
@@ -52,7 +50,11 @@ function ThemedApp() {
 
   return (
     <>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <StatusBar 
+        style={isDark ? 'light' : 'dark'} 
+        translucent={true} 
+        backgroundColor="transparent" 
+      />
       <NavigationContainer theme={{
         dark: isDark,
         colors: { primary: colors.primary, background: colors.background, card: colors.card, text: colors.text, border: colors.border, notification: colors.danger },
