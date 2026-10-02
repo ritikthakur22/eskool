@@ -31,6 +31,11 @@ import FeedbackScreen from "./src/features/profile/screens/FeedbackScreen";
 import AppInfoScreen from "./src/features/profile/screens/AppInfoScreen";
 import ProfileDetailsScreen from './src/features/profile/screens/ProfileDetailsScreen';
 import FeesScreen from './src/features/fees/screens/FeesScreen';
+import EnrollmentScreen from "./src/features/management/screens/EnrollmentScreen";
+import StaffManagementScreen from './src/features/management/screens/StaffManagementScreen';
+import AcademicManagementScreen from './src/features/management/screens/AcademicManagementScreen';
+import DirectoryScreen from './src/features/directory/screens/DirectoryScreen';
+import AuditLogScreen from './src/features/audit/screens/AuditLogScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -64,7 +69,12 @@ function ThemedApp() {
         <Stack.Screen name="Dashboard" component={DashboardScreen} />
         <Stack.Screen name="Routine" component={RoutineScreen} />
         <Stack.Screen name="Attendance" component={AttendanceScreen} />
+        <Stack.Screen name="Enrollment" component={EnrollmentScreen} />
         <Stack.Screen name="Fees" component={FeesScreen} />
+        <Stack.Screen name="StaffManagement" component={StaffManagementScreen} />
+        <Stack.Screen name="AcademicManagement" component={AcademicManagementScreen} />
+        <Stack.Screen name="Directory" component={DirectoryScreen} />
+        <Stack.Screen name="AuditLogs" component={AuditLogScreen} />
         <Stack.Screen name="Notice" component={NoticeScreen} />
         <Stack.Screen name="Homework" component={HomeworkScreen} />
         <Stack.Screen name="Result" component={ResultScreen} />
