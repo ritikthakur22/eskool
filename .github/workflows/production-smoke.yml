@@ -1,0 +1,44 @@
+name: Production API Smoke Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check API health and authentication flow
+        env:
+          API_BASE_URL: ${{ secrets.PRODUCTION_API_BASE_URL }}
+          SMOKE_EMAIL: ${{ secrets.SMOKE_TEST_EMAIL }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_TEST_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$API_BASE_URL" ] || [ -z "$SMOKE_EMAIL" ] || [ -z "$SMOKE_PASSWORD" ]; then
+            echo "Configure PRODUCTION_API_BASE_URL, SMOKE_TEST_EMAIL, and SMOKE_TEST_PASSWORD secrets."
+            exit 1
+          fi
+          curl --fail --silent --show-error "$API_BASE_URL/health" > /dev/null
+
+          invalid_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            --data '{"email":"invalid-smoke-user@example.invalid","password":"invalid-password"}' \
+            "$API_BASE_URL/auth/login")
+          test "$invalid_status" = "401"
+
+          response_file=$(mktemp)
+          trap 'rm -f "$response_file"' EXIT
+          curl --fail --silent --show-error \
+            -H 'Content-Type: application/json' \
+            --data "$(jq -n --arg email "$SMOKE_EMAIL" --arg password "$SMOKE_PASSWORD" '{email:$email,password:$password}')" \
+            "$API_BASE_URL/auth/login" > "$response_file"
+          access_token=$(jq -er '.accessToken' "$response_file")
+          refresh_token=$(jq -er '.refreshToken' "$response_file")
+
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $access_token" \
+            "$API_BASE_URL/auth/me" > /dev/null
+          curl --fail --silent --show-error \
+            -H 'Content-Type: application/json' \
+            --data "$(jq -n --arg refreshToken "$refresh_token" '{refreshToken:$refreshToken}')" \
+            "$API_BASE_URL/auth/refresh" > /dev/null

@@ -17,6 +17,24 @@ export type AuditEvent = {
 export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async list(schoolId: string, limit = 100) {
+    return this.prisma.auditLog.findMany({
+      where: { schoolId },
+      take: Math.min(Math.max(limit, 1), 100),
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        action: true,
+        entity: true,
+        entityId: true,
+        userId: true,
+        details: true,
+        createdAt: true,
+        user: { select: { email: true, role: true } },
+      },
+    });
+  }
+
   async record(event: AuditEvent) {
     // Audit failures must not turn a successful user operation into a 500, but
     // they are still visible to operators for alerting and repair.

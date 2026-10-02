@@ -3,12 +3,13 @@ import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CloudinaryService } from '../storage/cloudinary.service.js';
+import { AuditService } from '../audit/audit.service.js';
 
 export type PaymentProofUpload = { buffer: Buffer; size: number; mimetype: string; originalname: string };
 
 @Injectable()
 export class FeesService {
-  constructor(private readonly prisma: PrismaService, private readonly cloudinary: CloudinaryService) {}
+  constructor(private readonly prisma: PrismaService, private readonly cloudinary: CloudinaryService, private readonly audit: AuditService) {}
 
   async getInvoicesForUser(userId: string, schoolId: string) {
     const invoices = await this.prisma.$queryRaw<Array<{
@@ -74,6 +75,7 @@ export class FeesService {
         `);
       }
     });
+    void this.audit.record({ action: 'PAYMENT_PROOF_SUBMITTED', entity: 'FeePaymentProof', entityId: proofId, userId: user.id, schoolId: user.schoolId, details: { invoiceId, method, amount } });
     return { id: proofId, status: 'PENDING', submittedAt, message: 'Payment proof submitted for school verification.' };
   }
 }

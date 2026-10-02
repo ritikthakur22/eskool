@@ -2,6 +2,10 @@
   "name": "mobile",
   "version": "0.0.5",
   "main": "index.ts",
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10"
+  },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
     "@react-native-firebase/app": "^26.4.0",

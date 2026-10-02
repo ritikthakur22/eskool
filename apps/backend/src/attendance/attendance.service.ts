@@ -2,10 +2,11 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Attendance, Role } from '@prisma/client';
 import { MarkAttendanceDto } from './dto/attendance.dto.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class AttendanceService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private readonly audit: AuditService) {}
 
   async markAttendance(data: MarkAttendanceDto, actor: { id: string; schoolId: string; role: Role }): Promise<Attendance> {
     const student = await this.prisma.user.findFirst({ where: { id: data.studentId, schoolId: actor.schoolId, role: Role.STUDENT }, select: { id: true } });
@@ -19,10 +20,12 @@ export class AttendanceService {
     }
 
     const dateObj = new Date(data.date);
-    return this.prisma.attendance.create({ data: {
+    const attendance = await this.prisma.attendance.create({ data: {
       studentId: student.id, teacherId: actor.role === Role.TEACHER ? actor.id : undefined,
       date: dateObj, status: data.status, subject: data.subject, remarks: data.remarks, schoolId: actor.schoolId
     } });
+    void this.audit.record({ action: 'ATTENDANCE_MARKED', entity: 'Attendance', entityId: attendance.id, userId: actor.id, schoolId: actor.schoolId, details: { studentId: student.id, status: data.status } });
+    return attendance;
   }
 
   async getStudentAttendance(studentId: string, month: number | undefined, year: number | undefined, actor: { id: string; schoolId: string; role: Role }): Promise<Attendance[]> {

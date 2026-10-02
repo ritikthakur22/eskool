@@ -2,14 +2,17 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Notice } from '@prisma/client';
 import { CreateNoticeDto } from './dto/notice.dto.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class NoticesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private readonly audit: AuditService) {}
 
   async createNotice(data: CreateNoticeDto, actor: { id: string; schoolId: string }): Promise<Notice> {
     const dateObj = data.date ? new Date(data.date) : new Date();
-    return this.prisma.notice.create({ data: { title: data.title, content: data.content, category: data.category, date: dateObj, authorId: actor.id, schoolId: actor.schoolId } });
+    const notice = await this.prisma.notice.create({ data: { title: data.title, content: data.content, category: data.category, date: dateObj, authorId: actor.id, schoolId: actor.schoolId } });
+    void this.audit.record({ action: 'NOTICE_CREATED', entity: 'Notice', entityId: notice.id, userId: actor.id, schoolId: actor.schoolId });
+    return notice;
   }
 
   async getAllNotices(category?: string, limit?: number, actor?: { schoolId: string }): Promise<Notice[]> {

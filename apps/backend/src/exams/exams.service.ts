@@ -2,10 +2,11 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Exam, ExamResult, Role } from '@prisma/client';
 import { CreateExamDto, AddExamResultDto } from './dto/exam.dto.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class ExamsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private readonly audit: AuditService) {}
 
   async createExam(data: CreateExamDto, actor: { id: string; schoolId: string; role: Role }): Promise<Exam> {
     const [section, subject] = await Promise.all([
@@ -18,7 +19,9 @@ export class ExamsService {
       if (!assignment) throw new ForbiddenException('You are not assigned to this subject and section.');
     }
     const dateObj = new Date(data.date);
-    return this.prisma.exam.create({ data: { title: data.title, date: dateObj, sectionId: data.sectionId, subjectId: data.subjectId, schoolId: actor.schoolId } });
+    const exam = await this.prisma.exam.create({ data: { title: data.title, date: dateObj, sectionId: data.sectionId, subjectId: data.subjectId, schoolId: actor.schoolId } });
+    void this.audit.record({ action: 'EXAM_CREATED', entity: 'Exam', entityId: exam.id, userId: actor.id, schoolId: actor.schoolId, details: { sectionId: data.sectionId, subjectId: data.subjectId } });
+    return exam;
   }
 
   async addExamResult(data: AddExamResultDto, actor: { id: string; schoolId: string; role: Role }): Promise<ExamResult> {
@@ -33,7 +36,9 @@ export class ExamsService {
     const enrollment = await this.prisma.enrollment.findFirst({ where: { studentId: student.id, sectionId: exam.sectionId }, select: { id: true } });
     if (!enrollment) throw new ForbiddenException('Student is not enrolled in this exam section.');
     if (!Number.isFinite(data.marksObtained) || !Number.isFinite(data.totalMarks) || data.marksObtained < 0 || data.totalMarks <= 0 || data.marksObtained > data.totalMarks) throw new ForbiddenException('Invalid exam marks.');
-    return this.prisma.examResult.create({ data: { examId: data.examId, studentId: student.id, marksObtained: data.marksObtained, totalMarks: data.totalMarks, grade: data.grade, schoolId: actor.schoolId } });
+    const result = await this.prisma.examResult.create({ data: { examId: data.examId, studentId: student.id, marksObtained: data.marksObtained, totalMarks: data.totalMarks, grade: data.grade, schoolId: actor.schoolId } });
+    void this.audit.record({ action: 'EXAM_RESULT_ADDED', entity: 'ExamResult', entityId: result.id, userId: actor.id, schoolId: actor.schoolId, details: { examId: data.examId, studentId: student.id } });
+    return result;
   }
 
   async getStudentResults(studentId: string, actor: { id: string; schoolId: string; role: Role }): Promise<any[]> {

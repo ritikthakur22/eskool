@@ -2,10 +2,11 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Homework, HomeworkSubmission, Role } from '@prisma/client';
 import { CreateHomeworkDto, SubmitHomeworkDto } from './dto/homework.dto.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
 export class HomeworkService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private readonly audit: AuditService) {}
 
   async createHomework(data: CreateHomeworkDto, actor: { id: string; schoolId: string; role: Role }): Promise<Homework> {
     const section = await this.prisma.section.findFirst({ where: { id: data.sectionId, schoolId: actor.schoolId }, select: { id: true } });
@@ -18,7 +19,9 @@ export class HomeworkService {
       if (!assignment) throw new ForbiddenException('You are not assigned to teach this subject for this section.');
     }
     const dueDateObj = new Date(data.dueDate);
-    return this.prisma.homework.create({ data: { title: data.title, description: data.description, dueDate: dueDateObj, subjectId: data.subjectId, sectionId: data.sectionId, teacherId: actor.id, schoolId: actor.schoolId } });
+    const homework = await this.prisma.homework.create({ data: { title: data.title, description: data.description, dueDate: dueDateObj, subjectId: data.subjectId, sectionId: data.sectionId, teacherId: actor.id, schoolId: actor.schoolId } });
+    void this.audit.record({ action: 'HOMEWORK_CREATED', entity: 'Homework', entityId: homework.id, userId: actor.id, schoolId: actor.schoolId, details: { sectionId: data.sectionId, subjectId: data.subjectId } });
+    return homework;
   }
 
   async getHomeworkForClass(sectionId: string, actor: { id: string; schoolId: string; role: Role }): Promise<Homework[]> {
@@ -50,7 +53,9 @@ export class HomeworkService {
     if (!enrollment) throw new ForbiddenException('You are not enrolled in this homework section.');
     const existing = await this.prisma.homeworkSubmission.findFirst({ where: { homeworkId: homework.id, studentId: actor.id }, select: { id: true } });
     if (existing) throw new ForbiddenException('You have already submitted this homework.');
-    return this.prisma.homeworkSubmission.create({ data: { homeworkId: homework.id, studentId: actor.id, content: data.content, fileUrl: data.fileUrl, status: 'SUBMITTED', schoolId: actor.schoolId } });
+    const submission = await this.prisma.homeworkSubmission.create({ data: { homeworkId: homework.id, studentId: actor.id, content: data.content, fileUrl: data.fileUrl, status: 'SUBMITTED', schoolId: actor.schoolId } });
+    void this.audit.record({ action: 'HOMEWORK_SUBMITTED', entity: 'HomeworkSubmission', entityId: submission.id, userId: actor.id, schoolId: actor.schoolId, details: { homeworkId: homework.id } });
+    return submission;
   }
 
   async gradeSubmission(id: string, grade: string, feedback: string, actor: { id: string; schoolId: string; role: Role }): Promise<HomeworkSubmission> {
@@ -61,9 +66,11 @@ export class HomeworkService {
     }
     const submission = await this.prisma.homeworkSubmission.findFirst({ where: whereClause, select: { id: true } });
     if (!submission) throw new NotFoundException('Submission not found or you lack permission to grade it.');
-    return this.prisma.homeworkSubmission.update({
+    const graded = await this.prisma.homeworkSubmission.update({
       where: { id: submission.id },
       data: { grade, feedback, status: 'GRADED' },
     });
+    void this.audit.record({ action: 'HOMEWORK_GRADED', entity: 'HomeworkSubmission', entityId: graded.id, userId: actor.id, schoolId: actor.schoolId });
+    return graded;
   }
 }
