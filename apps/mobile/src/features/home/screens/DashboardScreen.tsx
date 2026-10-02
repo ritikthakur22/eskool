@@ -19,7 +19,7 @@ type Profile = { id: string; email: string; role: string; firstName?: string; la
 type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; author?: any };
 type Attendance = { id: string; status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY'; date: string };
 type Child = { id: string; email: string; student: { id: string; email: string; studentProfile?: { firstName?: string; lastName?: string; grade?: string; section?: string; rollNo?: string }; enrollments?: { sectionId: string }[] } };
-type OperationsSummary = { users: number; classes: number; sections: number; assignments: number };
+type OperationsSummary = { totalStudents?: number; totalTeachers?: number; activeNotices?: number; totalClasses?: number; assignments?: any[] };
 
 const quickFeatures: Feature[] = [
   { name: 'Class routine', icon: 'calendar-outline', route: 'Routine', accent: '#16B86A' },
@@ -190,11 +190,10 @@ export default function DashboardScreen({ navigation }: Props) {
       } catch { setChildren([]); }
     } else { setChildren([]); setSelectedChildId(''); }
     if (currentProfile && ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(currentProfile.role)) {
-      const [usersResult, structureResult] = await Promise.allSettled([api.get('/users/admin/users'), api.get('/academics/structure')]);
-      const users = usersResult.status === 'fulfilled' && Array.isArray(usersResult.value.data) ? usersResult.value.data.length : 0;
-      const structure = structureResult.status === 'fulfilled' ? structureResult.value.data || {} : {};
-      const sections = Array.isArray(structure.classes) ? structure.classes.reduce((total: number, item: any) => total + (item.sections?.length || 0), 0) : 0;
-      setOperationsSummary({ users, classes: Array.isArray(structure.classes) ? structure.classes.length : 0, sections, assignments: Array.isArray(structure.assignments) ? structure.assignments.length : 0 });
+      try {
+        const { data } = await api.get('/dashboard/summary');
+        setOperationsSummary(data.kpis || { assignments: data.assignments || [] });
+      } catch { setOperationsSummary(null); }
     } else setOperationsSummary(null);
 
     setLoading(false);
@@ -263,9 +262,26 @@ export default function DashboardScreen({ navigation }: Props) {
         {children.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>{children.map(child => { const profile = child.student.studentProfile; const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || child.student.email; const active = selectedChildId === child.student.id; return <TouchableOpacity key={child.student.id} onPress={async () => { setSelectedChildId(child.student.id); await persistSelectedChildId(child.student.id); }} style={[s.childChip, active && s.childChipActive]}><Text style={[s.childChipName, active && s.childChipNameActive]} numberOfLines={1}>{name}</Text><Text style={[s.childChipMeta, active && s.childChipMetaActive]}>{profile?.grade ? `Class ${profile.grade}${profile.section ? ` · ${profile.section}` : ''}` : 'Student'}</Text></TouchableOpacity>; })}</ScrollView> : <Text style={s.mutedText}>No linked children are available yet.</Text>}
       </View>}
 
-      {isOperationalRole && operationsSummary && <View style={s.sectionCard}>
-        <View style={s.sectionHeader}><View><Text style={s.sectionTitle}>School snapshot</Text><Text style={s.sectionHint}>Live records available to your role</Text></View><Ionicons name="analytics-outline" size={21} color={colors.primary} /></View>
-        <View style={s.operationsGrid}><OperationStat value={String(operationsSummary.users)} label="People" tint={colors.primary} styles={s} /><OperationStat value={String(operationsSummary.classes)} label="Classes" tint={colors.success} styles={s} /><OperationStat value={String(operationsSummary.sections)} label="Sections" tint={colors.warning} styles={s} /><OperationStat value={String(operationsSummary.assignments)} label="Assignments" tint="#8B5CF6" styles={s} /></View>
+      {isOperationalRole && operationsSummary && operationsSummary.totalStudents !== undefined && <View style={s.sectionCard}>
+        <View style={s.sectionHeader}><View><Text style={s.sectionTitle}>School snapshot</Text><Text style={s.sectionHint}>Live operations overview</Text></View><Ionicons name="analytics-outline" size={21} color={colors.primary} /></View>
+        <View style={s.operationsGrid}>
+          <OperationStat value={String(operationsSummary.totalStudents || 0)} label="Students" tint={colors.primary} styles={s} />
+          <OperationStat value={String(operationsSummary.totalTeachers || 0)} label="Teachers" tint={colors.success} styles={s} />
+          <OperationStat value={String(operationsSummary.totalClasses || 0)} label="Classes" tint={colors.warning} styles={s} />
+          <OperationStat value={String(operationsSummary.activeNotices || 0)} label="Notices" tint="#8B5CF6" styles={s} />
+        </View>
+      </View>}
+
+      {profile?.role === 'TEACHER' && operationsSummary && operationsSummary.assignments && <View style={s.sectionCard}>
+        <View style={s.sectionHeader}><View><Text style={s.sectionTitle}>My Classes</Text><Text style={s.sectionHint}>Your current assignments</Text></View><Ionicons name="book-outline" size={21} color={colors.primary} /></View>
+        {operationsSummary.assignments.length === 0 ? <Text style={s.mutedText}>No assigned classes.</Text> : <View style={{ gap: 10, marginTop: 10 }}>
+          {operationsSummary.assignments.map((assignment: any) => (
+            <View key={assignment.id} style={{ padding: 12, borderRadius: 12, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }}>
+              <Text style={{ color: colors.text, fontSize: 14, fontWeight: '800' }}>{assignment.subject?.name}</Text>
+              <Text style={{ color: colors.subText, fontSize: 12, marginTop: 4 }}>Class {assignment.section?.class?.name} · {assignment.section?.name}</Text>
+            </View>
+          ))}
+        </View>}
       </View>}
 
       {profile?.role === 'STUDENT' && <View style={s.sectionCard}>

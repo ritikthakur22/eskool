@@ -13,6 +13,7 @@ import { FeesModule } from './fees/fees.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AcademicsModule } from './academics/academics.module.js';
+import { DashboardModule } from './dashboard/dashboard.module.js';
 
 @Module({
   imports: [PrismaModule, StorageModule, AuditModule, UsersModule, AuthModule, AttendanceModule, NoticesModule, HomeworkModule, ExamsModule, RoutineModule, FeesModule, AcademicsModule],
