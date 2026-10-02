@@ -204,7 +204,9 @@ export default function DashboardScreen({ navigation }: Props) {
   const absentCount = attendance.filter(item => item.status === 'ABSENT').length;
   const rate = attendance.length ? Math.round((presentCount / attendance.length) * 100) : 0;
   const monthLabels = getBsMonthLabels(currentBsMonth());
-  const cardWidth = Math.min(520, Math.max(215, (width - 58) * 0.66));
+  // Keep one notice fully visible with a useful preview of the next one on
+  // phones, while allowing larger screens to use a wider reading surface.
+  const cardWidth = Math.min(520, Math.max(230, (width - 58) * 0.72));
   const isOperationalRole = ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(profile?.role || '');
   const isParentRole = profile?.role === 'PARENT';
 
@@ -274,11 +276,13 @@ export default function DashboardScreen({ navigation }: Props) {
           <TouchableOpacity accessibilityLabel="View all notices" onPress={() => navigation.navigate('Notice')} style={s.viewAllButton}><Text style={s.viewAllText}>View all</Text><Ionicons name="chevron-forward" size={17} color={colors.primary} /></TouchableOpacity>
         </View>
         {loading && notices.length === 0 ? <View style={s.noticeState}><ActivityIndicator color={colors.primary} /><Text style={s.mutedText}>Loading notices…</Text></View> : noticeError ? <View style={s.noticeState}><Ionicons name="cloud-offline-outline" size={22} color={colors.subText} /><Text style={s.mutedText}>Notices couldn’t load. Pull down to retry.</Text></View> : notices.length === 0 ? <View style={s.noticeState}><Ionicons name="notifications-off-outline" size={22} color={colors.subText} /><Text style={s.mutedText}>No school updates yet.</Text></View> : <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={cardWidth + 12} decelerationRate="fast" contentContainerStyle={s.noticeCarousel}>
-          {notices.slice(0, 8).map(notice => <TouchableOpacity key={notice.id} activeOpacity={0.86} onPress={() => navigation.navigate('Notice')} style={[s.noticeCard, { width: cardWidth }]}>
+          {notices.slice(0, 2).map(notice => (
+            <TouchableOpacity key={notice.id} activeOpacity={0.9} onPress={() => navigation.navigate('Notice')} style={[s.noticeCard, { width: cardWidth }]}
+            >
             <View style={s.noticeMetaRow}><View style={s.noticeBadge}><Text style={s.noticeBadgeText}>{notice.category || 'Notice'}</Text></View><Text numberOfLines={1} style={s.publisher}>{publisherName(notice)}</Text></View>
             <View style={s.noticeContentRow}><View style={s.noticeCopy}><Text numberOfLines={2} style={s.noticeTitle}>{notice.title}</Text><Text numberOfLines={3} style={s.noticePreview}>{notice.content}</Text></View><View style={s.noticeIcon}><Ionicons name="megaphone-outline" size={21} color={colors.primary} /></View></View>
             <View style={s.noticeFooter}><Ionicons name="time-outline" size={13} color={colors.subText} /><Text numberOfLines={1} style={s.noticeDate}>{formatNoticeTime(notice.date || notice.createdAt || '')}</Text></View>
-          </TouchableOpacity>)}
+          </TouchableOpacity>))}
         </ScrollView>}
       </View>
     </ScrollView>

@@ -15,6 +15,7 @@ export default function HomeworkScreen({ navigation }: any) {
   const [error, setError] = useState('');
   const [role, setRole] = useState('');
   const [childSectionId, setChildSectionId] = useState('');
+  const [childName, setChildName] = useState('');
   const tabs = ['Assigned', 'Submitted', 'Upcoming'];
 
   useEffect(() => {
@@ -27,6 +28,8 @@ export default function HomeworkScreen({ navigation }: any) {
         const { data } = await api.get('/academics/children');
         const child = (Array.isArray(data) ? data : []).find((item: any) => item.student?.id === selectedId) || data?.[0];
         setChildSectionId(child?.student?.enrollments?.[0]?.sectionId || '');
+        const childProfile = child?.student?.studentProfile;
+        setChildName([childProfile?.firstName, childProfile?.lastName].filter(Boolean).join(' ') || child?.student?.email || 'Selected child');
       }
     }).catch(() => undefined);
   }, []);
@@ -66,7 +69,7 @@ export default function HomeworkScreen({ navigation }: any) {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Homework</Text>
+        <View style={styles.headerCopy}><Text style={styles.headerTitle}>Homework</Text>{role === 'PARENT' && <Text style={styles.headerSubtitle}>{childName ? `For ${childName}` : 'Select a child from Home'}</Text>}</View>
         <View style={{ width: 24 }} />
       </View>
 
@@ -125,6 +128,8 @@ const makeStyles = (c: any) => StyleSheet.create({
   backButton: { padding: 5 },
   backIcon: { fontSize: 24, color: c.text },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: c.text },
+  headerCopy: { flex: 1, alignItems: 'center' },
+  headerSubtitle: { color: c.subText, fontSize: 10, marginTop: 3 },
   tabsContainer: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border, paddingBottom: 5 },
   tabButton: { paddingBottom: 10, flex: 1, alignItems: 'center' },
   tabButtonActive: { borderBottomWidth: 2, borderBottomColor: c.primary },

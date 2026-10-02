@@ -16,9 +16,10 @@ export default function ExamsScreen({ navigation }: any) {
   const [error, setError] = useState('');
   const [role, setRole] = useState('');
   const [childId, setChildId] = useState('');
+  const [childName, setChildName] = useState('');
   const tabs = ['Online Exam', 'Upcoming', 'Result'];
 
-  useEffect(() => { SecureStore.getItemAsync('user_data').then(async raw => { if (!raw) return; const nextRole = JSON.parse(raw).role || ''; setRole(nextRole); if (nextRole === 'PARENT') setChildId((await getSelectedChildId()) || ''); }).catch(() => undefined); }, []);
+  useEffect(() => { SecureStore.getItemAsync('user_data').then(async raw => { if (!raw) return; const nextRole = JSON.parse(raw).role || ''; setRole(nextRole); if (nextRole === 'PARENT') { const selectedId = (await getSelectedChildId()) || ''; setChildId(selectedId); try { const { data } = await api.get('/academics/children'); const child = (Array.isArray(data) ? data : []).find((item: any) => item.student?.id === selectedId) || data?.[0]; const profile = child?.student?.studentProfile; setChildName([profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || child?.student?.email || 'Selected child'); } catch { setChildName('Selected child'); } } }).catch(() => undefined); }, []);
 
   useEffect(() => {
     if (!role || (role !== 'STUDENT' && role !== 'PARENT')) { setLoading(false); return; }
@@ -40,7 +41,7 @@ export default function ExamsScreen({ navigation }: any) {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Exams</Text>
+        <View style={styles.headerCopy}><Text style={styles.headerTitle}>Exams</Text>{role === 'PARENT' && <Text style={styles.headerSubtitle}>{childName ? `For ${childName}` : 'Select a child from Home'}</Text>}</View>
         <View style={{ width: 24 }} />
       </View>
 
@@ -95,6 +96,8 @@ const makeStyles = (c: any) => StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingTop: 40 },
   backButton: { padding: 5 },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: c.text },
+  headerCopy: { flex: 1, alignItems: 'center' },
+  headerSubtitle: { color: c.subText, fontSize: 10, marginTop: 3 },
   tabsContainer: { flexDirection: 'row', justifyContent: 'space-around', borderBottomWidth: 1, borderBottomColor: c.border },
   tabButton: { paddingVertical: 15, paddingHorizontal: 20 },
   tabButtonActive: { borderBottomWidth: 2, borderBottomColor: c.primary },

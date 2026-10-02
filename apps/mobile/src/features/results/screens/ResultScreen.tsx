@@ -14,8 +14,9 @@ export default function ResultScreen({ navigation }: any) {
   const [error, setError] = useState('');
   const [role, setRole] = useState('');
   const [childId, setChildId] = useState('');
+  const [childName, setChildName] = useState('');
   useEffect(() => { SecureStore.getItemAsync('user_data').then(raw => { if (raw) setRole(JSON.parse(raw).role || ''); }).catch(() => undefined); }, []);
-  useEffect(() => { if (role === 'PARENT') getSelectedChildId().then(id => setChildId(id || '')).catch(() => undefined); }, [role]);
+  useEffect(() => { if (role === 'PARENT') getSelectedChildId().then(async id => { setChildId(id || ''); try { const { data } = await api.get('/academics/children'); const child = (Array.isArray(data) ? data : []).find((item: any) => item.student?.id === id) || data?.[0]; const profile = child?.student?.studentProfile; setChildName([profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || child?.student?.email || 'Selected child'); } catch { setChildName('Selected child'); } }).catch(() => undefined); }, [role]);
   useEffect(() => {
     if (!role || (role !== 'STUDENT' && role !== 'PARENT')) { setLoading(false); return; }
     if (role === 'PARENT' && !childId) { setLoading(false); setError('Select a child from the home screen first.'); return; }
@@ -38,7 +39,7 @@ export default function ResultScreen({ navigation }: any) {
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backIcon}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Results</Text>
+        <View style={styles.headerCopy}><Text style={styles.headerTitle}>Results</Text>{role === 'PARENT' && <Text style={styles.headerSubtitle}>{childName ? `For ${childName}` : 'Select a child from Home'}</Text>}</View>
         <View style={{ width: 24 }} />
       </View>
 
@@ -94,6 +95,8 @@ const makeStyles = (c: any) => StyleSheet.create({
   backButton: { padding: 5 },
   backIcon: { fontSize: 24, color: c.text },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: c.text },
+  headerCopy: { flex: 1, alignItems: 'center' },
+  headerSubtitle: { color: c.subText, fontSize: 10, marginTop: 3 },
   content: { padding: 20 },
   stateText: { color: c.subText, textAlign: 'center', padding: 30 },
   overviewCard: { backgroundColor: c.card, padding: 20, borderRadius: 16, alignItems: 'center', marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },

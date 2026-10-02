@@ -12,7 +12,7 @@ const studentTabs = [
 
 const operationalTabs = [
   { route: 'Dashboard', label: 'Home', icon: 'home-outline' },
-  { route: 'Routine', label: 'Routine', icon: 'calendar-outline' },
+  { route: 'Attendance', label: 'Attendance', icon: 'checkmark-circle-outline' },
   { route: 'Calendar', label: 'Calendar', icon: 'calendar-outline' },
   { route: 'Notice', label: 'Notices', icon: 'notifications-outline' },
   { route: 'Profile', label: 'Settings', icon: 'person-outline' },
