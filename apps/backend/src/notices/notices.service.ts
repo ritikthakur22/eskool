@@ -15,11 +15,11 @@ export class NoticesService {
     return notice;
   }
 
-  async getAllNotices(category?: string, limit?: number, actor?: { schoolId: string }): Promise<Notice[]> {
+  async getAllNotices(category?: string, limit = 20, actor?: { schoolId: string }): Promise<Notice[]> {
     const where: Prisma.NoticeWhereInput = { ...(category ? { category } : {}), ...(actor ? { author: { schoolId: actor.schoolId } } : {}) };
     return this.prisma.notice.findMany({
       where,
-      ...(limit ? { take: limit } : {}),
+      take: Math.min(Math.max(limit, 1), 50),
       orderBy: { date: 'desc' },
       include: {
         author: {

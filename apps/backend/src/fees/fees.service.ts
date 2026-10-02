@@ -12,15 +12,24 @@ export type PaymentProofUpload = { buffer: Buffer; size: number; mimetype: strin
 export class FeesService {
   constructor(private readonly prisma: PrismaService, private readonly cloudinary: CloudinaryService, private readonly audit: AuditService) {}
 
-  async getInvoicesForUser(userId: string, schoolId: string) {
+  async getInvoicesForUser(userId: string, schoolId: string, role: string) {
+    let studentIds = [userId];
+    if (role === 'PARENT') {
+      const linkedStudents = await this.prisma.parentStudent.findMany({
+        where: { parentId: userId, student: { schoolId, role: 'STUDENT' } },
+        select: { studentId: true },
+      });
+      studentIds = linkedStudents.map(link => link.studentId);
+      if (!studentIds.length) return [];
+    }
     const invoices = await this.prisma.$queryRaw<Array<{
-      id: string; invoiceNumber: string; title: string; description: string | null;
+      id: string; invoiceNumber: string; title: string; description: string | null; studentId: string;
       amount: Prisma.Decimal | number; dueDate: Date; status: string; issuedAt: Date; paidAt: Date | null; latestProofStatus: string | null;
     }>>(Prisma.sql`
-      SELECT i."id", i."invoiceNumber", i."title", i."description", i."amount", i."dueDate", i."status", i."issuedAt", i."paidAt",
+      SELECT i."id", i."invoiceNumber", i."title", i."description", i."studentId", i."amount", i."dueDate", i."status", i."issuedAt", i."paidAt",
         (SELECT p."status"::text FROM "FeePaymentProof" p WHERE p."invoiceId" = i."id" ORDER BY p."submittedAt" DESC LIMIT 1) AS "latestProofStatus"
       FROM "FeeInvoice" i
-      WHERE i."studentId" = ${userId} AND i."schoolId" = ${schoolId}
+      WHERE i."studentId" IN (${Prisma.join(studentIds)}) AND i."schoolId" = ${schoolId}
       ORDER BY i."dueDate" DESC, i."issuedAt" DESC
     `);
     return invoices.map(invoice => ({ ...invoice, amount: Number(invoice.amount) }));

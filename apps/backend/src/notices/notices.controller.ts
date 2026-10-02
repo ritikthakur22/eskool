@@ -20,7 +20,7 @@ export class NoticesController {
   @Get()
   async getAllNotices(@Query('category') category?: string, @Query('limit') limit?: string, @Request() req?: any) {
     const parsedLimit = Number.parseInt(limit || '', 10);
-    const take = Number.isInteger(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 50) : undefined;
+    const take = Number.isInteger(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 50) : 20;
     return this.noticesService.getAllNotices(category, take, req.user);
   }
 

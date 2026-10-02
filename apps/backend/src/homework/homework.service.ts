@@ -25,7 +25,7 @@ export class HomeworkService {
     return homework;
   }
 
-  async getHomeworkForClass(sectionId: string, actor: { id: string; schoolId: string; role: Role }): Promise<Homework[]> {
+  async getHomeworkForClass(sectionId: string, actor: { id: string; schoolId: string; role: Role }, limit = 50): Promise<Homework[]> {
     const section = await this.prisma.section.findFirst({ where: { id: sectionId, schoolId: actor.schoolId }, select: { id: true } });
     if (!section) throw new NotFoundException('Section not found in your school.');
     if (actor.role === Role.STUDENT) {
@@ -37,11 +37,12 @@ export class HomeworkService {
       if (!linkedChild) throw new ForbiddenException('No linked child is enrolled in this section.');
     }
     if (actor.role === Role.TEACHER) {
-      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId } });
+      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId, section: { schoolId: actor.schoolId } } });
       if (!assignment) throw new ForbiddenException('You are not assigned to this section.');
     }
     return this.prisma.homework.findMany({
       where: { sectionId, schoolId: actor.schoolId },
+      take: Math.min(Math.max(limit, 1), 100),
       orderBy: { dueDate: 'asc' },
     });
   }

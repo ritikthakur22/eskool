@@ -15,7 +15,7 @@ export class FeesController {
 
   @Get('me')
   getMyInvoices(@Request() req: any) {
-    return this.feesService.getInvoicesForUser(req.user.id, req.user.schoolId);
+    return this.feesService.getInvoicesForUser(req.user.id, req.user.schoolId, req.user.role);
   }
 
   @Get('payment-details')

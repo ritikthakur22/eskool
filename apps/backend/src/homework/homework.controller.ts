@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, Post, Body, Param, Patch, UseGuards, Request, ParseUUIDPipe, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Post, Body, Param, Patch, UseGuards, Request, ParseUUIDPipe, UploadedFile, UseInterceptors, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { HomeworkService } from './homework.service.js';
 import { CreateHomeworkDto, SubmitHomeworkDto, GradeHomeworkDto } from './dto/homework.dto.js';
@@ -23,8 +23,10 @@ export class HomeworkController {
   }
 
   @Get('class/:sectionId')
-  async getHomeworkForClass(@Param('sectionId', new ParseUUIDPipe()) sectionId: string, @Request() req: any) {
-    return this.homeworkService.getHomeworkForClass(sectionId, req.user);
+  async getHomeworkForClass(@Param('sectionId', new ParseUUIDPipe()) sectionId: string, @Query('limit') limit: string | undefined, @Request() req: any) {
+    const parsedLimit = Number.parseInt(limit || '', 10);
+    const take = Number.isInteger(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 50;
+    return this.homeworkService.getHomeworkForClass(sectionId, req.user, take);
   }
 
   @Post('submit')

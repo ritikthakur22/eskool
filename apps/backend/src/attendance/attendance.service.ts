@@ -15,7 +15,7 @@ export class AttendanceService {
     if (actor.role === Role.TEACHER) {
       const enrollments = await this.prisma.enrollment.findMany({ where: { studentId: student.id }, select: { sectionId: true } });
       const sectionIds = enrollments.map(e => e.sectionId);
-      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId: { in: sectionIds } } });
+      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId: { in: sectionIds }, section: { schoolId: actor.schoolId } } });
       if (!assignment) throw new ForbiddenException('You are not assigned to teach this student.');
     }
 
@@ -39,7 +39,7 @@ export class AttendanceService {
     const whereClause: Prisma.AttendanceWhereInput = { studentId: student.id, schoolId: actor.schoolId };
     if (actor.role === Role.TEACHER) {
       const enrollments = await this.prisma.enrollment.findMany({ where: { studentId: student.id }, select: { sectionId: true } });
-      const assignments = await this.prisma.teacherAssignment.findMany({ where: { teacherId: actor.id, sectionId: { in: enrollments.map(enrollment => enrollment.sectionId) } }, select: { id: true } });
+      const assignments = await this.prisma.teacherAssignment.findMany({ where: { teacherId: actor.id, sectionId: { in: enrollments.map(enrollment => enrollment.sectionId) }, section: { schoolId: actor.schoolId } }, select: { id: true } });
       if (!assignments.length) throw new ForbiddenException('You are not assigned to this student.');
     }
     

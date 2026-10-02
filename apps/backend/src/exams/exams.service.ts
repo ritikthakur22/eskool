@@ -15,7 +15,7 @@ export class ExamsService {
     ]);
     if (!section || !subject) throw new NotFoundException('Section or subject was not found in your school.');
     if (actor.role === Role.TEACHER) {
-      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId: data.sectionId, subjectId: data.subjectId } });
+      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId: data.sectionId, subjectId: data.subjectId, section: { schoolId: actor.schoolId }, subject: { schoolId: actor.schoolId } } });
       if (!assignment) throw new ForbiddenException('You are not assigned to this subject and section.');
     }
     const dateObj = new Date(data.date);
@@ -28,7 +28,7 @@ export class ExamsService {
     const exam = await this.prisma.exam.findFirst({ where: { id: data.examId, schoolId: actor.schoolId }, select: { id: true, sectionId: true, subjectId: true } });
     if (!exam) throw new NotFoundException('Exam not found in your school.');
     if (actor.role === Role.TEACHER) {
-      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId: exam.sectionId, subjectId: exam.subjectId } });
+      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId: exam.sectionId, subjectId: exam.subjectId, section: { schoolId: actor.schoolId }, subject: { schoolId: actor.schoolId } } });
       if (!assignment) throw new ForbiddenException('You are not assigned to this exam.');
     }
     const student = await this.prisma.user.findFirst({ where: { id: data.studentId, schoolId: actor.schoolId, role: Role.STUDENT }, select: { id: true } });
@@ -51,7 +51,7 @@ export class ExamsService {
     if (!student) throw new NotFoundException('Student not found in your school.');
     const resultWhere: Prisma.ExamResultWhereInput = { studentId: student.id, schoolId: actor.schoolId };
     if (actor.role === Role.TEACHER) {
-      const assignments = await this.prisma.teacherAssignment.findMany({ where: { teacherId: actor.id }, select: { sectionId: true, subjectId: true } });
+      const assignments = await this.prisma.teacherAssignment.findMany({ where: { teacherId: actor.id, section: { schoolId: actor.schoolId }, subject: { schoolId: actor.schoolId } }, select: { sectionId: true, subjectId: true } });
       if (!assignments.length) return [];
       resultWhere.exam = { is: { OR: assignments.map(assignment => ({ sectionId: assignment.sectionId, subjectId: assignment.subjectId })) } };
     }
