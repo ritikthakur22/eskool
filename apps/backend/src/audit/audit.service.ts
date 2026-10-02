@@ -1,6 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { requestContext } from '../context/context.js';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 export type AuditEvent = {
   action: string;
@@ -11,10 +13,13 @@ export type AuditEvent = {
   details?: Prisma.InputJsonObject;
   ipAddress?: string;
   userAgent?: string;
+  requestId?: string;
 };
 
 @Injectable()
 export class AuditService {
+  private readonly logger = new Logger(AuditService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async list(schoolId: string, filters: { limit?: number; offset?: number; action?: string; entity?: string; userId?: string; from?: string; to?: string } = {}) {
@@ -42,6 +47,9 @@ export class AuditService {
         entityId: true,
         userId: true,
         details: true,
+        ipAddress: true,
+        userAgent: true,
+        requestId: true,
         createdAt: true,
         user: { select: { email: true, role: true } },
       },
@@ -49,24 +57,106 @@ export class AuditService {
     return { items: rows.slice(0, limit), hasMore: rows.length > limit, nextOffset: rows.length > limit ? offset + limit : null };
   }
 
-  async record(event: AuditEvent) {
-    // Audit failures must not turn a successful user operation into a 500, but
-    // they are still visible to operators for alerting and repair.
+  async getFailures() {
+    return this.prisma.auditOutbox.findMany({
+      where: { status: 'FAILED' },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+  }
+
+  async exportLogs(schoolId: string, format: 'json' | 'csv') {
+    const logs = await this.prisma.auditLog.findMany({
+      where: { schoolId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        action: true,
+        entity: true,
+        entityId: true,
+        userId: true,
+        details: true,
+        ipAddress: true,
+        userAgent: true,
+        requestId: true,
+        createdAt: true,
+      },
+    });
+    
+    if (format === 'csv') {
+      const header = 'id,action,entity,entityId,userId,ipAddress,userAgent,requestId,createdAt\n';
+      const rows = logs.map(log => 
+        `${log.id},${log.action},${log.entity},${log.entityId || ''},${log.userId || ''},${log.ipAddress || ''},"${log.userAgent?.replace(/"/g, '""') || ''}",${log.requestId || ''},${log.createdAt.toISOString()}`
+      ).join('\n');
+      return header + rows;
+    }
+    
+    return logs;
+  }
+
+  async record(event: AuditEvent, tx?: any) {
+    const ctx = requestContext.getStore();
+    const payload = {
+      action: event.action,
+      entity: event.entity,
+      entityId: event.entityId,
+      userId: event.userId,
+      schoolId: event.schoolId,
+      details: event.details,
+      ipAddress: event.ipAddress || ctx?.ipAddress,
+      userAgent: event.userAgent || ctx?.userAgent,
+      requestId: event.requestId || ctx?.requestId,
+    };
+
     try {
-      await this.prisma.auditLog.create({
+      const client = tx || this.prisma;
+      await client.auditOutbox.create({
         data: {
-          action: event.action,
-          entity: event.entity,
-          entityId: event.entityId,
-          userId: event.userId,
-          schoolId: event.schoolId,
-          details: event.details,
-          ipAddress: event.ipAddress,
-          userAgent: event.userAgent,
+          payload,
+          status: 'PENDING',
         },
       });
     } catch (error) {
-      console.error('audit_log_write_failed', error);
+      this.logger.error('audit_outbox_write_failed', error);
+    }
+  }
+
+  @Cron(CronExpression.EVERY_10_SECONDS)
+  async processOutbox() {
+    const pending = await this.prisma.auditOutbox.findMany({
+      where: { status: 'PENDING' },
+      take: 100,
+      orderBy: { createdAt: 'asc' },
+    });
+
+    for (const record of pending) {
+      try {
+        const payload: any = record.payload;
+        await this.prisma.auditLog.create({
+          data: {
+            action: payload.action,
+            entity: payload.entity,
+            entityId: payload.entityId,
+            userId: payload.userId,
+            schoolId: payload.schoolId,
+            details: payload.details,
+            ipAddress: payload.ipAddress,
+            userAgent: payload.userAgent,
+            requestId: payload.requestId,
+            createdAt: record.createdAt,
+          },
+        });
+        await this.prisma.auditOutbox.update({
+          where: { id: record.id },
+          data: { status: 'PROCESSED' },
+        });
+      } catch (error: any) {
+        this.logger.error(`Failed to process audit outbox ${record.id}`, error);
+        await this.prisma.auditOutbox.update({
+          where: { id: record.id },
+          data: { status: 'FAILED', error: error.message },
+        });
+      }
     }
   }
 }
