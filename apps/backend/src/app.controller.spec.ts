@@ -5,11 +5,14 @@ import { PrismaService } from './prisma/prisma.service.js';
 
 describe('AppController', () => {
   let appController: AppController;
+  const queryRaw = vi.fn();
 
   beforeEach(async () => {
+    queryRaw.mockReset();
+    queryRaw.mockResolvedValue([{ '?column?': 1 }]);
     const app: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService, { provide: PrismaService, useValue: { $queryRaw: vi.fn().mockResolvedValue([{ '?column?': 1 }]) } }],
+      providers: [AppService, { provide: PrismaService, useValue: { $queryRaw: queryRaw } }],
     }).compile();
 
     appController = app.get<AppController>(AppController);
@@ -23,5 +26,15 @@ describe('AppController', () => {
 
   it('reports backend and database readiness', async () => {
     await expect(appController.getHealth()).resolves.toEqual({ status: 'ok', database: 'ok' });
+  });
+
+  it('reports schema readiness separately from liveness', async () => {
+    queryRaw.mockResolvedValueOnce([{ '?column?': 1 }]).mockResolvedValueOnce([{ '?column?': 1 }]);
+    await expect(appController.getReadiness()).resolves.toEqual({ status: 'ok', database: 'ok', schema: 'ok' });
+  });
+
+  it('returns service unavailable when the schema readiness check fails', async () => {
+    queryRaw.mockRejectedValueOnce(new Error('missing required schema'));
+    await expect(appController.getReadiness()).rejects.toMatchObject({ status: 503 });
   });
 });
