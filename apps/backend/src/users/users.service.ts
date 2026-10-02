@@ -1,10 +1,11 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { Prisma, User } from '@prisma/client';
+import { Prisma, Role, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { CloudinaryService } from '../storage/cloudinary.service.js';
 import { AuditService } from '../audit/audit.service.js';
-import type { UpdateProfileDto } from './dto/user.dto.js';
+import type { UpdateManagedUserDto, UpdateProfileDto } from './dto/user.dto.js';
+import { canManageRole } from './users.policy.js';
 
 @Injectable()
 export class UsersService {
@@ -16,6 +17,89 @@ export class UsersService {
 
   async create(data: Prisma.UserCreateInput): Promise<User> {
     return this.prisma.user.create({ data });
+  }
+
+  private async getManagedTarget(id: string, actor: { schoolId: string; actorRole: Role }) {
+    const target = await this.prisma.user.findFirst({
+      where: { id, schoolId: actor.schoolId },
+      select: { id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true, updatedAt: true, schoolId: true },
+    });
+    if (!target) throw new NotFoundException('User not found in your school.');
+    if (!canManageRole(actor.actorRole, target.role)) throw new UnauthorizedException('You do not have permission to manage this account.');
+    return target;
+  }
+
+  async listManagedUsers(filters: { schoolId: string; actorRole: Role; role?: string; status?: string; query?: string }) {
+    const role = filters.role && Object.values(Role).includes(filters.role as Role) ? filters.role as Role : undefined;
+    const status = filters.status === 'ACTIVE' || filters.status === 'DISABLED' ? filters.status : undefined;
+    const users = await this.prisma.user.findMany({
+      where: {
+        schoolId: filters.schoolId,
+        ...(role ? { role } : {}),
+        ...(status ? { status } : {}),
+        ...(filters.query?.trim() ? { email: { contains: filters.query.trim(), mode: 'insensitive' } } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      select: {
+        id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true,
+        studentProfile: { select: { firstName: true, lastName: true, grade: true, section: true, rollNo: true } },
+        teacherProfile: { select: { firstName: true, lastName: true } },
+        adminProfile: { select: { firstName: true, lastName: true, department: true } },
+      },
+    });
+    return users.filter(user => canManageRole(filters.actorRole, user.role));
+  }
+
+  async getManagedUser(id: string, actor: { schoolId: string; actorRole: Role }) {
+    await this.getManagedTarget(id, actor);
+    return this.prisma.user.findFirst({
+      where: { id, schoolId: actor.schoolId },
+      select: {
+        id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true, updatedAt: true,
+        studentProfile: true, teacherProfile: true, adminProfile: true,
+      },
+    });
+  }
+
+  async updateManagedUser(id: string, input: UpdateManagedUserDto, actor: { actorId: string; schoolId: string; actorRole: Role }) {
+    const target = await this.getManagedTarget(id, actor);
+    const email = input.email?.trim().toLowerCase();
+    if (email && email !== target.email) {
+      const existing = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+      if (existing && existing.id !== id) throw new ConflictException('That email address is already in use.');
+    }
+    const firstName = input.firstName?.trim();
+    const lastName = input.lastName?.trim();
+    if ((input.firstName !== undefined && !firstName) || (input.lastName !== undefined && !lastName)) throw new BadRequestException('Name fields cannot be empty.');
+    const userData = email && email !== target.email ? { email } : {};
+    await this.prisma.$transaction(async tx => {
+      if (Object.keys(userData).length) await tx.user.update({ where: { id }, data: userData });
+      if (target.role === Role.STUDENT) {
+        await tx.studentProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.grade !== undefined ? { grade: input.grade.trim() || null } : {}), ...(input.section !== undefined ? { section: input.section.trim() || null } : {}), ...(input.rollNo !== undefined ? { rollNo: input.rollNo.trim() || null } : {}) } });
+      } else if (target.role === Role.TEACHER) {
+        await tx.teacherProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}) } });
+      } else if (target.role === Role.ADMIN || target.role === Role.SUPER_ADMIN) {
+        await tx.adminProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.department !== undefined ? { department: input.department.trim() || null } : {}) } });
+      } else if (firstName !== undefined || lastName !== undefined || input.grade !== undefined || input.section !== undefined || input.rollNo !== undefined || input.department !== undefined) {
+        throw new BadRequestException('This account has no editable profile fields.');
+      }
+    });
+    void this.audit.record({ action: 'USER_UPDATED', entity: 'User', entityId: id, userId: actor.actorId, schoolId: actor.schoolId, details: { fields: Object.keys(input).filter(field => field !== 'email' || email !== target.email) } });
+    return this.getManagedUser(id, actor);
+  }
+
+  async setManagedUserStatus(id: string, active: boolean, actor: { actorId: string; schoolId: string; actorRole: Role }) {
+    if (id === actor.actorId) throw new BadRequestException('You cannot disable your own account.');
+    const target = await this.getManagedTarget(id, actor);
+    if ((active && target.status === 'ACTIVE') || (!active && target.status === 'DISABLED')) return { id: target.id, status: target.status };
+    const status = active ? 'ACTIVE' : 'DISABLED';
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: target.id }, data: { status, disabledAt: active ? null : new Date(), tokenVersion: { increment: 1 } } }),
+      ...(active ? [] : [this.prisma.authSession.updateMany({ where: { userId: target.id, revokedAt: null }, data: { revokedAt: new Date() } })]),
+    ]);
+    void this.audit.record({ action: active ? 'USER_RESTORED' : 'USER_DISABLED', entity: 'User', entityId: target.id, userId: actor.actorId, schoolId: actor.schoolId, details: { previousStatus: target.status, status } });
+    return { id: target.id, status };
   }
 
   async getOwnProfile(userId: string) {

@@ -53,3 +53,9 @@ export class GradeHomeworkDto {
   @MaxLength(2000)
   feedback?: string;
 }
+
+export class UpdateHomeworkDto {
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(120) title?: string;
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(5000) description?: string;
+  @IsOptional() @IsDateString() dueDate?: string;
+}

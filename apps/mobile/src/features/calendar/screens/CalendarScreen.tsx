@@ -1,5 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../core/theme/ThemeContext';
@@ -11,7 +12,9 @@ const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 export default function CalendarScreen({ navigation }: any) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const [role, setRole] = useState<string | undefined>();
   const [month, setMonth] = useState<BsMonth>(currentBsMonth);
+  useEffect(() => { SecureStore.getItemAsync('user_data').then(raw => { if (raw) setRole(JSON.parse(raw).role); }).catch(() => undefined); }, []);
   const weeks = useMemo(() => {
     const days = getBsMonthDays(month);
     const cells: (typeof days[number] | null)[] = [...Array(days[0]?.weekDay || 0).fill(null), ...days];
@@ -53,7 +56,7 @@ export default function CalendarScreen({ navigation }: any) {
         <View style={styles.emptyCard}><View style={styles.emptyIcon}><Ionicons name="calendar-outline" size={23} color={colors.primary} /></View><View style={styles.emptyCopy}><Text style={styles.emptyTitle}>School events will appear here</Text><Text style={styles.emptyText}>Your school’s holidays, exams, and events will show in this section when published.</Text></View></View>
         <View style={styles.calendarTypes}><Text style={styles.typesTitle}>Calendar views</Text><View style={styles.typeRow}><Ionicons name="calendar-outline" size={18} color={colors.primary} /><Text style={styles.typeText}>Bikram Sambat school calendar</Text></View><View style={styles.typeRow}><Ionicons name="globe-outline" size={18} color={colors.success} /><Text style={styles.typeText}>Gregorian date reference</Text></View><View style={styles.typeRow}><Ionicons name="school-outline" size={18} color={colors.warning} /><Text style={styles.typeText}>Academic events and holidays</Text></View></View>
       </ScrollView>
-      <BottomNavigation navigation={navigation} activeRoute="Calendar" colors={colors} />
+      <BottomNavigation navigation={navigation} activeRoute="Calendar" colors={colors} role={role} />
     </SafeAreaView>
   );
 }

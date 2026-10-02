@@ -25,3 +25,18 @@ export class MarkAttendanceDto {
   @MaxLength(1000)
   remarks?: string;
 }
+
+export class CorrectAttendanceDto {
+  @IsEnum(AttendanceStatus)
+  status!: AttendanceStatus;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason!: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(1000)
+  remarks?: string;
+}

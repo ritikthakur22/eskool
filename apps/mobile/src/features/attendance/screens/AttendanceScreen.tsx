@@ -1,12 +1,14 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import NepaliDate from 'nepali-date-converter';
 import { api } from '../../../core/networking/api';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import BottomNavigation from '../../../core/components/BottomNavigation';
 import { currentBsMonth, getBsMonthDays, getBsMonthLabels, getGregorianMonthsForBsMonth, shiftBsMonth, type BsMonth } from '../../../core/utils/bsCalendar';
+import { getSelectedChildId } from '../../../core/utils/childSelection';
 
 type RecordItem = { id: string; date: string; status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY'; subject?: string | null; remarks?: string | null };
 const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -21,6 +23,11 @@ export default function AttendanceScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [role, setRole] = useState('');
+  const [childId, setChildId] = useState('');
+
+  useEffect(() => { SecureStore.getItemAsync('user_data').then(raw => { if (raw) setRole(JSON.parse(raw).role || ''); }).catch(() => undefined); }, []);
+  useEffect(() => { if (role === 'PARENT') getSelectedChildId().then(id => setChildId(id || '')).catch(() => undefined); }, [role]);
 
   const days = useMemo(() => getBsMonthDays(month), [month]);
   const weeks = useMemo(() => {
@@ -32,11 +39,14 @@ export default function AttendanceScreen({ navigation }: any) {
   const selectedRecords = records.filter(item => dateKey(new Date(item.date)) === dateKey(selectedDate));
 
   const loadAttendance = useCallback(async (refresh = false) => {
+    if (!role) return;
+    if (role !== 'STUDENT' && role !== 'PARENT') { setLoading(false); return; }
+    if (role === 'PARENT' && !childId) { setLoading(false); setError('Select a child from the home screen first.'); return; }
     refresh ? setRefreshing(true) : setLoading(true);
     setError('');
     try {
       const { data: profileResponse } = await api.get('/users/me');
-      const studentId = profileResponse?.id;
+      const studentId = role === 'PARENT' ? childId : profileResponse?.id;
       if (!studentId) throw new Error('Student profile is unavailable.');
       const adMonths = getGregorianMonthsForBsMonth(month);
       const responses = await Promise.all(adMonths.map(({ year, month: adMonth }) =>
@@ -52,7 +62,7 @@ export default function AttendanceScreen({ navigation }: any) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [month]);
+  }, [month, role, childId]);
 
   useEffect(() => { loadAttendance(); }, [loadAttendance]);
 
@@ -83,6 +93,7 @@ export default function AttendanceScreen({ navigation }: any) {
   const absentCount = records.filter(item => item.status === 'ABSENT').length;
   const otherCount = records.filter(item => item.status === 'LATE' || item.status === 'HALF_DAY').length;
   const attendanceRate = records.length ? Math.round((presentCount / records.length) * 100) : 0;
+  if (role && role !== 'STUDENT' && role !== 'PARENT') return <SafeAreaView style={s.screen}><View style={s.header}><TouchableOpacity accessibilityLabel="Go back" onPress={() => navigation.goBack()} style={s.back}><Ionicons name="chevron-back" size={23} color={colors.text} /></TouchableOpacity><View style={{ flex: 1 }}><Text style={s.title}>Attendance</Text><Text style={s.subtitle}>Role-scoped access</Text></View></View><View style={s.errorCard}><Ionicons name="lock-closed-outline" size={25} color={colors.subText} /><Text style={s.errorText}>This screen is for student or selected-child attendance. Staff attendance registers are available from the management workflow.</Text></View><BottomNavigation navigation={navigation} activeRoute="Attendance" colors={colors} role={role} /></SafeAreaView>;
   const selectedBs = new NepaliDate(selectedDate).format('ddd, DD MMMM YYYY');
   const selectedAd = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -128,7 +139,7 @@ export default function AttendanceScreen({ navigation }: any) {
         {selectedRecords.length ? selectedRecords.map(item => <View key={item.id} style={s.recordCard}><View style={[s.recordMarker, { backgroundColor: statusColor(item.status) }]} /><View style={{ flex: 1 }}><Text style={s.recordSubject}>{item.subject || 'Class attendance'}</Text>{item.remarks ? <Text style={s.recordRemarks}>{item.remarks}</Text> : null}</View><Text style={[s.recordStatus, { color: statusColor(item.status) }]}>{item.status.replace('_', ' ')}</Text></View>) : <View style={s.emptyCard}><Ionicons name="information-circle-outline" size={20} color={colors.subText} /><Text style={s.emptyText}>No attendance has been recorded for this day.</Text></View>}
       </>}
     </ScrollView>
-    <BottomNavigation navigation={navigation} activeRoute="Attendance" colors={colors} />
+    <BottomNavigation navigation={navigation} activeRoute="Attendance" colors={colors} role={role} />
   </SafeAreaView>;
 }
 

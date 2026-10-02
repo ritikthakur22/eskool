@@ -22,7 +22,11 @@ export default function SplashScreen({ navigation }: Props) {
           SecureStore.getItemAsync('onboarding_complete'),
           SecureStore.getItemAsync('refresh_token'),
         ]);
-        if (refreshToken) {
+        const [biometricEnabled, keepSignedIn] = await Promise.all([
+          SecureStore.getItemAsync('biometric_enabled'),
+          SecureStore.getItemAsync('keep_signed_in'),
+        ]);
+        if (refreshToken && (biometricEnabled === 'true' || keepSignedIn === 'true')) {
           const { data } = await api.post('/auth/refresh', { refresh_token: refreshToken });
           await Promise.all([
             SecureStore.setItemAsync('access_token', data.access_token),

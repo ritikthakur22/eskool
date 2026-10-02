@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
 import { NoticesService } from './notices.service.js';
-import { CreateNoticeDto } from './dto/notice.dto.js';
+import { CreateNoticeDto, UpdateNoticeDto } from './dto/notice.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -15,6 +15,12 @@ export class NoticesController {
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   async createNotice(@Body() data: CreateNoticeDto, @Request() req: any) {
     return this.noticesService.createNotice(data, req.user);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  updateNotice(@Param('id', new ParseUUIDPipe()) id: string, @Body() data: UpdateNoticeDto, @Request() req: any) {
+    return this.noticesService.updateNotice(id, data, req.user);
   }
 
   @Get()

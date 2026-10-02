@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { FeeInvoiceStatus, FeePaymentProofStatus, Prisma, Role } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CloudinaryService } from '../storage/cloudinary.service.js';
@@ -88,5 +88,50 @@ export class FeesService {
     });
     void this.audit.record({ action: 'PAYMENT_PROOF_SUBMITTED', entity: 'FeePaymentProof', entityId: proofId, userId: user.id, schoolId: user.schoolId, details: { invoiceId, method, amount } });
     return { id: proofId, status: 'PENDING', submittedAt, message: 'Payment proof submitted for school verification.' };
+  }
+
+  async listPaymentProofs(schoolId: string, status?: string) {
+    const proofStatus = status && Object.values(FeePaymentProofStatus).includes(status as FeePaymentProofStatus) ? status as FeePaymentProofStatus : undefined;
+    return this.prisma.feePaymentProof.findMany({
+      where: { schoolId, ...(proofStatus ? { status: proofStatus } : {}) },
+      orderBy: { submittedAt: 'desc' },
+      take: 100,
+      select: {
+        id: true, invoiceId: true, mobileNumber: true, method: true, transactionId: true, amount: true, status: true, submittedAt: true,
+        invoice: { select: { invoiceNumber: true, title: true, amount: true, status: true } },
+        student: { select: { id: true, email: true, studentProfile: { select: { firstName: true, lastName: true, rollNo: true, grade: true, section: true } } } },
+        files: { select: { id: true, fileName: true, mimeType: true, storageUrl: true } },
+      },
+    });
+  }
+
+  async listManagedInvoices(schoolId: string, status?: string) {
+    const invoiceStatus = status && Object.values(['DUE', 'OVERDUE', 'PAID']).includes(status) ? status as 'DUE' | 'OVERDUE' | 'PAID' : undefined;
+    const invoices = await this.prisma.feeInvoice.findMany({
+      where: { schoolId, ...(invoiceStatus ? { status: invoiceStatus } : {}) },
+      orderBy: [{ dueDate: 'asc' }, { issuedAt: 'desc' }],
+      take: 200,
+      select: {
+        id: true, invoiceNumber: true, title: true, description: true, amount: true, dueDate: true, status: true, issuedAt: true, paidAt: true,
+        student: { select: { id: true, email: true, status: true, studentProfile: { select: { firstName: true, lastName: true, grade: true, section: true, rollNo: true } } } },
+        paymentProofs: { orderBy: { submittedAt: 'desc' }, take: 1, select: { id: true, status: true, amount: true, transactionId: true, submittedAt: true } },
+      },
+    });
+    return invoices.map(invoice => ({ ...invoice, amount: Number(invoice.amount), paymentProof: invoice.paymentProofs[0] ? { ...invoice.paymentProofs[0], amount: Number(invoice.paymentProofs[0].amount) } : null, paymentProofs: undefined }));
+  }
+
+  async reviewPaymentProof(id: string, status: 'APPROVED' | 'REJECTED', actor: { id: string; schoolId: string; role: Role }) {
+    const proof = await this.prisma.feePaymentProof.findFirst({ where: { id, schoolId: actor.schoolId }, select: { id: true, invoiceId: true, studentId: true, amount: true, status: true, invoice: { select: { amount: true } } } });
+    if (!proof) throw new NotFoundException('Payment proof not found in your school.');
+    if (proof.status !== FeePaymentProofStatus.PENDING) throw new BadRequestException('This payment proof has already been reviewed.');
+    const nextStatus = status === 'APPROVED' ? FeePaymentProofStatus.APPROVED : FeePaymentProofStatus.REJECTED;
+    await this.prisma.$transaction(async tx => {
+      await tx.feePaymentProof.update({ where: { id: proof.id }, data: { status: nextStatus } });
+      if (nextStatus === FeePaymentProofStatus.APPROVED && new Prisma.Decimal(proof.amount).greaterThanOrEqualTo(proof.invoice.amount)) {
+        await tx.feeInvoice.update({ where: { id: proof.invoiceId }, data: { status: FeeInvoiceStatus.PAID, paidAt: new Date() } });
+      }
+    });
+    void this.audit.record({ action: nextStatus === FeePaymentProofStatus.APPROVED ? 'PAYMENT_PROOF_APPROVED' : 'PAYMENT_PROOF_REJECTED', entity: 'FeePaymentProof', entityId: proof.id, userId: actor.id, schoolId: actor.schoolId, details: { invoiceId: proof.invoiceId, studentId: proof.studentId, amount: Number(proof.amount), status: nextStatus } });
+    return { id: proof.id, status: nextStatus };
   }
 }

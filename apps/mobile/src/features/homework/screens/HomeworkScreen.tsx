@@ -1,8 +1,10 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { api } from '../../../core/networking/api';
+import { getSelectedChildId } from '../../../core/utils/childSelection';
 
 export default function HomeworkScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -11,11 +13,30 @@ export default function HomeworkScreen({ navigation }: any) {
   const [homeworks, setHomeworks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [role, setRole] = useState('');
+  const [childSectionId, setChildSectionId] = useState('');
   const tabs = ['Assigned', 'Submitted', 'Upcoming'];
 
   useEffect(() => {
+    SecureStore.getItemAsync('user_data').then(async raw => {
+      if (!raw) return;
+      const nextRole = JSON.parse(raw).role || '';
+      setRole(nextRole);
+      if (nextRole === 'PARENT') {
+        const selectedId = await getSelectedChildId();
+        const { data } = await api.get('/academics/children');
+        const child = (Array.isArray(data) ? data : []).find((item: any) => item.student?.id === selectedId) || data?.[0];
+        setChildSectionId(child?.student?.enrollments?.[0]?.sectionId || '');
+      }
+    }).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!role || (role !== 'STUDENT' && role !== 'PARENT')) { setLoading(false); return; }
+    if (role === 'PARENT' && !childSectionId) { setLoading(false); setError('Select a child from the home screen first.'); return; }
     let active = true;
-    api.get('/homework/me', { params: { limit: 50 } }).then(({ data }) => {
+    const request = role === 'PARENT' ? api.get(`/homework/class/${childSectionId}`, { params: { limit: 50 } }) : api.get('/homework/me', { params: { limit: 50 } });
+    request.then(({ data }) => {
       if (!active) return;
       setHomeworks(data.map((item: any) => ({
         ...item,
@@ -31,7 +52,7 @@ export default function HomeworkScreen({ navigation }: any) {
       if (active) setError(err.response?.data?.message || 'Could not load homework.');
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [role, childSectionId]);
 
   const filteredHomeworks = activeTab === 'Submitted'
     ? homeworks.filter(hw => hw.status === 'Submitted')
@@ -62,7 +83,9 @@ export default function HomeworkScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.listContainer}>
-        {loading ? (
+        {!role || (role !== 'STUDENT' && role !== 'PARENT') ? (
+          <View style={styles.emptyState}><Text style={styles.emptyStateText}>Homework management for staff is available through the assigned-class workflow.</Text></View>
+        ) : loading ? (
           <View style={styles.emptyState}><Text style={styles.emptyStateText}>Loading homework…</Text></View>
         ) : error ? (
           <View style={styles.emptyState}><Text style={styles.emptyStateText}>{error}</Text></View>

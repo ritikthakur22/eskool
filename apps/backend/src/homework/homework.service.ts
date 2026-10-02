@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Homework, HomeworkSubmission, Role } from '@prisma/client';
-import { CreateHomeworkDto, SubmitHomeworkDto } from './dto/homework.dto.js';
+import { CreateHomeworkDto, SubmitHomeworkDto, UpdateHomeworkDto } from './dto/homework.dto.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CloudinaryService } from '../storage/cloudinary.service.js';
 
@@ -69,6 +69,27 @@ export class HomeworkService {
       submissions: undefined,
       subject: undefined,
     }));
+  }
+
+  async getManagedHomework(actor: { id: string; schoolId: string; role: Role }) {
+    const where: Prisma.HomeworkWhereInput = { schoolId: actor.schoolId };
+    if (actor.role === Role.TEACHER) where.teacherId = actor.id;
+    return this.prisma.homework.findMany({ where, include: { subject: true, section: { include: { class: true } }, teacher: { select: { email: true, teacherProfile: { select: { firstName: true, lastName: true } } } }, _count: { select: { submissions: true } } }, orderBy: { dueDate: 'asc' }, take: 200 });
+  }
+
+  async getSubmissions(homeworkId: string, actor: { id: string; schoolId: string; role: Role }) {
+    const homework = await this.prisma.homework.findFirst({ where: { id: homeworkId, schoolId: actor.schoolId, ...(actor.role === Role.TEACHER ? { teacherId: actor.id } : {}) }, select: { id: true } });
+    if (!homework) throw new NotFoundException('Homework not found or you lack permission to view submissions.');
+    return this.prisma.homeworkSubmission.findMany({ where: { homeworkId }, include: { student: { select: { id: true, email: true, studentProfile: { select: { firstName: true, lastName: true, rollNo: true, grade: true, section: true } } } } }, orderBy: { submittedAt: 'desc' } });
+  }
+
+  async updateHomework(id: string, data: UpdateHomeworkDto, actor: { id: string; schoolId: string; role: Role }) {
+    const homework = await this.prisma.homework.findFirst({ where: { id, schoolId: actor.schoolId }, select: { id: true, teacherId: true, title: true, description: true, dueDate: true } });
+    if (!homework) throw new NotFoundException('Homework not found in your school.');
+    if (actor.role === Role.TEACHER && homework.teacherId !== actor.id) throw new ForbiddenException('You can only edit homework you created.');
+    const updated = await this.prisma.homework.update({ where: { id }, data: { ...(data.title !== undefined ? { title: data.title.trim() } : {}), ...(data.description !== undefined ? { description: data.description.trim() } : {}), ...(data.dueDate !== undefined ? { dueDate: new Date(data.dueDate) } : {}) } });
+    void this.audit.record({ action: 'HOMEWORK_UPDATED', entity: 'Homework', entityId: id, userId: actor.id, schoolId: actor.schoolId, details: { before: { title: homework.title, description: homework.description, dueDate: homework.dueDate.toISOString() }, after: { title: updated.title, description: updated.description, dueDate: updated.dueDate.toISOString() } } });
+    return updated;
   }
 
   async submitHomework(data: SubmitHomeworkDto, actor: { id: string; schoolId: string }): Promise<HomeworkSubmission> {

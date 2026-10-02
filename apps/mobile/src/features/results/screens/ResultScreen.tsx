@@ -1,8 +1,10 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { api } from '../../../core/networking/api';
+import { getSelectedChildId } from '../../../core/utils/childSelection';
 
 export default function ResultScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -10,15 +12,21 @@ export default function ResultScreen({ navigation }: any) {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [role, setRole] = useState('');
+  const [childId, setChildId] = useState('');
+  useEffect(() => { SecureStore.getItemAsync('user_data').then(raw => { if (raw) setRole(JSON.parse(raw).role || ''); }).catch(() => undefined); }, []);
+  useEffect(() => { if (role === 'PARENT') getSelectedChildId().then(id => setChildId(id || '')).catch(() => undefined); }, [role]);
   useEffect(() => {
+    if (!role || (role !== 'STUDENT' && role !== 'PARENT')) { setLoading(false); return; }
+    if (role === 'PARENT' && !childId) { setLoading(false); setError('Select a child from the home screen first.'); return; }
     let active = true;
-    api.get('/exams/me/results').then(({ data }) => {
+    api.get(role === 'PARENT' ? `/exams/student/${childId}` : '/exams/me/results').then(({ data }) => {
       if (active) { setResults(data); setError(''); }
     }).catch((err: any) => {
       if (active) setError(err.response?.data?.message || 'Could not load results.');
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [role, childId]);
   const allRows = results.flatMap(group => group.results || []);
   const totalMarks = allRows.reduce((sum, row) => sum + Number(row.marksObtained || 0), 0);
   const maximumMarks = allRows.reduce((sum, row) => sum + Number(row.totalMarks || 0), 0);
@@ -44,7 +52,7 @@ export default function ResultScreen({ navigation }: any) {
           </View>
         </View>
 
-        {loading ? <Text style={styles.stateText}>Loading results…</Text> : error ? <Text style={styles.stateText}>{error}</Text> : results.length === 0 ? <Text style={styles.stateText}>No published results yet.</Text> : results.map((group: any) => {
+        {!role || (role !== 'STUDENT' && role !== 'PARENT') ? <Text style={styles.stateText}>Published results for students or the selected parent-linked child appear here.</Text> : loading ? <Text style={styles.stateText}>Loading results…</Text> : error ? <Text style={styles.stateText}>{error}</Text> : results.length === 0 ? <Text style={styles.stateText}>No published results yet.</Text> : results.map((group: any) => {
           const exam = group.exam;
           const groupTotal = group.results.reduce((sum: number, row: any) => sum + Number(row.totalMarks || 0), 0);
           const groupMarks = group.results.reduce((sum: number, row: any) => sum + Number(row.marksObtained || 0), 0);

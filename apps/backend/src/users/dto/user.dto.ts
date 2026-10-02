@@ -32,3 +32,13 @@ export class CreateUserDto {
   @IsOptional() @IsString() @MaxLength(100) department?: string;
   @IsOptional() @IsArray() @ArrayMaxSize(20) @IsString({ each: true }) subjects?: string[];
 }
+
+export class UpdateManagedUserDto {
+  @IsOptional() @IsEmail() @MaxLength(254) email?: string;
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(100) firstName?: string;
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(100) lastName?: string;
+  @IsOptional() @IsString() @MaxLength(50) grade?: string;
+  @IsOptional() @IsString() @MaxLength(50) section?: string;
+  @IsOptional() @IsString() @MaxLength(50) rollNo?: string;
+  @IsOptional() @IsString() @MaxLength(100) department?: string;
+}

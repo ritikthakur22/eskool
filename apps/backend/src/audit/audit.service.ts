@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 
@@ -17,10 +17,23 @@ export type AuditEvent = {
 export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(schoolId: string, limit = 100) {
-    return this.prisma.auditLog.findMany({
-      where: { schoolId },
-      take: Math.min(Math.max(limit, 1), 100),
+  async list(schoolId: string, filters: { limit?: number; offset?: number; action?: string; entity?: string; userId?: string; from?: string; to?: string } = {}) {
+    const limit = Math.min(Math.max(filters.limit ?? 100, 1), 100);
+    const offset = Math.max(filters.offset ?? 0, 0);
+    const from = filters.from ? new Date(filters.from) : undefined;
+    const to = filters.to ? new Date(filters.to) : undefined;
+    if ((from && Number.isNaN(from.getTime())) || (to && Number.isNaN(to.getTime()))) throw new BadRequestException('Audit date filters must be valid ISO dates.');
+    const where: Prisma.AuditLogWhereInput = {
+      schoolId,
+      ...(filters.action?.trim() ? { action: filters.action.trim().slice(0, 100) } : {}),
+      ...(filters.entity?.trim() ? { entity: filters.entity.trim().slice(0, 100) } : {}),
+      ...(filters.userId?.trim() ? { userId: filters.userId.trim() } : {}),
+      ...((from || to) ? { createdAt: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}),
+    };
+    const rows = await this.prisma.auditLog.findMany({
+      where,
+      skip: offset,
+      take: limit + 1,
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -33,6 +46,7 @@ export class AuditService {
         user: { select: { email: true, role: true } },
       },
     });
+    return { items: rows.slice(0, limit), hasMore: rows.length > limit, nextOffset: rows.length > limit ? offset + limit : null };
   }
 
   async record(event: AuditEvent) {

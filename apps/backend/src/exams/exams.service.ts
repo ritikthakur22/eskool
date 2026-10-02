@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Exam, ExamResult, Role } from '@prisma/client';
-import { CreateExamDto, AddExamResultDto } from './dto/exam.dto.js';
+import { CreateExamDto, AddExamResultDto, UpdateExamDto } from './dto/exam.dto.js';
 import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
@@ -36,9 +36,34 @@ export class ExamsService {
     const enrollment = await this.prisma.enrollment.findFirst({ where: { studentId: student.id, sectionId: exam.sectionId }, select: { id: true } });
     if (!enrollment) throw new ForbiddenException('Student is not enrolled in this exam section.');
     if (!Number.isFinite(data.marksObtained) || !Number.isFinite(data.totalMarks) || data.marksObtained < 0 || data.totalMarks <= 0 || data.marksObtained > data.totalMarks) throw new ForbiddenException('Invalid exam marks.');
-    const result = await this.prisma.examResult.create({ data: { examId: data.examId, studentId: student.id, marksObtained: data.marksObtained, totalMarks: data.totalMarks, grade: data.grade, schoolId: actor.schoolId } });
-    void this.audit.record({ action: 'EXAM_RESULT_ADDED', entity: 'ExamResult', entityId: result.id, userId: actor.id, schoolId: actor.schoolId, details: { examId: data.examId, studentId: student.id } });
+    const existing = await this.prisma.examResult.findUnique({ where: { examId_studentId: { examId: data.examId, studentId: student.id } }, select: { id: true, marksObtained: true, totalMarks: true, grade: true } });
+    const result = existing
+      ? await this.prisma.examResult.update({ where: { id: existing.id }, data: { marksObtained: data.marksObtained, totalMarks: data.totalMarks, grade: data.grade } })
+      : await this.prisma.examResult.create({ data: { examId: data.examId, studentId: student.id, marksObtained: data.marksObtained, totalMarks: data.totalMarks, grade: data.grade, schoolId: actor.schoolId } });
+    void this.audit.record({ action: existing ? 'EXAM_RESULT_UPDATED' : 'EXAM_RESULT_ADDED', entity: 'ExamResult', entityId: result.id, userId: actor.id, schoolId: actor.schoolId, details: { examId: data.examId, studentId: student.id, before: existing || null, after: { marksObtained: result.marksObtained, totalMarks: result.totalMarks, grade: result.grade } } });
     return result;
+  }
+
+  async getManagedExams(actor: { id: string; schoolId: string; role: Role }) {
+    const where: Prisma.ExamWhereInput = { schoolId: actor.schoolId };
+    if (actor.role === Role.TEACHER) {
+      const assignments = await this.prisma.teacherAssignment.findMany({ where: { teacherId: actor.id, section: { schoolId: actor.schoolId }, subject: { schoolId: actor.schoolId } }, select: { sectionId: true, subjectId: true } });
+      if (!assignments.length) return [];
+      where.OR = assignments.map(item => ({ sectionId: item.sectionId, subjectId: item.subjectId }));
+    }
+    return this.prisma.exam.findMany({ where, include: { subject: true, section: { include: { class: true } }, results: { select: { id: true, studentId: true, marksObtained: true, totalMarks: true, grade: true } } }, orderBy: { date: 'asc' }, take: 200 });
+  }
+
+  async updateExam(id: string, data: UpdateExamDto, actor: { id: string; schoolId: string; role: Role }) {
+    const exam = await this.prisma.exam.findFirst({ where: { id, schoolId: actor.schoolId }, select: { id: true, title: true, date: true, sectionId: true, subjectId: true } });
+    if (!exam) throw new NotFoundException('Exam not found in your school.');
+    if (actor.role === Role.TEACHER) {
+      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId: exam.sectionId, subjectId: exam.subjectId, section: { schoolId: actor.schoolId }, subject: { schoolId: actor.schoolId } }, select: { id: true } });
+      if (!assignment) throw new ForbiddenException('You are not assigned to this exam.');
+    }
+    const updated = await this.prisma.exam.update({ where: { id }, data: { ...(data.title !== undefined ? { title: data.title.trim() } : {}), ...(data.date !== undefined ? { date: new Date(data.date) } : {}) } });
+    void this.audit.record({ action: 'EXAM_UPDATED', entity: 'Exam', entityId: id, userId: actor.id, schoolId: actor.schoolId, details: { before: { title: exam.title, date: exam.date.toISOString() }, after: { title: updated.title, date: updated.date.toISOString() } } });
+    return updated;
   }
 
   async getExamsForStudent(studentId: string, schoolId: string) {
@@ -53,6 +78,13 @@ export class ExamsService {
       orderBy: { date: 'asc' },
       take: 100,
     });
+  }
+
+  async getExamsForLinkedChild(studentId: string, actor: { id: string; schoolId: string; role: Role }) {
+    if (actor.role !== Role.PARENT) throw new ForbiddenException('Only parents can use the linked-child exam view.');
+    const link = await this.prisma.parentStudent.findUnique({ where: { parentId_studentId: { parentId: actor.id, studentId } }, select: { id: true } });
+    if (!link) throw new ForbiddenException('You are not linked to this student.');
+    return this.getExamsForStudent(studentId, actor.schoolId);
   }
 
   async getStudentResults(studentId: string, actor: { id: string; schoolId: string; role: Role }): Promise<any[]> {

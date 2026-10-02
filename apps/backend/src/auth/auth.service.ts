@@ -23,15 +23,20 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
-    const user = await this.prisma.user.findUnique({
-      where: { email: email.trim().toLowerCase() },
-      include: { school: { select: { status: true } } },
-    });
-    if (user && user.status === 'ACTIVE' && user.school.status === 'ACTIVE' && await bcrypt.compare(pass, user.password)) {
-      const { password: _password, ...result } = user;
-      return result;
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { email: email.trim().toLowerCase() },
+        include: { school: { select: { status: true } } },
+      });
+      if (user && user.status === 'ACTIVE' && user.school.status === 'ACTIVE' && await bcrypt.compare(pass, user.password)) {
+        const { password: _password, ...result } = user;
+        return result;
+      }
+      return null;
+    } catch (error) {
+      console.error('auth_login_lookup_failed', error);
+      throw new ServiceUnavailableException('Authentication service is temporarily unavailable. Please try again later.');
     }
-    return null;
   }
 
   async validateGoogleUser(idToken: string): Promise<any> {

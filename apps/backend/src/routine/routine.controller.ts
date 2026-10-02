@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
+  Query,
   Post,
   Request,
   UploadedFile,
@@ -27,6 +28,14 @@ export class RoutineController {
   @Get()
   async getLatest(@Request() req: any) {
     return this.routineService.getLatest(req.user.schoolId);
+  }
+
+  @Get('history')
+  @UseGuards(RolesGuard)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  getHistory(@Query('limit') limit: string | undefined, @Request() req: any) {
+    const parsed = Number.parseInt(limit || '', 10);
+    return this.routineService.getHistory(req.user.schoolId, Number.isInteger(parsed) ? parsed : 50);
   }
 
   @Post()

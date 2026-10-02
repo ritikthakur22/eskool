@@ -1,15 +1,18 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post, Request, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post, Request, UploadedFiles, UseGuards, UseInterceptors, Query } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { FeesService, type PaymentProofUpload } from './fees.service.js';
 import { assertFileSignature } from '../storage/file-validation.js';
 import { SubmitPaymentProofDto } from './dto/payment-proof.dto.js';
+import { RolesGuard } from '../auth/roles.guard.js';
+import { Roles } from '../auth/roles.decorator.js';
+import { Role } from '@prisma/client';
 
 const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const maxProofSize = 5 * 1024 * 1024;
 
 @Controller('fees')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class FeesController {
   constructor(private readonly feesService: FeesService) {}
 
@@ -21,6 +24,30 @@ export class FeesController {
   @Get('payment-details')
   getPaymentDetails() {
     return this.feesService.getPaymentDetails();
+  }
+
+  @Get('admin/payment-proofs')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  listPaymentProofs(@Query('status') status: string | undefined, @Request() req: any) {
+    return this.feesService.listPaymentProofs(req.user.schoolId, status);
+  }
+
+  @Get('admin/invoices')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  listManagedInvoices(@Query('status') status: string | undefined, @Request() req: any) {
+    return this.feesService.listManagedInvoices(req.user.schoolId, status);
+  }
+
+  @Post('admin/payment-proofs/:id/approve')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  approvePaymentProof(@Param('id', new ParseUUIDPipe()) id: string, @Request() req: any) {
+    return this.feesService.reviewPaymentProof(id, 'APPROVED', req.user);
+  }
+
+  @Post('admin/payment-proofs/:id/reject')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  rejectPaymentProof(@Param('id', new ParseUUIDPipe()) id: string, @Request() req: any) {
+    return this.feesService.reviewPaymentProof(id, 'REJECTED', req.user);
   }
 
   @Post(':invoiceId/payment-proofs')

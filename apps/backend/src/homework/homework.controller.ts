@@ -1,7 +1,7 @@
 import { BadRequestException, Controller, Get, Post, Body, Param, Patch, UseGuards, Request, ParseUUIDPipe, UploadedFile, UseInterceptors, Query } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { HomeworkService } from './homework.service.js';
-import { CreateHomeworkDto, SubmitHomeworkDto, GradeHomeworkDto } from './dto/homework.dto.js';
+import { CreateHomeworkDto, SubmitHomeworkDto, GradeHomeworkDto, UpdateHomeworkDto } from './dto/homework.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -21,6 +21,18 @@ export class HomeworkController {
   async createHomework(@Body() data: CreateHomeworkDto, @Request() req: any) {
     return this.homeworkService.createHomework(data, req.user);
   }
+
+  @Get('manage')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  getManagedHomework(@Request() req: any) { return this.homeworkService.getManagedHomework(req.user); }
+
+  @Get(':homeworkId/submissions')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  getSubmissions(@Param('homeworkId', new ParseUUIDPipe()) id: string, @Request() req: any) { return this.homeworkService.getSubmissions(id, req.user); }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  updateHomework(@Param('id', new ParseUUIDPipe()) id: string, @Body() data: UpdateHomeworkDto, @Request() req: any) { return this.homeworkService.updateHomework(id, data, req.user); }
 
   @Get('me')
   @Roles(Role.STUDENT)

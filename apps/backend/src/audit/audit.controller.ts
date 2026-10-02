@@ -12,8 +12,9 @@ export class AuditController {
   constructor(private readonly audit: AuditService) {}
 
   @Get()
-  getLogs(@Query('limit') limit: string | undefined, @Request() req: any) {
-    const parsed = Number.parseInt(limit || '', 10);
-    return this.audit.list(req.user.schoolId, Number.isInteger(parsed) ? parsed : 100);
+  getLogs(@Query('limit') limit: string | undefined, @Query('offset') offset: string | undefined, @Query('action') action: string | undefined, @Query('entity') entity: string | undefined, @Query('userId') userId: string | undefined, @Query('from') from: string | undefined, @Query('to') to: string | undefined, @Request() req: any) {
+    const parsedLimit = Number.parseInt(limit || '', 10);
+    const parsedOffset = Number.parseInt(offset || '', 10);
+    return this.audit.list(req.user.schoolId, { limit: Number.isInteger(parsedLimit) ? parsedLimit : 100, offset: Number.isInteger(parsedOffset) ? parsedOffset : 0, action, entity, userId, from, to });
   }
 }

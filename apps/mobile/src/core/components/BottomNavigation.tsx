@@ -12,14 +12,22 @@ const studentTabs = [
 
 const operationalTabs = [
   { route: 'Dashboard', label: 'Home', icon: 'home-outline' },
-  { route: 'Attendance', label: 'Attendance', icon: 'checkmark-circle-outline' },
+  { route: 'Routine', label: 'Routine', icon: 'calendar-outline' },
   { route: 'Calendar', label: 'Calendar', icon: 'calendar-outline' },
   { route: 'Notice', label: 'Notices', icon: 'notifications-outline' },
   { route: 'Profile', label: 'Settings', icon: 'person-outline' },
 ];
 
+const parentTabs = [
+  { route: 'Dashboard', label: 'Home', icon: 'home-outline' },
+  { route: 'Calendar', label: 'Calendar', icon: 'calendar-outline' },
+  { route: 'Fees', label: 'Fees', icon: 'receipt-outline' },
+  { route: 'Notice', label: 'Notices', icon: 'notifications-outline' },
+  { route: 'Profile', label: 'Settings', icon: 'person-outline' },
+];
+
 export default function BottomNavigation({ navigation, activeRoute, colors, role }: any) {
-  const tabs = role === 'TEACHER' || role === 'ADMIN' || role === 'SUPER_ADMIN' ? operationalTabs : studentTabs;
+  const tabs = role === 'TEACHER' || role === 'ADMIN' || role === 'SUPER_ADMIN' ? operationalTabs : role === 'PARENT' ? parentTabs : studentTabs;
   return (
     <View style={[styles.bar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
     {tabs.map(tab => {

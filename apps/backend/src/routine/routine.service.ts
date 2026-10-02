@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CloudinaryService } from '../storage/cloudinary.service.js';
+import { AuditService } from '../audit/audit.service.js';
 
 export type RoutineUploadFile = {
   originalname: string;
@@ -12,7 +13,7 @@ export type RoutineUploadFile = {
 
 @Injectable()
 export class RoutineService {
-  constructor(private readonly prisma: PrismaService, private readonly cloudinary: CloudinaryService) {}
+  constructor(private readonly prisma: PrismaService, private readonly cloudinary: CloudinaryService, private readonly audit: AuditService) {}
 
   async upload(file: RoutineUploadFile, schoolId: string, uploaderId: string) {
     if (this.cloudinary.isConfigured()) {
@@ -22,6 +23,7 @@ export class RoutineService {
         VALUES (${randomUUID()}, ${schoolId}, ${uploaderId}, ${file.originalname}, ${file.mimetype}, ${Buffer.alloc(0)}, ${uploaded.secure_url}, ${uploaded.public_id}, NOW())
         RETURNING "id", "fileName", "mimeType", "createdAt"
       `);
+      void this.audit.record({ action: 'ROUTINE_UPLOADED', entity: 'RoutineDocument', entityId: document.id, userId: uploaderId, schoolId, details: { fileName: document.fileName, mimeType: document.mimeType, storage: 'cloudinary' } });
       return document;
     }
     const [document] = await this.prisma.$queryRaw<Array<{ id: string; fileName: string; mimeType: string; createdAt: Date }>>(Prisma.sql`
@@ -29,6 +31,7 @@ export class RoutineService {
       VALUES (${randomUUID()}, ${schoolId}, ${uploaderId}, ${file.originalname}, ${file.mimetype}, ${file.buffer}, NOW())
       RETURNING "id", "fileName", "mimeType", "createdAt"
     `);
+    void this.audit.record({ action: 'ROUTINE_UPLOADED', entity: 'RoutineDocument', entityId: document.id, userId: uploaderId, schoolId, details: { fileName: document.fileName, mimeType: document.mimeType, storage: 'database-fallback' } });
     return document;
   }
 
@@ -55,5 +58,14 @@ export class RoutineService {
       return { ...metadata, base64: Buffer.from(await response.arrayBuffer()).toString('base64') };
     }
     return { ...metadata, base64: Buffer.from(content).toString('base64') };
+  }
+
+  async getHistory(schoolId: string, limit = 50) {
+    return this.prisma.routineDocument.findMany({
+      where: { schoolId },
+      take: Math.min(Math.max(limit, 1), 100),
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, fileName: true, mimeType: true, storageUrl: true, createdAt: true, uploader: { select: { id: true, email: true, role: true, teacherProfile: { select: { firstName: true, lastName: true } }, adminProfile: { select: { firstName: true, lastName: true } } } } },
+    });
   }
 }

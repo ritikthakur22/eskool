@@ -1,6 +1,6 @@
-import { Controller, Post, Get, Body, Param, Query, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
 import { AttendanceService } from './attendance.service.js';
-import { MarkAttendanceDto } from './dto/attendance.dto.js';
+import { CorrectAttendanceDto, MarkAttendanceDto } from './dto/attendance.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
@@ -17,6 +17,12 @@ export class AttendanceController {
     return this.attendanceService.markAttendance(data, req.user);
   }
 
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  correctAttendance(@Param('id', new ParseUUIDPipe()) id: string, @Body() data: CorrectAttendanceDto, @Request() req: any) {
+    return this.attendanceService.correctAttendance(id, data, req.user);
+  }
+
   @Get('student/:id')
   async getStudentAttendance(
     @Param('id', new ParseUUIDPipe()) studentId: string,
@@ -27,5 +33,11 @@ export class AttendanceController {
     const monthNum = month ? parseInt(month, 10) : undefined;
     const yearNum = year ? parseInt(year, 10) : undefined;
     return this.attendanceService.getStudentAttendance(studentId, monthNum, yearNum, req.user);
+  }
+
+  @Get('register')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  getSchoolRegister(@Query('date') date: string | undefined, @Query('sectionId', new ParseUUIDPipe({ optional: true })) sectionId: string | undefined, @Request() req: any) {
+    return this.attendanceService.getSchoolRegister({ schoolId: req.user.schoolId, date, sectionId });
   }
 }

@@ -20,3 +20,10 @@ export class CreateNoticeDto {
   @IsOptional()
   date?: string;
 }
+
+export class UpdateNoticeDto {
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(160) title?: string;
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(10000) content?: string;
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(40) category?: string;
+  @IsDateString() @IsOptional() date?: string;
+}

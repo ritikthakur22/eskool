@@ -1,9 +1,11 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { api } from '../../../core/networking/api';
+import { getSelectedChildId } from '../../../core/utils/childSelection';
 
 export default function ExamsScreen({ navigation }: any) {
   const { colors } = useTheme();
@@ -12,17 +14,23 @@ export default function ExamsScreen({ navigation }: any) {
   const [exams, setExams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [role, setRole] = useState('');
+  const [childId, setChildId] = useState('');
   const tabs = ['Online Exam', 'Upcoming', 'Result'];
 
+  useEffect(() => { SecureStore.getItemAsync('user_data').then(async raw => { if (!raw) return; const nextRole = JSON.parse(raw).role || ''; setRole(nextRole); if (nextRole === 'PARENT') setChildId((await getSelectedChildId()) || ''); }).catch(() => undefined); }, []);
+
   useEffect(() => {
+    if (!role || (role !== 'STUDENT' && role !== 'PARENT')) { setLoading(false); return; }
+    if (role === 'PARENT' && !childId) { setLoading(false); setError('Select a child from the home screen first.'); return; }
     let active = true;
-    api.get('/exams/me').then(({ data }) => {
+    api.get(role === 'PARENT' ? `/exams/child/${childId}` : '/exams/me').then(({ data }) => {
       if (active) { setExams(data); setError(''); }
     }).catch((err: any) => {
       if (active) setError(err.response?.data?.message || 'Could not load exams.');
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, []);
+  }, [role, childId]);
   const now = Date.now();
   const visibleExams = exams.filter(exam => activeTab !== 'Upcoming' || new Date(exam.date).getTime() >= now);
 
@@ -52,7 +60,7 @@ export default function ExamsScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.listContainer}>
-        {loading ? <View style={styles.emptyState}><Text style={styles.emptyText}>Loading exams…</Text></View> : error ? <View style={styles.emptyState}><Text style={styles.emptyText}>{error}</Text></View> : visibleExams.length === 0 ? <View style={styles.emptyState}><Text style={styles.emptyText}>No exams found.</Text></View> : visibleExams.map((exam) => (
+        {!role || (role !== 'STUDENT' && role !== 'PARENT') ? <View style={styles.emptyState}><Text style={styles.emptyText}>Exam management for staff is available through the assigned-class workflow.</Text></View> : loading ? <View style={styles.emptyState}><Text style={styles.emptyText}>Loading exams…</Text></View> : error ? <View style={styles.emptyState}><Text style={styles.emptyText}>{error}</Text></View> : visibleExams.length === 0 ? <View style={styles.emptyState}><Text style={styles.emptyText}>No exams found.</Text></View> : visibleExams.map((exam) => (
           <View key={exam.id} style={styles.examCard}>
             <View style={styles.iconContainer}>
               <Ionicons name="document-text" size={24} color={colors.primary} />

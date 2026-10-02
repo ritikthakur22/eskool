@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, BadRequestException, ForbiddenException, Request, Get, Patch, UploadedFile, UseInterceptors, Header, StreamableFile } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, BadRequestException, ForbiddenException, Request, Get, Patch, UploadedFile, UseInterceptors, Header, StreamableFile, Query, Param } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service.js';
 import * as bcrypt from 'bcryptjs';
@@ -7,8 +7,9 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { assertFileSignature } from '../storage/file-validation.js';
-import { ChangePasswordDto, CreateUserDto, UpdateProfileDto } from './dto/user.dto.js';
+import { ChangePasswordDto, CreateUserDto, UpdateManagedUserDto, UpdateProfileDto } from './dto/user.dto.js';
 import { AuditService } from '../audit/audit.service.js';
+import { canCreateRole } from './users.policy.js';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -54,22 +55,51 @@ export class UsersController {
     return this.usersService.updateProfilePhoto(req.user.id, file);
   }
 
+  @Get('admin/users')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  listManagedUsers(@Query('role') role: string | undefined, @Query('status') status: string | undefined, @Query('q') query: string | undefined, @Request() req: any) {
+    return this.usersService.listManagedUsers({ schoolId: req.user.schoolId, actorRole: req.user.role as Role, role, status, query });
+  }
+
+  @Get('admin/users/:id')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  getManagedUser(@Param('id') id: string, @Request() req: any) {
+    return this.usersService.getManagedUser(id, { schoolId: req.user.schoolId, actorRole: req.user.role as Role });
+  }
+
+  @Patch('admin/users/:id')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  updateManagedUser(@Param('id') id: string, @Body() data: UpdateManagedUserDto, @Request() req: any) {
+    return this.usersService.updateManagedUser(id, data, { actorId: req.user.id, schoolId: req.user.schoolId, actorRole: req.user.role as Role });
+  }
+
+  @Post('admin/users/:id/disable')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  disableManagedUser(@Param('id') id: string, @Request() req: any) {
+    return this.usersService.setManagedUserStatus(id, false, { actorId: req.user.id, schoolId: req.user.schoolId, actorRole: req.user.role as Role });
+  }
+
+  @Post('admin/users/:id/restore')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  restoreManagedUser(@Param('id') id: string, @Request() req: any) {
+    return this.usersService.setManagedUserStatus(id, true, { actorId: req.user.id, schoolId: req.user.schoolId, actorRole: req.user.role as Role });
+  }
+
   @Post('admin/create-user')
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.TEACHER)
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   async createUser(@Body() data: CreateUserDto, @Request() req: any) {
-    const creatorRole = req.user.role;
+    const creatorRole = req.user.role as Role;
     const targetRole = data.role || Role.STUDENT;
     if (!Object.values(Role).includes(targetRole)) throw new BadRequestException('Invalid user role.');
     if (typeof data.email !== 'string' || !data.email.trim() || typeof data.password !== 'string' || data.password.length < 8 || data.password.length > 128) {
       throw new BadRequestException('A valid email and password of 8–128 characters are required.');
     }
 
-    // RBAC Hierarchy Enforcement
-    if (creatorRole === Role.TEACHER && (targetRole === Role.ADMIN || targetRole === Role.SUPER_ADMIN || targetRole === Role.TEACHER)) {
-      throw new ForbiddenException('Teachers can only create Students or Parents.');
-    }
-    if (creatorRole === Role.ADMIN && targetRole === Role.SUPER_ADMIN) {
-      throw new ForbiddenException('Admins cannot create Super Admins.');
+    // RBAC hierarchy: admins manage operational accounts; only the platform
+    // owner can manage admins. Super-admin creation is deliberately excluded
+    // from the ordinary API and must use a separate bootstrap process.
+    if (!canCreateRole(creatorRole, targetRole)) {
+      throw new ForbiddenException('You do not have permission to create this account type.');
     }
 
     const existingUser = await this.usersService.findByEmail(data.email);

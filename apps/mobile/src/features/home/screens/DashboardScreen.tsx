@@ -11,12 +11,14 @@ import { API_BASE_URL, api } from '../../../core/networking/api';
 import { getInMemoryAccessToken } from '../../../core/networking/session';
 import { currentBsMonth, getBsMonthLabels, getGregorianMonthsForBsMonth } from '../../../core/utils/bsCalendar';
 import { isNoticeUnread, loadNoticeReadState, type NoticeReadState } from '../../../core/utils/noticeReadState';
+import { getSelectedChildId, setSelectedChildId as persistSelectedChildId } from '../../../core/utils/childSelection';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 type Feature = { name: string; icon: any; route?: string; accent: string; note?: string; disabled?: boolean; expand?: boolean };
 type Profile = { id: string; email: string; role: string; firstName?: string; lastName?: string; grade?: string | null; section?: string | null; studentId?: string | null; profilePictureUrl?: string | null };
 type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; author?: any };
 type Attendance = { id: string; status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY'; date: string };
+type Child = { id: string; email: string; student: { id: string; email: string; studentProfile?: { firstName?: string; lastName?: string; grade?: string; section?: string; rollNo?: string }; enrollments?: { sectionId: string }[] } };
 
 const quickFeatures: Feature[] = [
   { name: 'Class routine', icon: 'calendar-outline', route: 'Routine', accent: '#16B86A' },
@@ -31,12 +33,22 @@ const quickFeatures: Feature[] = [
 
 const operationalQuickFeatures: Feature[] = [
   { name: 'Class routine', icon: 'calendar-outline', route: 'Routine', accent: '#16B86A' },
-  { name: 'Attendance', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#10A981' },
-  { name: 'Homework', icon: 'document-text-outline', route: 'Homework', accent: '#2389F5' },
-  { name: 'Exams', icon: 'calendar-clear-outline', route: 'Exams', accent: '#EF5261' },
-  { name: 'Results', icon: 'podium-outline', route: 'Result', accent: '#F39A19' },
   { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#8B5CF6' },
   { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#64748B' },
+  { name: 'Attendance register', icon: 'checkmark-circle-outline', accent: '#10A981', note: 'Management coming soon', disabled: true },
+  { name: 'Homework manager', icon: 'document-text-outline', accent: '#2389F5', note: 'Management coming soon', disabled: true },
+  { name: 'Exams & results', icon: 'podium-outline', accent: '#F39A19', note: 'Management coming soon', disabled: true },
+  { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
+];
+
+const parentQuickFeatures: Feature[] = [
+  { name: 'Fees & invoices', icon: 'receipt-outline', route: 'Fees', accent: '#D18A0A' },
+  { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#2389F5' },
+  { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#8B5CF6' },
+  { name: 'Class routine', icon: 'calendar-outline', route: 'Routine', accent: '#16B86A' },
+  { name: 'Homework', icon: 'document-text-outline', route: 'Homework', accent: '#2389F5', note: 'Select a child first' },
+  { name: 'Attendance', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#10A981', note: 'Select a child first' },
+  { name: 'Results', icon: 'podium-outline', route: 'Result', accent: '#F39A19', note: 'Select a child first' },
   { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
 ];
 
@@ -51,6 +63,35 @@ const moreFeatureGroups: { title: string; features: Feature[] }[] = [
     { name: 'Attendance', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#16A36A' },
     { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#2389F5' },
     { name: 'Fees & invoices', icon: 'receipt-outline', route: 'Fees', accent: '#D18A0A' },
+    { name: 'Settings', icon: 'settings-outline', route: 'Profile', accent: '#14A9A1' },
+  ] },
+];
+
+const operationalMoreFeatureGroups: { title: string; features: Feature[] }[] = [
+  { title: 'School operations', features: [
+    { name: 'Online class', icon: 'videocam-outline', route: 'OnlineClass', accent: '#0EA5E9' },
+    { name: 'Class chat', icon: 'chatbubbles-outline', route: 'Chat', accent: '#8B5CF6', note: 'Coming soon', disabled: true },
+    { name: 'Attendance register', icon: 'checkmark-circle-outline', accent: '#16A36A', note: 'Management coming soon', disabled: true },
+    { name: 'Fees review', icon: 'receipt-outline', accent: '#D18A0A', note: 'Management coming soon', disabled: true },
+  ] },
+  { title: 'Account', features: [
+    { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#EF5261' },
+    { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#2389F5' },
+    { name: 'Settings', icon: 'settings-outline', route: 'Profile', accent: '#14A9A1' },
+  ] },
+];
+
+const parentMoreFeatureGroups: { title: string; features: Feature[] }[] = [
+  { title: 'Child and school', features: [
+    { name: 'Class chat', icon: 'chatbubbles-outline', route: 'Chat', accent: '#8B5CF6', note: 'Coming soon', disabled: true },
+    { name: 'Homework', icon: 'document-text-outline', accent: '#2389F5', note: 'Select a child first', disabled: true },
+    { name: 'Attendance', icon: 'checkmark-circle-outline', accent: '#16A36A', note: 'Select a child first', disabled: true },
+    { name: 'Results', icon: 'podium-outline', accent: '#F39A19', note: 'Select a child first', disabled: true },
+  ] },
+  { title: 'Account', features: [
+    { name: 'Fees & invoices', icon: 'receipt-outline', route: 'Fees', accent: '#D18A0A' },
+    { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#EF5261' },
+    { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#2389F5' },
     { name: 'Settings', icon: 'settings-outline', route: 'Profile', accent: '#14A9A1' },
   ] },
 ];
@@ -81,6 +122,8 @@ export default function DashboardScreen({ navigation }: Props) {
   const [noticeError, setNoticeError] = useState(false);
   const [attendanceError, setAttendanceError] = useState(false);
   const [showAllFeatures, setShowAllFeatures] = useState(false);
+  const [children, setChildren] = useState<Child[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState('');
 
   const loadDashboard = useCallback(async (refresh = false) => {
     refresh ? setRefreshing(true) : setLoading(true);
@@ -130,6 +173,16 @@ export default function DashboardScreen({ navigation }: Props) {
     } else {
       setAttendance([]);
     }
+    if (currentProfile?.role === 'PARENT') {
+      try {
+        const { data } = await api.get('/academics/children');
+        const linked = Array.isArray(data) ? data : [];
+        setChildren(linked);
+        const saved = await getSelectedChildId();
+        const selected = linked.find((item: Child) => item.student.id === saved) || linked[0];
+        if (selected) { setSelectedChildId(selected.student.id); await persistSelectedChildId(selected.student.id); }
+      } catch { setChildren([]); }
+    } else { setChildren([]); setSelectedChildId(''); }
 
     setLoading(false);
     setRefreshing(false);
@@ -153,6 +206,7 @@ export default function DashboardScreen({ navigation }: Props) {
   const monthLabels = getBsMonthLabels(currentBsMonth());
   const cardWidth = Math.min(520, Math.max(215, (width - 58) * 0.66));
   const isOperationalRole = ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(profile?.role || '');
+  const isParentRole = profile?.role === 'PARENT';
 
   const openFeature = (feature: Feature) => {
     if (feature.expand) { setShowAllFeatures(value => !value); return; }
@@ -180,14 +234,19 @@ export default function DashboardScreen({ navigation }: Props) {
         <View style={s.sectionHeader}>
           <Text style={s.sectionTitle}>Quick access</Text>
         </View>
-        <View style={s.quickGrid}>{(isOperationalRole ? operationalQuickFeatures : quickFeatures).map(feature => <QuickTile key={feature.name} feature={feature} styles={s} onPress={() => openFeature(feature)} />)}</View>
+        <View style={s.quickGrid}>{(isOperationalRole ? operationalQuickFeatures : isParentRole ? parentQuickFeatures : quickFeatures).map(feature => <QuickTile key={feature.name} feature={feature} styles={s} onPress={() => openFeature(feature)} />)}</View>
         {showAllFeatures && <View style={s.moreFeatures}>
-          {moreFeatureGroups.map(group => <View key={group.title} style={s.moreGroup}>
+          {(isOperationalRole ? operationalMoreFeatureGroups : isParentRole ? parentMoreFeatureGroups : moreFeatureGroups).map(group => <View key={group.title} style={s.moreGroup}>
             <Text style={s.moreGroupTitle}>{group.title}</Text>
             <View style={s.moreGrid}>{group.features.map(feature => <MoreTile key={feature.name} feature={feature} styles={s} onPress={() => openFeature(feature)} />)}</View>
           </View>)}
         </View>}
       </View>
+
+      {isParentRole && <View style={s.sectionCard}>
+        <View style={s.sectionHeader}><View><Text style={s.sectionTitle}>Selected child</Text><Text style={s.sectionHint}>Choose which child’s records to view</Text></View><Ionicons name="people-outline" size={21} color={colors.primary} /></View>
+        {children.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>{children.map(child => { const profile = child.student.studentProfile; const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || child.student.email; const active = selectedChildId === child.student.id; return <TouchableOpacity key={child.student.id} onPress={async () => { setSelectedChildId(child.student.id); await persistSelectedChildId(child.student.id); }} style={[s.childChip, active && s.childChipActive]}><Text style={[s.childChipName, active && s.childChipNameActive]} numberOfLines={1}>{name}</Text><Text style={[s.childChipMeta, active && s.childChipMetaActive]}>{profile?.grade ? `Class ${profile.grade}${profile.section ? ` · ${profile.section}` : ''}` : 'Student'}</Text></TouchableOpacity>; })}</ScrollView> : <Text style={s.mutedText}>No linked children are available yet.</Text>}
+      </View>}
 
       {profile?.role === 'STUDENT' && <View style={s.sectionCard}>
         <View style={s.sectionHeader}>
@@ -228,7 +287,7 @@ export default function DashboardScreen({ navigation }: Props) {
 }
 
 function QuickTile({ feature, styles, onPress }: { feature: Feature; styles: any; onPress: () => void }) {
-  return <TouchableOpacity accessibilityRole="button" onPress={onPress} style={styles.quickTile}>
+  return <TouchableOpacity disabled={feature.disabled} accessibilityRole="button" accessibilityState={{ disabled: feature.disabled }} onPress={onPress} style={[styles.quickTile, feature.disabled && styles.quickTileDisabled]}>
     <View style={[styles.quickIcon, { backgroundColor: `${feature.accent}18` }]}><Ionicons name={feature.icon} size={27} color={feature.accent} /></View>
     <Text numberOfLines={2} style={styles.quickLabel}>{feature.name}</Text>
   </TouchableOpacity>;
@@ -251,7 +310,7 @@ const makeStyles = (c: any) => StyleSheet.create({
   header: { minHeight: 82, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 17, paddingVertical: 12, backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border },
   identity: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', marginRight: 8 }, avatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary + '18', marginRight: 11 }, avatarText: { color: c.primary, fontSize: 21, fontWeight: '900' }, identityCopy: { flex: 1, minWidth: 0 }, greeting: { color: c.text, fontSize: 19, fontWeight: '900' }, meta: { color: c.subText, fontSize: 13, marginTop: 3, textTransform: 'capitalize' }, headerActions: { flexDirection: 'row', alignItems: 'center', gap: 7 }, headerButton: { width: 42, height: 44, alignItems: 'center', justifyContent: 'center', position: 'relative' }, notificationDot: { position: 'absolute', right: 8, top: 5, width: 9, height: 9, borderRadius: 5, backgroundColor: c.danger, borderWidth: 1, borderColor: c.card },
   scrollContent: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 24, gap: 13 }, sectionCard: { padding: 15, backgroundColor: c.card, borderRadius: 19, borderWidth: 1, borderColor: c.border, shadowColor: '#18223A', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.045, shadowRadius: 8, elevation: 2 }, sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 14 }, sectionTitle: { color: c.text, fontSize: 19, fontWeight: '900' }, sectionHint: { color: c.subText, fontSize: 11, marginTop: 3 }, viewAllButton: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: 3, paddingLeft: 8 }, viewAllText: { color: c.primary, fontSize: 13, fontWeight: '700' },
-  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 13 }, quickTile: { width: '23.5%', minHeight: 93, alignItems: 'center', justifyContent: 'flex-start' }, quickIcon: { width: 61, height: 61, maxWidth: '100%', borderRadius: 17, alignItems: 'center', justifyContent: 'center' }, quickLabel: { color: c.text, fontSize: 11, lineHeight: 14, textAlign: 'center', marginTop: 7, paddingHorizontal: 2 }, moreFeatures: { marginTop: 15, paddingTop: 14, borderTopWidth: 1, borderColor: c.border }, moreGroup: { marginBottom: 11 }, moreGroupTitle: { color: c.subText, fontSize: 10, fontWeight: '900', letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 6 }, moreGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }, moreTile: { width: '49%', minHeight: 53, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, marginBottom: 5, borderRadius: 12, backgroundColor: c.mutedSurface }, moreTileDisabled: { opacity: 0.65 }, moreIcon: { width: 31, height: 31, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginRight: 8 }, moreCopy: { flex: 1, minWidth: 0 }, moreLabel: { color: c.text, fontSize: 10, fontWeight: '700' }, moreNote: { color: c.subText, fontSize: 9, marginTop: 2 }, subTextColor: c.subText,
+  quickGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 13 }, quickTile: { width: '23.5%', minHeight: 93, alignItems: 'center', justifyContent: 'flex-start' }, quickTileDisabled: { opacity: 0.62 }, quickIcon: { width: 61, height: 61, maxWidth: '100%', borderRadius: 17, alignItems: 'center', justifyContent: 'center' }, quickLabel: { color: c.text, fontSize: 11, lineHeight: 14, textAlign: 'center', marginTop: 7, paddingHorizontal: 2 }, childChip: { minWidth: 130, paddingHorizontal: 13, paddingVertical: 10, borderRadius: 13, backgroundColor: c.mutedSurface, borderWidth: 1, borderColor: c.border }, childChipActive: { backgroundColor: c.primary + '14', borderColor: c.primary }, childChipName: { color: c.text, fontSize: 12, fontWeight: '800' }, childChipNameActive: { color: c.primary }, childChipMeta: { color: c.subText, fontSize: 9, marginTop: 3 }, childChipMetaActive: { color: c.primary }, moreFeatures: { marginTop: 15, paddingTop: 14, borderTopWidth: 1, borderColor: c.border }, moreGroup: { marginBottom: 11 }, moreGroupTitle: { color: c.subText, fontSize: 10, fontWeight: '900', letterSpacing: 0.9, textTransform: 'uppercase', marginBottom: 6 }, moreGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }, moreTile: { width: '49%', minHeight: 53, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, marginBottom: 5, borderRadius: 12, backgroundColor: c.mutedSurface }, moreTileDisabled: { opacity: 0.65 }, moreIcon: { width: 31, height: 31, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginRight: 8 }, moreCopy: { flex: 1, minWidth: 0 }, moreLabel: { color: c.text, fontSize: 10, fontWeight: '700' }, moreNote: { color: c.subText, fontSize: 9, marginTop: 2 }, subTextColor: c.subText,
   attendanceBody: { flexDirection: 'row', alignItems: 'center', gap: 12 }, progressRing: { width: 102, height: 102, borderRadius: 51, borderWidth: 9, borderColor: c.success, alignItems: 'center', justifyContent: 'center' }, ringInner: { alignItems: 'center', justifyContent: 'center' }, rateValue: { color: c.text, fontSize: 24, lineHeight: 29, fontWeight: '900' }, rateCaption: { color: c.subText, fontSize: 11, marginTop: 1 }, attendanceStats: { flex: 1, flexDirection: 'row', gap: 7 }, attendanceStat: { flex: 1, minWidth: 0, height: 67, alignItems: 'center', justifyContent: 'center', borderRadius: 13, paddingHorizontal: 4 }, attendanceValue: { fontSize: 21, fontWeight: '900' }, attendanceLabel: { color: c.text, fontSize: 9, marginTop: 4 }, attendanceLink: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, paddingHorizontal: 13, borderRadius: 13, backgroundColor: c.primary + '12' }, attendanceLinkText: { flex: 1, color: c.primary, fontSize: 13, fontWeight: '800' }, attendanceLoading: { minHeight: 118, alignItems: 'center', justifyContent: 'center', gap: 8 }, attendanceError: { minHeight: 74, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, mutedText: { color: c.subText, fontSize: 11 },
   noticeCarousel: { paddingRight: 2, gap: 12 }, noticeCard: { minHeight: 181, padding: 12, borderRadius: 15, borderWidth: 1, borderColor: c.border, backgroundColor: c.card }, noticeMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }, noticeBadge: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 9, backgroundColor: c.primary + '14' }, noticeBadgeText: { color: c.primary, fontSize: 10, fontWeight: '800', textTransform: 'capitalize' }, publisher: { flex: 1, color: c.subText, fontSize: 9, textAlign: 'right' }, noticeContentRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 10, paddingBottom: 8 }, noticeCopy: { flex: 1, minWidth: 0 }, noticeTitle: { color: c.text, fontSize: 14, lineHeight: 19, fontWeight: '800' }, noticePreview: { color: c.subText, fontSize: 11, lineHeight: 16, marginTop: 5 }, noticeIcon: { width: 48, height: 48, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary + '12' }, noticeFooter: { flexDirection: 'row', alignItems: 'center', gap: 5, borderTopWidth: 1, borderColor: c.border, paddingTop: 8 }, noticeDate: { flex: 1, color: c.subText, fontSize: 9 }, noticeState: { minHeight: 94, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
 });

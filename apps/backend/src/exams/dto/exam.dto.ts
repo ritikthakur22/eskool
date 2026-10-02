@@ -45,3 +45,8 @@ export class AddExamResultDto {
   @MaxLength(20)
   grade?: string;
 }
+
+export class UpdateExamDto {
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(160) title?: string;
+  @IsOptional() @IsDateString() date?: string;
+}
