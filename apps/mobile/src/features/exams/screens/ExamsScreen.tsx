@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useState, useMemo } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../core/theme/ThemeContext';
@@ -8,8 +8,7 @@ import { api } from '../../../core/networking/api';
 import { getSelectedChildId } from '../../../core/utils/childSelection';
 
 export default function ExamsScreen({ navigation }: any) {
-  const { colors } = useTheme();
-  const styles = makeStyles(colors);
+  const { colors } = useTheme(); const styles = makeStyles(colors);
   const [activeTab, setActiveTab] = useState('Online Exam');
   const [exams, setExams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,23 +16,83 @@ export default function ExamsScreen({ navigation }: any) {
   const [role, setRole] = useState('');
   const [childId, setChildId] = useState('');
   const [childName, setChildName] = useState('');
-  const tabs = ['Online Exam', 'Upcoming', 'Result'];
+  
+  // Management state
+  const [structure, setStructure] = useState<any>(null);
+  const [editorVisible, setEditorVisible] = useState(false);
+  const [editExam, setEditExam] = useState<any>(null);
+  const [form, setForm] = useState({ title: '', subjectId: '', sectionId: '', date: '' });
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => { SecureStore.getItemAsync('user_data').then(async raw => { if (!raw) return; const nextRole = JSON.parse(raw).role || ''; setRole(nextRole); if (nextRole === 'PARENT') { const selectedId = (await getSelectedChildId()) || ''; setChildId(selectedId); try { const { data } = await api.get('/academics/children'); const child = (Array.isArray(data) ? data : []).find((item: any) => item.student?.id === selectedId) || data?.[0]; const profile = child?.student?.studentProfile; setChildName([profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || child?.student?.email || 'Selected child'); } catch { setChildName('Selected child'); } } }).catch(() => undefined); }, []);
+  const tabs = useMemo(() => {
+    return ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(role) ? ['Manage', 'Results'] : ['Online Exam', 'Upcoming', 'Result'];
+  }, [role]);
 
   useEffect(() => {
-    if (!role || (role !== 'STUDENT' && role !== 'PARENT')) { setLoading(false); return; }
-    if (role === 'PARENT' && !childId) { setLoading(false); setError('Select a child from the home screen first.'); return; }
-    let active = true;
-    api.get(role === 'PARENT' ? `/exams/child/${childId}` : '/exams/me').then(({ data }) => {
-      if (active) { setExams(data); setError(''); }
-    }).catch((err: any) => {
-      if (active) setError(err.response?.data?.message || 'Could not load exams.');
-    }).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [role, childId]);
+    if (tabs.length > 0 && !tabs.includes(activeTab)) setActiveTab(tabs[0]);
+  }, [tabs, activeTab]);
+
+  const loadData = async () => {
+    setLoading(true); setError('');
+    try {
+      const raw = await SecureStore.getItemAsync('user_data');
+      if (!raw) { setLoading(false); return; }
+      const nextRole = JSON.parse(raw).role || '';
+      setRole(nextRole);
+
+      if (['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(nextRole)) {
+        const [examRes, structRes] = await Promise.all([
+          api.get('/exams/manage'),
+          api.get('/academics/structure').catch(() => ({ data: {} }))
+        ]);
+        setExams(examRes.data);
+        setStructure(structRes.data);
+      } else {
+        if (nextRole === 'PARENT') {
+          const selectedId = (await getSelectedChildId()) || '';
+          setChildId(selectedId);
+          if (!selectedId) throw new Error('Select a child from the home screen first.');
+          const childRes = await api.get('/academics/children').catch(() => ({ data: [] }));
+          const data = Array.isArray(childRes.data) ? childRes.data : [];
+          const child = data.find((item: any) => item.student?.id === selectedId) || data[0];
+          const profile = child?.student?.studentProfile;
+          setChildName([profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || child?.student?.email || 'Selected child');
+        }
+        const endpoint = nextRole === 'PARENT' ? `/exams/child/${childId}` : '/exams/me';
+        const res = await api.get(endpoint);
+        setExams(res.data);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.message || 'Could not load exams.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadData(); }, [activeTab]);
+
   const now = Date.now();
   const visibleExams = exams.filter(exam => activeTab !== 'Upcoming' || new Date(exam.date).getTime() >= now);
+  const isManagement = ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(role);
+
+  const openEditor = (e: any = null) => {
+    setEditExam(e);
+    setForm(e ? { title: e.title, subjectId: e.subjectId, sectionId: e.sectionId, date: e.date.split('T')[0] } : { title: '', subjectId: '', sectionId: '', date: new Date().toISOString().split('T')[0] });
+    setEditorVisible(true);
+  };
+
+  const saveExam = async () => {
+    if (!form.title || !form.subjectId || !form.sectionId || !form.date) return Alert.alert('Error', 'Fill all fields.');
+    setSaving(true);
+    try {
+      if (editExam) await api.patch(`/exams/${editExam.id}`, { title: form.title, date: new Date(form.date).toISOString() });
+      else await api.post('/exams', { ...form, date: new Date(form.date).toISOString() });
+      setEditorVisible(false);
+      loadData();
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.message || 'Failed to save exam.');
+    } finally { setSaving(false); }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -42,79 +101,121 @@ export default function ExamsScreen({ navigation }: any) {
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerCopy}><Text style={styles.headerTitle}>Exams</Text>{role === 'PARENT' && <Text style={styles.headerSubtitle}>{childName ? `For ${childName}` : 'Select a child from Home'}</Text>}</View>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity style={styles.backButton} onPress={loadData}><Ionicons name="refresh" size={20} color={colors.primary} /></TouchableOpacity>
       </View>
 
       <View style={styles.tabsContainer}>
         {tabs.map((tab) => (
-          <TouchableOpacity 
-            key={tab} 
-            style={[styles.tabButton, activeTab === tab && styles.tabButtonActive]}
-            onPress={() => {
-              setActiveTab(tab);
-              if (tab === 'Result') navigation.navigate('Result');
-            }}
-          >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+          <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.activeTab, { borderColor: activeTab === tab ? colors.primary : colors.border }]} onPress={() => setActiveTab(tab)}>
+            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText, { color: activeTab === tab ? colors.primary : colors.subText }]}>{tab}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <ScrollView contentContainerStyle={styles.listContainer}>
-        {!role || (role !== 'STUDENT' && role !== 'PARENT') ? <View style={styles.emptyState}><Text style={styles.emptyText}>Exam management for staff is available through the assigned-class workflow.</Text></View> : loading ? <View style={styles.emptyState}><Text style={styles.emptyText}>Loading exams…</Text></View> : error ? <View style={styles.emptyState}><Text style={styles.emptyText}>{error}</Text></View> : visibleExams.length === 0 ? <View style={styles.emptyState}><Text style={styles.emptyText}>No exams found.</Text></View> : visibleExams.map((exam) => (
-          <View key={exam.id} style={styles.examCard}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="document-text" size={24} color={colors.primary} />
-            </View>
-            <View style={styles.examContent}>
-              <Text style={styles.examTitle}>{exam.title}</Text>
-              <Text style={styles.examSubtitle}>{exam.subject?.name || 'Exam'} · {new Date(exam.date).toLocaleDateString()}</Text>
-              
-              {new Date(exam.date).getTime() >= now && (
-                <View style={styles.upcomingBadge}>
-                  <Text style={styles.upcomingBadgeText}>{exam.badge}</Text>
+      <ScrollView contentContainerStyle={styles.content}>
+        {isManagement && activeTab === 'Manage' && (
+          <TouchableOpacity style={styles.addButton} onPress={() => openEditor()}>
+            <Text style={styles.addButtonText}>+ Create New Exam</Text>
+          </TouchableOpacity>
+        )}
+        
+        {loading ? (
+          <View style={styles.center}><ActivityIndicator color={colors.primary} /><Text style={{ color: colors.subText, marginTop: 10 }}>Loading exams...</Text></View>
+        ) : error ? (
+          <View style={styles.center}><Text style={{ color: colors.danger }}>{error}</Text></View>
+        ) : visibleExams.length === 0 ? (
+          <View style={styles.center}><Text style={{ color: colors.subText }}>No exams found.</Text></View>
+        ) : (
+          visibleExams.map((exam) => (
+            <TouchableOpacity key={exam.id} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => isManagement && openEditor(exam)}>
+              <View style={styles.cardHeader}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '18' }]}><Ionicons name="document-text" size={20} color={colors.primary} /></View>
+                <View style={styles.cardHeaderCopy}>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>{exam.title}</Text>
+                  <Text style={[styles.cardSubtitle, { color: colors.subText }]}>{exam.subject?.name} · {new Date(exam.date).toLocaleDateString()}</Text>
                 </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.subText} />
+              </View>
+              {isManagement && <Text style={{ color: colors.subText, fontSize: 11, marginTop: 8 }}>Class {exam.section?.class?.name} · Section {exam.section?.name}</Text>}
+            </TouchableOpacity>
+          ))
+        )}
+      </ScrollView>
+
+      <Modal visible={editorVisible} animationType="slide" transparent onRequestClose={() => setEditorVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{editExam ? 'Edit Exam' : 'Create Exam'}</Text>
+              <TouchableOpacity onPress={() => setEditorVisible(false)}><Ionicons name="close" size={24} color={colors.subText} /></TouchableOpacity>
+            </View>
+            <ScrollView>
+              <Text style={[styles.inputLabel, { color: colors.subText }]}>Title</Text>
+              <TextInput value={form.title} onChangeText={t => setForm({...form, title: t})} style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Midterm Exam" placeholderTextColor={colors.subText} />
+              <Text style={[styles.inputLabel, { color: colors.subText }]}>Date (YYYY-MM-DD)</Text>
+              <TextInput value={form.date} onChangeText={t => setForm({...form, date: t})} style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="2026-12-01" placeholderTextColor={colors.subText} />
+              
+              {!editExam && structure && (
+                <>
+                  <Text style={[styles.inputLabel, { color: colors.subText }]}>Subject</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
+                    {structure.subjects?.map((s: any) => (
+                      <TouchableOpacity key={s.id} onPress={() => setForm({...form, subjectId: s.id})} style={[styles.chip, { borderColor: colors.border, backgroundColor: form.subjectId === s.id ? colors.primary + '18' : colors.card }]}>
+                        <Text style={{ color: form.subjectId === s.id ? colors.primary : colors.subText }}>{s.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  <Text style={[styles.inputLabel, { color: colors.subText }]}>Section</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
+                    {structure.classes?.flatMap((c: any) => c.sections?.map((sec: any) => (
+                      <TouchableOpacity key={sec.id} onPress={() => setForm({...form, sectionId: sec.id})} style={[styles.chip, { borderColor: colors.border, backgroundColor: form.sectionId === sec.id ? colors.primary + '18' : colors.card }]}>
+                        <Text style={{ color: form.sectionId === sec.id ? colors.primary : colors.subText }}>Class {c.name} {sec.name}</Text>
+                      </TouchableOpacity>
+                    )))}
+                  </ScrollView>
+                </>
               )}
               
-            </View>
+              <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]} onPress={saveExam} disabled={saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Save Exam</Text>}
+              </TouchableOpacity>
+            </ScrollView>
           </View>
-        ))}
-
-        <TouchableOpacity style={styles.viewPastButton}>
-          <Ionicons name="documents-outline" size={20} color={colors.subText} />
-          <Text style={styles.viewPastText}>View Past Exams</Text>
-          <View style={{ flex: 1 }} />
-          <Ionicons name="chevron-forward" size={20} color={colors.subText} />
-        </TouchableOpacity>
-      </ScrollView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const makeStyles = (c: any) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: c.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 20, paddingTop: 40 },
-  backButton: { padding: 5 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: c.text },
-  headerCopy: { flex: 1, alignItems: 'center' },
-  headerSubtitle: { color: c.subText, fontSize: 10, marginTop: 3 },
-  tabsContainer: { flexDirection: 'row', justifyContent: 'space-around', borderBottomWidth: 1, borderBottomColor: c.border },
-  tabButton: { paddingVertical: 15, paddingHorizontal: 20 },
-  tabButtonActive: { borderBottomWidth: 2, borderBottomColor: c.primary },
-  tabText: { fontSize: 14, color: c.subText, fontWeight: '500' },
-  tabTextActive: { color: c.primary, fontWeight: 'bold' },
-  listContainer: { padding: 20 },
-  emptyState: { alignItems: 'center', padding: 30 },
-  emptyText: { color: c.subText, fontSize: 14 },
-  examCard: { flexDirection: 'row', padding: 15, backgroundColor: c.card, borderRadius: 12, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: c.border },
-  iconContainer: { width: 45, height: 45, borderRadius: 8, backgroundColor: c.primary + '18', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
-  examContent: { flex: 1 },
-  examTitle: { fontSize: 16, fontWeight: 'bold', color: c.text, marginBottom: 4 },
-  examSubtitle: { fontSize: 13, color: c.subText, marginBottom: 10 },
-  upcomingBadge: { backgroundColor: c.primary + '18', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  upcomingBadgeText: { color: c.primary, fontSize: 12, fontWeight: 'bold' },
-  startButton: { backgroundColor: c.primary + '18', alignSelf: 'flex-start', paddingHorizontal: 20, paddingVertical: 6, borderRadius: 12 },
-  startButtonText: { color: c.primary, fontSize: 12, fontWeight: 'bold' },
-  viewPastButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.card, padding: 15, borderRadius: 12, marginTop: 10, borderWidth: 1, borderColor: c.border },
-  viewPastText: { marginLeft: 10, fontSize: 14, color: c.text, fontWeight: 'bold' }
+  container: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: c.border },
+  backButton: { padding: 4 },
+  headerCopy: { alignItems: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: c.text },
+  headerSubtitle: { fontSize: 12, color: c.subText, marginTop: 2 },
+  tabsContainer: { flexDirection: 'row', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  tab: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, marginRight: 8 },
+  activeTab: { backgroundColor: c.primary + '18' },
+  tabText: { fontSize: 13, fontWeight: '700' },
+  activeTabText: { color: c.primary },
+  content: { padding: 16, paddingBottom: 40 },
+  center: { padding: 40, alignItems: 'center' },
+  addButton: { paddingVertical: 14, borderRadius: 12, backgroundColor: c.primary, alignItems: 'center', marginBottom: 16 },
+  addButtonText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  card: { padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 12 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center' },
+  iconContainer: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  cardHeaderCopy: { flex: 1 },
+  cardTitle: { fontSize: 15, fontWeight: '800' },
+  cardSubtitle: { fontSize: 12, marginTop: 4 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '90%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: '900' },
+  inputLabel: { fontSize: 12, fontWeight: '700', marginBottom: 8, marginLeft: 4 },
+  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, marginBottom: 16 },
+  chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginRight: 8 },
+  saveButton: { paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 10, marginBottom: 20 },
+  saveButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }
 });
