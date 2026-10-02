@@ -6,23 +6,23 @@ import { Prisma, Homework, HomeworkSubmission, Role } from '@prisma/client';
 export class HomeworkService {
   constructor(private prisma: PrismaService) {}
 
-  async createHomework(data: Prisma.HomeworkUncheckedCreateInput, actor: { id: string }): Promise<Homework> {
-    return this.prisma.homework.create({ data: { title: data.title, description: data.description, dueDate: data.dueDate, subject: data.subject, classId: data.classId, teacherId: actor.id } });
+  async createHomework(data: Prisma.HomeworkUncheckedCreateInput, actor: { id: string; schoolId: string }): Promise<Homework> {
+    return this.prisma.homework.create({ data: { title: data.title, description: data.description, dueDate: data.dueDate, subjectId: data.subjectId, sectionId: data.sectionId, teacherId: actor.id, schoolId: actor.schoolId } });
   }
 
-  async getHomeworkForClass(classId: string, actor: { schoolId: string }): Promise<Homework[]> {
+  async getHomeworkForClass(sectionId: string, actor: { schoolId: string }): Promise<Homework[]> {
     return this.prisma.homework.findMany({
-      where: { classId, teacher: { schoolId: actor.schoolId } },
+      where: { sectionId, schoolId: actor.schoolId },
       orderBy: { dueDate: 'asc' },
     });
   }
 
   async submitHomework(data: Prisma.HomeworkSubmissionUncheckedCreateInput, actor: { id: string; schoolId: string }): Promise<HomeworkSubmission> {
-    const homework = await this.prisma.homework.findFirst({ where: { id: data.homeworkId, teacher: { schoolId: actor.schoolId } }, select: { id: true } });
+    const homework = await this.prisma.homework.findFirst({ where: { id: data.homeworkId, schoolId: actor.schoolId }, select: { id: true } });
     if (!homework) throw new NotFoundException('Homework not found in your school.');
     const existing = await this.prisma.homeworkSubmission.findFirst({ where: { homeworkId: homework.id, studentId: actor.id }, select: { id: true } });
     if (existing) throw new ForbiddenException('You have already submitted this homework.');
-    return this.prisma.homeworkSubmission.create({ data: { homeworkId: homework.id, studentId: actor.id, content: data.content, fileUrl: data.fileUrl, status: 'SUBMITTED' } });
+    return this.prisma.homeworkSubmission.create({ data: { homeworkId: homework.id, studentId: actor.id, content: data.content, fileUrl: data.fileUrl, status: 'SUBMITTED', schoolId: actor.schoolId } });
   }
 
   async gradeSubmission(id: string, grade: string, feedback: string, actor: { schoolId: string; role: Role }): Promise<HomeworkSubmission> {

@@ -6,8 +6,8 @@ import { Prisma, Notice } from '@prisma/client';
 export class NoticesService {
   constructor(private prisma: PrismaService) {}
 
-  async createNotice(data: Prisma.NoticeUncheckedCreateInput, actor: { id: string }): Promise<Notice> {
-    return this.prisma.notice.create({ data: { title: data.title, content: data.content, category: data.category, date: data.date, authorId: actor.id } });
+  async createNotice(data: Prisma.NoticeUncheckedCreateInput, actor: { id: string; schoolId: string }): Promise<Notice> {
+    return this.prisma.notice.create({ data: { title: data.title, content: data.content, category: data.category, date: data.date, authorId: actor.id, schoolId: actor.schoolId } });
   }
 
   async getAllNotices(category?: string, limit?: number, actor?: { schoolId: string }): Promise<Notice[]> {

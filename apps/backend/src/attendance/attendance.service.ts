@@ -11,7 +11,7 @@ export class AttendanceService {
     if (!student) throw new NotFoundException('Student not found in your school.');
     return this.prisma.attendance.create({ data: {
       studentId: student.id, teacherId: actor.role === Role.TEACHER ? actor.id : undefined,
-      date: data.date, status: data.status, subject: data.subject, remarks: data.remarks,
+      date: data.date, status: data.status, subject: data.subject, remarks: data.remarks, schoolId: actor.schoolId
     } });
   }
 
