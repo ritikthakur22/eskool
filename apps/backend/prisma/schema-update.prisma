@@ -8,15 +8,15 @@ datasource db {
 }
 
 model School {
-  id               String               @id @default(uuid())
+  id               String            @id @default(uuid())
   name             String
   address          String?
   logo             Bytes?
   logoMimeType     String?
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  timezone         String               @default("UTC")
-  status           String               @default("ACTIVE")
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  timezone         String            @default("UTC")
+  status           String            @default("ACTIVE")
   settings         Json?
   feeInvoices      FeeInvoice[]
   feePaymentProofs FeePaymentProof[]
@@ -36,51 +36,51 @@ model School {
 }
 
 model AcademicYear {
-  id                 String              @id @default(uuid())
-  schoolId           String
-  name               String // e.g., "2026-2027"
-  startDate          DateTime
-  endDate            DateTime
-  isCurrent          Boolean             @default(false)
-  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  enrollments        Enrollment[]
+  id        String     @id @default(uuid())
+  schoolId  String
+  name      String     // e.g., "2026-2027"
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean    @default(false)
+  school    School     @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
   teacherAssignments TeacherAssignment[]
 
   @@unique([schoolId, name])
 }
 
 model Class {
-  id       String    @id @default(uuid())
-  schoolId String
-  name     String // e.g., "Class 10"
-  school   School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  sections Section[]
+  id        String    @id @default(uuid())
+  schoolId  String
+  name      String    // e.g., "Class 10"
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  sections  Section[]
 
   @@unique([schoolId, name])
 }
 
 model Section {
-  id                 String              @id @default(uuid())
-  schoolId           String
-  classId            String
-  name               String // e.g., "A"
-  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  class              Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
-  enrollments        Enrollment[]
+  id        String    @id @default(uuid())
+  schoolId  String
+  classId   String
+  name      String    // e.g., "A"
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class     Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  enrollments Enrollment[]
   teacherAssignments TeacherAssignment[]
 
   @@unique([classId, name])
 }
 
 model Subject {
-  id                 String              @id @default(uuid())
-  schoolId           String
-  name               String // e.g., "Mathematics"
-  code               String?
-  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  id        String    @id @default(uuid())
+  schoolId  String
+  name      String    // e.g., "Mathematics"
+  code      String?
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   teacherAssignments TeacherAssignment[]
-  homeworks          Homework[]
-  exams              Exam[]
+  homeworks Homework[]
+  exams     Exam[]
 
   @@unique([schoolId, name])
 }
