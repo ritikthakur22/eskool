@@ -48,7 +48,7 @@ export class UsersService {
   async updateOwnProfile(userId: string, input: UpdateProfileDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { role: true, studentProfile: { select: { userId: true } }, teacherProfile: { select: { userId: true } }, adminProfile: { select: { userId: true } } },
+      select: { role: true, schoolId: true, studentProfile: { select: { userId: true } }, teacherProfile: { select: { userId: true } }, adminProfile: { select: { userId: true } } },
     });
     if (!user) throw new NotFoundException('User not found');
     const allowedText = ['firstName', 'lastName', 'email', 'studentId', 'phone', 'gender', 'address', 'parentName', 'parentPhone'] as const;
@@ -104,7 +104,9 @@ export class UsersService {
       throw new BadRequestException('This account has no editable profile');
     }
     if (email && email !== current?.email) await this.prisma.user.update({ where: { id: userId }, data: { email } });
-    return this.getOwnProfile(userId);
+    const updatedProfile = await this.getOwnProfile(userId);
+    void this.audit.record({ action: 'PROFILE_UPDATED', entity: 'User', entityId: userId, userId, schoolId: user.schoolId });
+    return updatedProfile;
   }
 
   async changeOwnPassword(userId: string, currentPassword: unknown, newPassword: unknown) {
@@ -138,12 +140,15 @@ export class UsersService {
   }
 
   async updateProfilePhoto(userId: string, file: { buffer: Buffer; mimetype: string }) {
+    const owner = await this.prisma.user.findUnique({ where: { id: userId }, select: { schoolId: true } });
+    if (!owner) throw new NotFoundException('User not found');
     if (this.cloudinary.isConfigured()) {
       const uploaded = await this.cloudinary.upload(file.buffer, { folder: 'eskool/profile-photos', resourceType: 'image' });
       await this.prisma.$executeRaw(Prisma.sql`
         UPDATE "User" SET "profilePicture" = NULL, "profilePictureMimeType" = ${file.mimetype}, "profilePictureUrl" = ${uploaded.secure_url}, "profilePicturePublicId" = ${uploaded.public_id}
         WHERE "id" = ${userId}
       `);
+      void this.audit.record({ action: 'PROFILE_PHOTO_UPDATED', entity: 'User', entityId: userId, userId, schoolId: owner.schoolId });
       return { success: true, profilePictureUrl: '/users/me/photo', storage: 'cloudinary' };
     }
     const updated = await this.prisma.$executeRaw(Prisma.sql`
@@ -151,6 +156,7 @@ export class UsersService {
       WHERE "id" = ${userId}
     `);
     if (!updated) throw new NotFoundException('User not found');
+    void this.audit.record({ action: 'PROFILE_PHOTO_UPDATED', entity: 'User', entityId: userId, userId, schoolId: owner.schoolId });
     return { success: true, profilePictureUrl: '/users/me/photo' };
   }
 }

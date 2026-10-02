@@ -23,6 +23,18 @@ export class ExamsController {
     return this.examsService.addExamResult(data, req.user);
   }
 
+  @Get('me')
+  @Roles(Role.STUDENT)
+  async getMyExams(@Request() req: any) {
+    return this.examsService.getExamsForStudent(req.user.id, req.user.schoolId);
+  }
+
+  @Get('me/results')
+  @Roles(Role.STUDENT)
+  async getMyResults(@Request() req: any) {
+    return this.examsService.getStudentResults(req.user.id, req.user);
+  }
+
   @Get('student/:studentId')
   async getStudentResults(@Param('studentId', new ParseUUIDPipe()) studentId: string, @Request() req: any) {
     return this.examsService.getStudentResults(studentId, req.user);

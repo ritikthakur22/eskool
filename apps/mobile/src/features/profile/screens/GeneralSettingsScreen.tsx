@@ -91,7 +91,7 @@ export default function GeneralSettingsScreen({ navigation }: any) {
             <Switch value={biometricEnabled} onValueChange={updateBiometric} trackColor={{ false: '#D1D5DB', true: colors.primary }} />
           </View>
 
-          <TouchableOpacity style={[styles.settingButton, { backgroundColor: colors.card }]} onPress={() => Alert.alert('Change Password', 'Password change flow coming soon.')}>
+          <TouchableOpacity style={[styles.settingButton, { backgroundColor: colors.card }]} onPress={() => navigation.navigate('Profile')}>
             <Text style={[styles.settingText, { color: colors.text }]}>Change Password</Text>
             <Ionicons name="chevron-forward" size={20} color={colors.subText} />
           </TouchableOpacity>

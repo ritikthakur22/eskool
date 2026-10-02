@@ -8,11 +8,12 @@ import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { assertFileSignature } from '../storage/file-validation.js';
 import { ChangePasswordDto, CreateUserDto, UpdateProfileDto } from './dto/user.dto.js';
+import { AuditService } from '../audit/audit.service.js';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService, private readonly audit: AuditService) {}
 
   @Get('me')
   getOwnProfile(@Request() req: any) {
@@ -89,6 +90,7 @@ export class UsersController {
     });
 
     const { password: _password, ...result } = user;
+    void this.audit.record({ action: 'USER_CREATED', entity: 'User', entityId: user.id, userId: req.user.id, schoolId: schoolId, details: { role: targetRole } });
     return result;
   }
 }

@@ -10,12 +10,6 @@ export default function LibraryScreen({ navigation }: any) {
   const [activeTab, setActiveTab] = useState('All');
   const tabs = ['All', 'Issued', 'Available'];
 
-  const books = [
-    { id: '1', title: 'Science Textbook', cls: 'Class 10', status: 'Available', copies: '12 copies', icon: 'flask', color: '#38A169' },
-    { id: '2', title: 'Mathematics Guide', cls: 'Class 10', status: 'Issued', copies: 'Return by Oct 5', icon: 'calculator', color: '#E53E3E' },
-    { id: '3', title: 'English Literature', cls: 'Class 10', status: 'Available', copies: '8 copies', icon: 'book', color: '#3182CE' },
-    { id: '4', title: 'Computer Science', cls: 'Class 10', status: 'Available', copies: '5 copies', icon: 'laptop', color: '#805AD5' }
-  ];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -49,25 +43,7 @@ export default function LibraryScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.listContainer}>
-        {books.map((book) => (
-          <TouchableOpacity key={book.id} style={styles.bookCard}>
-            <View style={[styles.bookCover, { backgroundColor: book.color + '15' }]}>
-              <Ionicons name={book.icon as any} size={32} color={book.color} />
-            </View>
-            <View style={styles.bookContent}>
-              <Text style={styles.bookTitle}>{book.title}</Text>
-              <Text style={styles.bookClass}>{book.cls}</Text>
-              <View style={styles.statusRow}>
-                <View style={[styles.badge, book.status === 'Available' ? styles.badgeAvailable : styles.badgeIssued]}>
-                  <Text style={[styles.badgeText, book.status === 'Available' ? styles.badgeTextAvailable : styles.badgeTextIssued]}>
-                    {book.status}
-                  </Text>
-                </View>
-                <Text style={styles.copiesText}>• {book.copies}</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.emptyCard}><View style={styles.emptyIcon}><Ionicons name="library-outline" size={30} color={colors.primary} /></View><Text style={styles.emptyTitle}>Library is coming soon</Text><Text style={styles.emptyText}>Books, issued items, availability, and return dates will appear here after the school library service is connected.</Text></View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -87,6 +63,10 @@ const makeStyles = (c: any) => StyleSheet.create({
   tabText: { fontSize: 14, color: c.subText, fontWeight: '500' },
   tabTextActive: { color: c.primary, fontWeight: 'bold' },
   listContainer: { padding: 20 },
+  emptyCard: { alignItems: 'center', padding: 28, backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border, marginTop: 18 },
+  emptyIcon: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary + '15', marginBottom: 15 },
+  emptyTitle: { color: c.text, fontSize: 17, fontWeight: '800', textAlign: 'center' },
+  emptyText: { color: c.subText, fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 8 },
   bookCard: { flexDirection: 'row', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: c.border },
   bookCover: { width: 60, height: 80, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   bookContent: { flex: 1, justifyContent: 'center' },

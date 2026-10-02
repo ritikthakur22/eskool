@@ -30,11 +30,12 @@ export default function ProfileDetailsScreen({ navigation }: any) {
   const set = (key: string, value: string) => setValues(current => ({ ...current, [key]: value }));
   const save = async () => {
     if (profile?.firstName && (!values.firstName.trim() || !values.lastName.trim())) { Alert.alert('Name required', 'Please enter your first and last name.'); return; }
-    const payload: Record<string, string> = { email: values.email.trim() };
+    const payload: Record<string, string | null> = { email: values.email.trim() };
     if (profile?.firstName) {
       payload.firstName = values.firstName.trim(); payload.lastName = values.lastName.trim();
     }
-    if (profile?.role === 'STUDENT') for (const key of ['studentId', 'phone', 'gender', 'dob', 'address', 'parentName', 'parentPhone']) payload[key] = values[key]?.trim() || '';
+    if (profile?.role === 'STUDENT') for (const key of ['studentId', 'phone', 'gender', 'address', 'parentName', 'parentPhone']) payload[key] = values[key]?.trim() || '';
+    if (profile?.role === 'STUDENT') payload.dob = values.dob?.trim() || null;
     if (values.dob && !/^\d{4}-\d{2}-\d{2}$/.test(values.dob)) { Alert.alert('Check date of birth', 'Enter the AD date in YYYY-MM-DD format.'); return; }
     setSaving(true);
     try {

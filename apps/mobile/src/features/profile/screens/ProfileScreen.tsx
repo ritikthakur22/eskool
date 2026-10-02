@@ -24,6 +24,7 @@ export default function ProfileScreen({ navigation }: any) {
   const [googleLinked, setGoogleLinked] = useState(false);
   const [googleEmail, setGoogleEmail] = useState('');
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleDialog, setGoogleDialog] = useState<{ title: string; message: string; confirm?: () => Promise<void>; destructive?: boolean } | null>(null);
   const [passwordModal, setPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -53,20 +54,22 @@ export default function ProfileScreen({ navigation }: any) {
       if (!idToken) throw new Error('Google did not return a valid ID token.');
       const { data } = await api.post('/auth/google/link', { idToken });
       setGoogleLinked(Boolean(data.linked)); setGoogleEmail(data.email || '');
-      Alert.alert('Google account linked', `${data.email} can now sign in to this school account.`);
+      setGoogleDialog({ title: 'Google account linked', message: `${data.email || 'This Google account'} can now sign in to this school account.` });
     } catch (e: any) {
-      Alert.alert('Could not link Google', e.response?.data?.message || e.message || 'Please try again.');
+      setGoogleDialog({ title: 'Could not link Google', message: e.response?.data?.message || e.message || 'Please try again.' });
     } finally { setGoogleBusy(false); }
   };
-  const unlinkGoogle = () => Alert.alert('Unlink Google account?', 'Google sign-in will stop working for this account. Your school email and password will still work.', [
-    { text: 'Cancel', style: 'cancel' },
-    { text: 'Unlink', style: 'destructive', onPress: async () => {
+  const unlinkGoogle = () => setGoogleDialog({
+    title: 'Unlink Google account?',
+    message: 'Google sign-in will stop working for this account. Your school email and password will still work.',
+    destructive: true,
+    confirm: async () => {
       setGoogleBusy(true);
-      try { await api.delete('/auth/google/link'); setGoogleLinked(false); setGoogleEmail(''); }
-      catch (e: any) { Alert.alert('Could not unlink Google', e.response?.data?.message || 'Please try again.'); }
+      try { await api.delete('/auth/google/link'); setGoogleLinked(false); setGoogleEmail(''); setGoogleDialog({ title: 'Google account unlinked', message: 'You can still sign in with your school email and password.' }); }
+      catch (e: any) { setGoogleDialog({ title: 'Could not unlink Google', message: e.response?.data?.message || 'Please try again.' }); }
       finally { setGoogleBusy(false); }
-    } },
-  ]);
+    },
+  });
 
   const handleLogout = async () => {
     setInMemoryAccessToken(null);
@@ -160,9 +163,11 @@ export default function ProfileScreen({ navigation }: any) {
     </ScrollView>
 
     <Modal visible={passwordModal} transparent animationType="slide" onRequestClose={() => setPasswordModal(false)}><View style={s.modalOverlay}><View style={s.modalCard}><View style={s.modalTop}><Text style={s.modalTitle}>Change password</Text><TouchableOpacity onPress={() => setPasswordModal(false)}><Ionicons name="close-circle" size={25} color={colors.subText} /></TouchableOpacity></View><Text style={s.modalHint}>Choose a password with at least 8 characters.</Text><TextInput style={s.modalInput} placeholder="Current password" placeholderTextColor={colors.subText} secureTextEntry value={currentPassword} onChangeText={setCurrentPassword} autoCapitalize="none" /><TextInput style={s.modalInput} placeholder="New password" placeholderTextColor={colors.subText} secureTextEntry value={newPassword} onChangeText={setNewPassword} autoCapitalize="none" /><TextInput style={s.modalInput} placeholder="Confirm new password" placeholderTextColor={colors.subText} secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} autoCapitalize="none" /><TouchableOpacity disabled={savingPassword} onPress={changePassword} style={s.saveButton}>{savingPassword ? <ActivityIndicator color="#fff" /> : <Text style={s.saveText}>Update password</Text>}</TouchableOpacity></View></View></Modal>
+    <Modal visible={!!googleDialog} transparent animationType="fade" onRequestClose={() => setGoogleDialog(null)}><View style={s.dialogOverlay}><View style={s.dialogCard}><View style={[s.dialogIcon, { backgroundColor: googleDialog?.destructive ? colors.danger + '15' : colors.primary + '15' }]}><Ionicons name={googleDialog?.destructive ? 'unlink-outline' : 'logo-google'} size={23} color={googleDialog?.destructive ? colors.danger : colors.primary} /></View><Text style={s.dialogTitle}>{googleDialog?.title}</Text><Text style={s.dialogMessage}>{googleDialog?.message}</Text><View style={s.dialogActions}><TouchableOpacity style={s.dialogCancel} onPress={() => setGoogleDialog(null)}><Text style={s.dialogCancelText}>{googleDialog?.confirm ? 'Cancel' : 'Close'}</Text></TouchableOpacity>{googleDialog?.confirm && <TouchableOpacity style={[s.dialogConfirm, { backgroundColor: colors.danger }]} onPress={async () => { const action = googleDialog.confirm; setGoogleDialog(null); if (action) await action(); }}><Text style={s.dialogConfirmText}>Unlink</Text></TouchableOpacity>}</View></View></View></Modal>
   </SafeAreaView>;
 }
 
 const makeStyles = (c: any) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.background }, header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 11, backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border }, back: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', marginRight: 8 }, eyebrow: { fontSize: 9, color: c.primary, letterSpacing: 1.25, fontWeight: '900' }, headerTitle: { fontSize: 21, fontWeight: '900', color: c.text, marginTop: 2 }, content: { padding: 17, paddingBottom: 35 }, sectionEyebrow: { fontSize: 10, color: c.subText, fontWeight: '900', letterSpacing: 1.2, marginTop: 21, marginBottom: 9, marginLeft: 3 }, profileCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 18, padding: 14 }, avatar: { width: 52, height: 52, borderRadius: 17, backgroundColor: c.primary + '18', alignItems: 'center', justifyContent: 'center' }, name: { color: c.text, fontSize: 16, fontWeight: '800' }, meta: { color: c.subText, fontSize: 11, marginTop: 4, textTransform: 'capitalize' }, viewMore: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 7 }, viewMoreText: { color: c.primary, fontSize: 11, fontWeight: '800' }, group: { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 17, paddingHorizontal: 13, overflow: 'hidden' }, row: { flexDirection: 'row', alignItems: 'center', minHeight: 68, borderBottomWidth: 1, borderBottomColor: c.border, gap: 11 }, lastRow: { borderBottomWidth: 0 }, rowIcon: { width: 37, height: 37, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, rowCopy: { flex: 1 }, rowTitle: { color: c.text, fontSize: 13, fontWeight: '800' }, rowNote: { color: c.subText, fontSize: 10, marginTop: 4 }, googleAction: { minWidth: 60, height: 34, paddingHorizontal: 11, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary + '12' }, googleActionLinked: { backgroundColor: c.danger + '12' }, googleActionText: { color: c.primary, fontSize: 11, fontWeight: '900' }, appearanceTitle: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingTop: 13 }, themeOptions: { flexDirection: 'row', gap: 7, marginTop: 12, marginBottom: 13 }, themeOption: { flex: 1, minHeight: 46, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 11, borderWidth: 1, borderColor: c.border }, themeSelected: { borderColor: c.primary, backgroundColor: c.primary + '10' }, themeText: { color: c.subText, fontSize: 9, fontWeight: '700' }, logoutButton: { marginTop: 22, height: 48, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: c.danger + '10' }, logoutText: { color: c.danger, fontSize: 13, fontWeight: '800' }, footer: { color: c.subText, textAlign: 'center', fontSize: 10, marginTop: 17 }, modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000075' }, modalCard: { backgroundColor: c.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 21, paddingBottom: 30 }, modalTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, modalTitle: { color: c.text, fontSize: 20, fontWeight: '900' }, modalHint: { color: c.subText, fontSize: 12, marginTop: 7, marginBottom: 15 }, modalInput: { height: 49, backgroundColor: c.background, borderWidth: 1, borderColor: c.border, borderRadius: 12, paddingHorizontal: 13, color: c.text, marginBottom: 10 }, saveButton: { height: 49, alignItems: 'center', justifyContent: 'center', borderRadius: 13, backgroundColor: c.primary, marginTop: 5 }, saveText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  dialogOverlay: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, backgroundColor: '#00000070' }, dialogCard: { width: '100%', backgroundColor: c.card, borderRadius: 22, padding: 22, alignItems: 'center' }, dialogIcon: { width: 50, height: 50, borderRadius: 17, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }, dialogTitle: { color: c.text, fontSize: 19, fontWeight: '900', textAlign: 'center' }, dialogMessage: { color: c.subText, fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 8 }, dialogActions: { width: '100%', flexDirection: 'row', gap: 10, marginTop: 20 }, dialogCancel: { flex: 1, minHeight: 45, borderRadius: 12, backgroundColor: c.mutedSurface, alignItems: 'center', justifyContent: 'center' }, dialogCancelText: { color: c.text, fontSize: 13, fontWeight: '800' }, dialogConfirm: { flex: 1, minHeight: 45, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, dialogConfirmText: { color: '#fff', fontSize: 13, fontWeight: '800' },
 });

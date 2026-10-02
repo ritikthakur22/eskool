@@ -41,6 +41,20 @@ export class ExamsService {
     return result;
   }
 
+  async getExamsForStudent(studentId: string, schoolId: string) {
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { studentId, student: { schoolId, role: Role.STUDENT } },
+      select: { sectionId: true },
+    });
+    if (!enrollments.length) return [];
+    return this.prisma.exam.findMany({
+      where: { schoolId, sectionId: { in: enrollments.map(enrollment => enrollment.sectionId) } },
+      include: { subject: { select: { name: true, code: true } } },
+      orderBy: { date: 'asc' },
+      take: 100,
+    });
+  }
+
   async getStudentResults(studentId: string, actor: { id: string; schoolId: string; role: Role }): Promise<any[]> {
     if (actor.role === Role.STUDENT && actor.id !== studentId) throw new ForbiddenException('You can only view your own results.');
     if (actor.role === Role.PARENT) {
@@ -57,7 +71,7 @@ export class ExamsService {
     }
     const results = await this.prisma.examResult.findMany({
       where: resultWhere,
-      include: { exam: true },
+      include: { exam: { include: { subject: { select: { name: true, code: true } } } } },
       orderBy: { exam: { date: 'desc' } }
     });
 

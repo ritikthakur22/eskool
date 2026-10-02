@@ -1,20 +1,30 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../core/theme/ThemeContext';
+import { api } from '../../../core/networking/api';
 
 export default function ExamsScreen({ navigation }: any) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const [activeTab, setActiveTab] = useState('Online Exam');
+  const [exams, setExams] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const tabs = ['Online Exam', 'Upcoming', 'Result'];
 
-  const exams = [
-    { id: '1', title: 'First Terminal Exam', subtitle: 'Mathematics - 30 Questions', badge: 'Upcoming', type: 'scheduled' },
-    { id: '2', title: 'Practice Quiz', subtitle: '', badge: null, type: 'start' },
-    { id: '3', title: 'Science Mock Test', subtitle: '30 Questions • 45 min', badge: null, type: 'start' }
-  ];
+  useEffect(() => {
+    let active = true;
+    api.get('/exams/me').then(({ data }) => {
+      if (active) { setExams(data); setError(''); }
+    }).catch((err: any) => {
+      if (active) setError(err.response?.data?.message || 'Could not load exams.');
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+  const now = Date.now();
+  const visibleExams = exams.filter(exam => activeTab !== 'Upcoming' || new Date(exam.date).getTime() >= now);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -42,26 +52,21 @@ export default function ExamsScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.listContainer}>
-        {exams.map((exam) => (
+        {loading ? <View style={styles.emptyState}><Text style={styles.emptyText}>Loading exams…</Text></View> : error ? <View style={styles.emptyState}><Text style={styles.emptyText}>{error}</Text></View> : visibleExams.length === 0 ? <View style={styles.emptyState}><Text style={styles.emptyText}>No exams found.</Text></View> : visibleExams.map((exam) => (
           <View key={exam.id} style={styles.examCard}>
             <View style={styles.iconContainer}>
               <Ionicons name="document-text" size={24} color={colors.primary} />
             </View>
             <View style={styles.examContent}>
               <Text style={styles.examTitle}>{exam.title}</Text>
-              {exam.subtitle ? <Text style={styles.examSubtitle}>{exam.subtitle}</Text> : null}
+              <Text style={styles.examSubtitle}>{exam.subject?.name || 'Exam'} · {new Date(exam.date).toLocaleDateString()}</Text>
               
-              {exam.type === 'scheduled' && (
+              {new Date(exam.date).getTime() >= now && (
                 <View style={styles.upcomingBadge}>
                   <Text style={styles.upcomingBadgeText}>{exam.badge}</Text>
                 </View>
               )}
               
-              {exam.type === 'start' && (
-                <TouchableOpacity style={styles.startButton}>
-                  <Text style={styles.startButtonText}>Start</Text>
-                </TouchableOpacity>
-              )}
             </View>
           </View>
         ))}
@@ -88,6 +93,8 @@ const makeStyles = (c: any) => StyleSheet.create({
   tabText: { fontSize: 14, color: c.subText, fontWeight: '500' },
   tabTextActive: { color: c.primary, fontWeight: 'bold' },
   listContainer: { padding: 20 },
+  emptyState: { alignItems: 'center', padding: 30 },
+  emptyText: { color: c.subText, fontSize: 14 },
   examCard: { flexDirection: 'row', padding: 15, backgroundColor: c.card, borderRadius: 12, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: c.border },
   iconContainer: { width: 45, height: 45, borderRadius: 8, backgroundColor: c.primary + '18', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   examContent: { flex: 1 },

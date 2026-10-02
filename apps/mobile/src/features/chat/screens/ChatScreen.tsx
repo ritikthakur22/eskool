@@ -10,13 +10,6 @@ export default function ChatScreen({ navigation }: any) {
   const [activeTab, setActiveTab] = useState('Teachers');
   const tabs = ['Teachers', 'Classmates', 'Groups'];
 
-  const chats = [
-    { id: '1', name: 'Mr. Sharma', role: 'Mathematics', message: 'Please complete the homework.', time: '10:30 AM', unread: 2, avatarColor: '#3182CE' },
-    { id: '2', name: 'Class 10A', role: 'Group', message: 'Exam postponed to next week.', time: '9:15 AM', unread: 12, avatarColor: '#DD6B20' },
-    { id: '3', name: 'Ms. Rai', role: 'Science', message: 'Upload your lab report.', time: 'Yesterday', unread: 0, avatarColor: '#E53E3E' },
-    { id: '4', name: 'Ramesh', role: 'Classmate', message: 'Are you coming to school?', time: 'Yesterday', unread: 0, avatarColor: '#38A169' },
-    { id: '5', name: 'School Admin', role: 'Official', message: 'Dear all, school will be closed...', time: 'Sep 24', unread: 0, avatarColor: '#805AD5' }
-  ];
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -41,28 +34,7 @@ export default function ChatScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.listContainer}>
-        {chats.map((chat) => (
-          <TouchableOpacity key={chat.id} style={styles.chatCard}>
-            <View style={[styles.avatar, { backgroundColor: chat.avatarColor }]}>
-              <Ionicons name={chat.role === 'Group' ? 'people' : 'person'} size={24} color="#FFFFFF" />
-            </View>
-            <View style={styles.chatContent}>
-              <View style={styles.chatHeaderRow}>
-                <Text style={styles.chatName}>{chat.name}</Text>
-                <Text style={[styles.chatTime, chat.unread > 0 && styles.chatTimeUnread]}>{chat.time}</Text>
-              </View>
-              <Text style={styles.chatRole}>{chat.role}</Text>
-              <View style={styles.chatMessageRow}>
-                <Text style={styles.chatMessage} numberOfLines={1}>{chat.message}</Text>
-                {chat.unread > 0 && (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadText}>{chat.unread}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+        <View style={styles.emptyCard}><View style={styles.emptyIcon}><Ionicons name="chatbubbles-outline" size={30} color={colors.primary} /></View><Text style={styles.emptyTitle}>Messaging is coming soon</Text><Text style={styles.emptyText}>Teacher, classmate, and group conversations will appear here when secure school messaging is available.</Text></View>
       </ScrollView>
 
       <TouchableOpacity style={styles.fab}>
@@ -83,6 +55,10 @@ const makeStyles = (c: any) => StyleSheet.create({
   tabText: { fontSize: 14, color: c.subText, fontWeight: '500' },
   tabTextActive: { color: c.primary, fontWeight: 'bold' },
   listContainer: { padding: 20 },
+  emptyCard: { alignItems: 'center', padding: 28, backgroundColor: c.card, borderRadius: 16, borderWidth: 1, borderColor: c.border, marginTop: 18 },
+  emptyIcon: { width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: c.primary + '15', marginBottom: 15 },
+  emptyTitle: { color: c.text, fontSize: 17, fontWeight: '800', textAlign: 'center' },
+  emptyText: { color: c.subText, fontSize: 13, lineHeight: 20, textAlign: 'center', marginTop: 8 },
   chatCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: c.border },
   avatar: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   chatContent: { flex: 1 },

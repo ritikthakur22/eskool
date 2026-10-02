@@ -31,6 +31,7 @@ export class FeesService {
       FROM "FeeInvoice" i
       WHERE i."studentId" IN (${Prisma.join(studentIds)}) AND i."schoolId" = ${schoolId}
       ORDER BY i."dueDate" DESC, i."issuedAt" DESC
+      LIMIT 100
     `);
     return invoices.map(invoice => ({ ...invoice, amount: Number(invoice.amount) }));
   }

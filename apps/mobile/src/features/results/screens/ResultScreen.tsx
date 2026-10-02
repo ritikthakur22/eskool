@@ -1,39 +1,28 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useTheme } from '../../../core/theme/ThemeContext';
+import { api } from '../../../core/networking/api';
 
 export default function ResultScreen({ navigation }: any) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const results = [
-    {
-      id: '1',
-      examTitle: 'First Terminal Examination',
-      date: 'Aug 2026',
-      totalGrade: 'A',
-      percentage: '85%',
-      subjects: [
-        { name: 'Mathematics', marks: 88, max: 100, grade: 'A' },
-        { name: 'Science', marks: 82, max: 100, grade: 'A' },
-        { name: 'English', marks: 75, max: 100, grade: 'B+' },
-        { name: 'Computer', marks: 95, max: 100, grade: 'A+' },
-      ]
-    },
-    {
-      id: '2',
-      examTitle: 'Mid Term Examination',
-      date: 'Dec 2025',
-      totalGrade: 'B+',
-      percentage: '78%',
-      subjects: [
-        { name: 'Mathematics', marks: 72, max: 100, grade: 'B+' },
-        { name: 'Science', marks: 80, max: 100, grade: 'A' },
-        { name: 'English', marks: 70, max: 100, grade: 'B' },
-        { name: 'Computer', marks: 90, max: 100, grade: 'A+' },
-      ]
-    }
-  ];
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let active = true;
+    api.get('/exams/me/results').then(({ data }) => {
+      if (active) { setResults(data); setError(''); }
+    }).catch((err: any) => {
+      if (active) setError(err.response?.data?.message || 'Could not load results.');
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+  const allRows = results.flatMap(group => group.results || []);
+  const totalMarks = allRows.reduce((sum, row) => sum + Number(row.marksObtained || 0), 0);
+  const maximumMarks = allRows.reduce((sum, row) => sum + Number(row.totalMarks || 0), 0);
+  const overallPercentage = maximumMarks ? Math.round((totalMarks / maximumMarks) * 100) : 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -50,20 +39,24 @@ export default function ResultScreen({ navigation }: any) {
         <View style={styles.overviewCard}>
           <Text style={styles.overviewTitle}>Overall Performance</Text>
           <View style={styles.progressCircle}>
-            <Text style={styles.progressText}>85%</Text>
-            <Text style={styles.progressSubText}>Excellent</Text>
+            <Text style={styles.progressText}>{overallPercentage}%</Text>
+            <Text style={styles.progressSubText}>{results.length ? 'Overall' : 'No results'}</Text>
           </View>
         </View>
 
-        {results.map((exam) => (
+        {loading ? <Text style={styles.stateText}>Loading results…</Text> : error ? <Text style={styles.stateText}>{error}</Text> : results.length === 0 ? <Text style={styles.stateText}>No published results yet.</Text> : results.map((group: any) => {
+          const exam = group.exam;
+          const groupTotal = group.results.reduce((sum: number, row: any) => sum + Number(row.totalMarks || 0), 0);
+          const groupMarks = group.results.reduce((sum: number, row: any) => sum + Number(row.marksObtained || 0), 0);
+          return (
           <View key={exam.id} style={styles.examCard}>
             <View style={styles.examHeader}>
               <View>
                 <Text style={styles.examTitle}>{exam.examTitle}</Text>
-                <Text style={styles.examDate}>{exam.date}</Text>
+                <Text style={styles.examDate}>{new Date(exam.date).toLocaleDateString()}</Text>
               </View>
               <View style={styles.examOverallBadge}>
-                <Text style={styles.examOverallText}>{exam.totalGrade}</Text>
+                <Text style={styles.examOverallText}>{groupTotal ? `${Math.round((groupMarks / groupTotal) * 100)}%` : '—'}</Text>
               </View>
             </View>
 
@@ -73,15 +66,15 @@ export default function ResultScreen({ navigation }: any) {
               <Text style={[styles.colRight, styles.tableHeaderText]}>Grade</Text>
             </View>
 
-            {exam.subjects.map((sub, index) => (
+            {group.results.map((result: any, index: number) => (
               <View key={index} style={styles.tableRow}>
-                <Text style={[styles.colLeft, styles.tableRowText]}>{sub.name}</Text>
-                <Text style={[styles.colCenter, styles.tableRowText]}>{sub.marks}/{sub.max}</Text>
-                <Text style={[styles.colRight, styles.tableGradeText]}>{sub.grade}</Text>
+                <Text style={[styles.colLeft, styles.tableRowText]}>{exam.subject?.name || 'Subject'}</Text>
+                <Text style={[styles.colCenter, styles.tableRowText]}>{result.marksObtained}/{result.totalMarks}</Text>
+                <Text style={[styles.colRight, styles.tableGradeText]}>{result.grade || '—'}</Text>
               </View>
             ))}
           </View>
-        ))}
+        ); })}
       </ScrollView>
     </SafeAreaView>
   );
@@ -94,6 +87,7 @@ const makeStyles = (c: any) => StyleSheet.create({
   backIcon: { fontSize: 24, color: c.text },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: c.text },
   content: { padding: 20 },
+  stateText: { color: c.subText, textAlign: 'center', padding: 30 },
   overviewCard: { backgroundColor: c.card, padding: 20, borderRadius: 16, alignItems: 'center', marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
   overviewTitle: { fontSize: 16, fontWeight: 'bold', color: c.text, marginBottom: 15 },
   progressCircle: { width: 100, height: 100, borderRadius: 50, borderWidth: 8, borderColor: c.primary, justifyContent: 'center', alignItems: 'center' },
