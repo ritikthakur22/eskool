@@ -47,6 +47,30 @@ export class HomeworkService {
     });
   }
 
+  async getHomeworkForStudent(studentId: string, schoolId: string, limit = 50) {
+    const enrollments = await this.prisma.enrollment.findMany({
+      where: { studentId, student: { schoolId, role: Role.STUDENT } },
+      select: { sectionId: true },
+    });
+    if (!enrollments.length) return [];
+    const homeworks = await this.prisma.homework.findMany({
+      where: { schoolId, sectionId: { in: enrollments.map(enrollment => enrollment.sectionId) } },
+      include: {
+        subject: { select: { name: true, code: true } },
+        submissions: { where: { studentId }, select: { status: true, submittedAt: true, grade: true, feedback: true, fileUrl: true } },
+      },
+      take: Math.min(Math.max(limit, 1), 100),
+      orderBy: { dueDate: 'asc' },
+    });
+    return homeworks.map(homework => ({
+      ...homework,
+      subjectName: homework.subject.name,
+      submission: homework.submissions[0] || null,
+      submissions: undefined,
+      subject: undefined,
+    }));
+  }
+
   async submitHomework(data: SubmitHomeworkDto, actor: { id: string; schoolId: string }): Promise<HomeworkSubmission> {
     const homework = await this.prisma.homework.findFirst({ where: { id: data.homeworkId, schoolId: actor.schoolId }, select: { id: true, sectionId: true } });
     if (!homework) throw new NotFoundException('Homework not found in your school.');

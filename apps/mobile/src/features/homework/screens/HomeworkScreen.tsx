@@ -1,52 +1,37 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useTheme } from '../../../core/theme/ThemeContext';
+import { api } from '../../../core/networking/api';
 
 export default function HomeworkScreen({ navigation }: any) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const [activeTab, setActiveTab] = useState('Assigned');
+  const [homeworks, setHomeworks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const tabs = ['Assigned', 'Submitted', 'Upcoming'];
 
-  const homeworks = [
-    {
-      id: '1',
-      subject: 'Mathematics',
-      description: 'Chapter 3 - Exercise 5.1',
-      dueDate: 'Sep 28, 2026',
-      status: 'Pending',
-      icon: '📐',
-      iconBg: '#EBF4FF'
-    },
-    {
-      id: '2',
-      subject: 'Science',
-      description: 'Practical Report',
-      dueDate: 'Sep 26, 2026',
-      status: 'Pending',
-      icon: '🧪',
-      iconBg: '#FFF5F5'
-    },
-    {
-      id: '3',
-      subject: 'English',
-      description: 'Essay on Climate Change',
-      dueDate: 'Sep 25, 2026',
-      status: 'Submitted',
-      icon: '📚',
-      iconBg: '#F0FFF4'
-    },
-    {
-      id: '4',
-      subject: 'Social Studies',
-      description: 'Map Work',
-      dueDate: 'Sep 30, 2026',
-      status: 'Pending',
-      icon: '🌍',
-      iconBg: '#FFFFF0'
-    }
-  ];
+  useEffect(() => {
+    let active = true;
+    api.get('/homework/me', { params: { limit: 50 } }).then(({ data }) => {
+      if (!active) return;
+      setHomeworks(data.map((item: any) => ({
+        ...item,
+        subject: item.subjectName || 'Subject',
+        description: item.description || item.title,
+        dueDate: new Date(item.dueDate).toLocaleDateString(),
+        status: item.submission ? 'Submitted' : 'Pending',
+        icon: '📚',
+        iconBg: '#EBF4FF',
+      })));
+      setError('');
+    }).catch((err: any) => {
+      if (active) setError(err.response?.data?.message || 'Could not load homework.');
+    }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const filteredHomeworks = activeTab === 'Submitted'
     ? homeworks.filter(hw => hw.status === 'Submitted')
@@ -77,7 +62,11 @@ export default function HomeworkScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.listContainer}>
-        {filteredHomeworks.length === 0 ? (
+        {loading ? (
+          <View style={styles.emptyState}><Text style={styles.emptyStateText}>Loading homework…</Text></View>
+        ) : error ? (
+          <View style={styles.emptyState}><Text style={styles.emptyStateText}>{error}</Text></View>
+        ) : filteredHomeworks.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyStateText}>No homework found in this category.</Text>
           </View>
