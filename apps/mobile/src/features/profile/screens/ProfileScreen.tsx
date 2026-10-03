@@ -10,8 +10,8 @@ import { API_BASE_URL, api } from '../../../core/networking/api';
 import { getInMemoryAccessToken, getInMemoryRefreshToken, setInMemoryAccessToken, setInMemoryRefreshToken } from '../../../core/networking/session';
 import { useTheme } from '../../../core/theme/ThemeContext';
 
-const privacyUrl = 'https://eskool.com/privacy-policy';
-const termsUrl = 'https://eskool.com/terms-and-conditions';
+const privacyUrl = 'https://docs.google.com/document/d/1iqrr4JFwtllNiR9k_MGEGN8LICOE_i6nnhTFRSw4_vc/edit?usp=sharing';
+const termsUrl = 'https://docs.google.com/document/d/1NiUBosO1J9QRiS7d1KpwD-U4Jn9SzRWTOk6-VuiOnxo/edit?usp=sharing';
 type Summary = { firstName?: string; lastName?: string; email?: string; role?: string; schoolName?: string; studentId?: string; rollNo?: string; profilePictureUrl?: string };
 
 export default function ProfileScreen({ navigation }: any) {
