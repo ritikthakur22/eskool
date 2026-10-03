@@ -162,7 +162,7 @@ export default function ExamsScreen({ navigation }: any) {
       </ScrollView>
 
       <Modal visible={editorVisible} animationType="slide" transparent onRequestClose={() => setEditorVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>{editExam ? 'Edit Exam' : 'Create Exam'}</Text>
@@ -200,7 +200,7 @@ export default function ExamsScreen({ navigation }: any) {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
