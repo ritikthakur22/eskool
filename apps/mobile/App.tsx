@@ -19,6 +19,7 @@ import HomeworkScreen from './src/features/homework/screens/HomeworkScreen';
 import ResultScreen from './src/features/results/screens/ResultScreen';
 import ProfileScreen from './src/features/profile/screens/ProfileScreen';
 import ChatScreen from './src/features/chat/screens/ChatScreen';
+import ChatConversationScreen from './src/features/chat/screens/ChatConversationScreen';
 import OnlineClassScreen from './src/features/classes/screens/OnlineClassScreen';
 import OnboardingScreen from './src/features/onboarding/screens/OnboardingScreen';
 import SplashScreen from "./src/features/onboarding/screens/SplashScreen";
@@ -81,6 +82,7 @@ function ThemedApp() {
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="ProfileDetails" component={ProfileDetailsScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />
+        <Stack.Screen name="ChatConversation" component={ChatConversationScreen} />
         <Stack.Screen name="OnlineClass" component={OnlineClassScreen} />
         <Stack.Screen name="Library" component={LibraryScreen} />
         <Stack.Screen name="Exams" component={ExamsScreen} />
