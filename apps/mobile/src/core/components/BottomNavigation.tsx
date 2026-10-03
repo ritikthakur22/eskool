@@ -14,7 +14,7 @@ const operationalTabs = [
   { route: 'Dashboard', label: 'Home', icon: 'home-outline' },
   { route: 'Attendance', label: 'Attendance', icon: 'checkmark-circle-outline' },
   { route: 'Calendar', label: 'Calendar', icon: 'calendar-outline' },
-  { route: 'Notice', label: 'Notices', icon: 'notifications-outline' },
+  { route: 'Fees', label: 'Fees', icon: 'receipt-outline' },
   { route: 'Profile', label: 'Settings', icon: 'person-outline' },
 ];
 
@@ -22,7 +22,7 @@ const parentTabs = [
   { route: 'Dashboard', label: 'Home', icon: 'home-outline' },
   { route: 'Calendar', label: 'Calendar', icon: 'calendar-outline' },
   { route: 'Fees', label: 'Fees', icon: 'receipt-outline' },
-  { route: 'Notice', label: 'Notices', icon: 'notifications-outline' },
+  { route: 'Fees', label: 'Fees', icon: 'receipt-outline' },
   { route: 'Profile', label: 'Settings', icon: 'person-outline' },
 ];
 
