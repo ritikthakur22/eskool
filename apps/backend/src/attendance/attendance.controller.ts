@@ -1,5 +1,7 @@
 import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
 import { AttendanceService } from './attendance.service.js';
+import { AttendanceExportService } from './attendance.export.service.js';
+import { Res } from '@nestjs/common';
 import { BulkMarkAttendanceDto, CorrectAttendanceDto, MarkAttendanceDto } from './dto/attendance.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
@@ -9,7 +11,7 @@ import { Role } from '@prisma/client';
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AttendanceController {
-  constructor(private readonly attendanceService: AttendanceService) {}
+  constructor(private readonly attendanceService: AttendanceService, private readonly exportService: AttendanceExportService) {}
 
   @Post('mark')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
@@ -46,4 +48,14 @@ export class AttendanceController {
   getSchoolRegister(@Query('date') date: string | undefined, @Query('sectionId', new ParseUUIDPipe({ optional: true })) sectionId: string | undefined, @Request() req: any) {
     return this.attendanceService.getSchoolRegister({ schoolId: req.user.schoolId, date, sectionId, actorId: req.user.id, actorRole: req.user.role });
   }
+
+  @Get('export')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  async exportAttendance(@Query('sectionId') sectionId: string, @Query('month') month: string, @Query('year') year: string, @Request() req: any, @Res() res: any) {
+    const csv = await this.exportService.exportCsv(req.user.schoolId, sectionId, month ? parseInt(month) : undefined, year ? parseInt(year) : undefined);
+    res.header('Content-Type', 'text/csv');
+    res.attachment('attendance-export.csv');
+    return res.send(csv);
+  }
+
 }
