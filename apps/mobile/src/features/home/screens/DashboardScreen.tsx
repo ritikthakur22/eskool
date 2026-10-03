@@ -37,8 +37,9 @@ const operationalQuickFeatures: Feature[] = [
   { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#8B5CF6' },
   { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#64748B' },
   { name: 'Attendance register', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#10A981' },
-  { name: 'Homework manager', icon: 'document-text-outline', accent: '#2389F5', note: 'Management coming soon', disabled: true },
-  { name: 'Exams & results', icon: 'podium-outline', accent: '#F39A19', note: 'Management coming soon', disabled: true },
+  { name: 'Homework manager', icon: 'document-text-outline', route: 'Homework', accent: '#2389F5' },
+  { name: 'Upcoming exams', icon: 'calendar-clear-outline', route: 'Exams', accent: '#EF5261' },
+  { name: 'Results', icon: 'podium-outline', route: 'Result', accent: '#F39A19' },
   { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
 ];
 

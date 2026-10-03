@@ -13,7 +13,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from './src/features/auth/screens/LoginScreen';
 import DashboardScreen from './src/features/home/screens/DashboardScreen';
 import RoutineScreen from './src/features/routine/screens/RoutineScreen';
-import AttendanceScreen from './src/features/attendance/screens/AttendanceScreen';
+import AttendanceScreen from './src/features/attendance/screens/AttendanceScreenWrapper';
 import NoticeScreen from './src/features/notices/screens/NoticeScreen';
 import HomeworkScreen from './src/features/homework/screens/HomeworkScreen';
 import ResultScreen from './src/features/results/screens/ResultScreen';

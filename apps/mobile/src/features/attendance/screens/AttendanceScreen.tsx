@@ -9,6 +9,7 @@ import { useTheme } from '../../../core/theme/ThemeContext';
 import BottomNavigation from '../../../core/components/BottomNavigation';
 import { currentBsMonth, getBsMonthDays, getBsMonthLabels, getGregorianMonthsForBsMonth, shiftBsMonth, type BsMonth } from '../../../core/utils/bsCalendar';
 import { getSelectedChildId } from '../../../core/utils/childSelection';
+import StaffAttendanceScreen from './StaffAttendanceScreen';
 
 type RecordItem = { id: string; date: string; createdAt?: string; status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY'; subject?: string | null; remarks?: string | null };
 type ManagedRecord = RecordItem & { student?: { email?: string; studentProfile?: { firstName?: string; lastName?: string; rollNo?: string; grade?: string; section?: string } }; teacher?: { email?: string; teacherProfile?: { firstName?: string; lastName?: string }; adminProfile?: { firstName?: string; lastName?: string } } };
@@ -94,7 +95,7 @@ export default function AttendanceScreen({ navigation }: any) {
   const absentCount = records.filter(item => item.status === 'ABSENT').length;
   const otherCount = records.filter(item => item.status === 'LATE' || item.status === 'HALF_DAY').length;
   const attendanceRate = records.length ? Math.round((presentCount / records.length) * 100) : 0;
-  if (role && role !== 'STUDENT' && role !== 'PARENT') return <StaffAttendanceRegister navigation={navigation} role={role} colors={colors} styles={s} />;
+  if (role && role !== 'STUDENT' && role !== 'PARENT') return <StaffAttendanceScreen navigation={navigation} role={role} />;
   const selectedBs = new NepaliDate(selectedDate).format('ddd, DD MMMM YYYY');
   const selectedAd = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 

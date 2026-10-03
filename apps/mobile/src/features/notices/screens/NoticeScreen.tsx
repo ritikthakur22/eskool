@@ -7,8 +7,8 @@ import { useTheme } from '../../../core/theme/ThemeContext';
 import { isNoticeUnread, loadNoticeReadState, markAllNoticesRead, markNoticeRead, saveNoticeReadState, type NoticeReadState } from '../../../core/utils/noticeReadState';
 
 type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; authorId?: string; author?: any };
-const categories = ['All', 'Important', 'Academic', 'Exam', 'Holiday', 'Event', 'General'];
-const editCategories = ['Important', 'Academic', 'Exam', 'Holiday', 'Event', 'General'];
+const categories = ['All', 'Important', 'Academic', 'Exam', 'Holiday', 'Event'];
+const editCategories = ['Important', 'Academic', 'Exam', 'Holiday', 'Event'];
 const publisherName = (notice?: Notice | null) => {
   const author = notice?.author?.adminProfile || notice?.author?.teacherProfile;
   return [author?.firstName, author?.lastName].filter(Boolean).join(' ') || 'School administration';
@@ -32,7 +32,7 @@ export default function NoticeScreen({ navigation }: any) {
   const [me, setMe] = useState<any>(null);
   const [editorVisible, setEditorVisible] = useState(false);
   const [editNotice, setEditNotice] = useState<Notice | null>(null);
-  const [form, setForm] = useState({ title: '', content: '', category: 'General' });
+  const [form, setForm] = useState({ title: '', content: '', category: 'Academic' });
   const [saving, setSaving] = useState(false);
 
   const fetchData = useCallback(async (refresh = false) => {
@@ -82,7 +82,7 @@ export default function NoticeScreen({ navigation }: any) {
 
   const openEditor = (n: Notice | null = null) => {
     setEditNotice(n);
-    setForm(n ? { title: n.title, content: n.content, category: n.category } : { title: '', content: '', category: 'General' });
+    setForm(n ? { title: n.title, content: n.content, category: n.category } : { title: '', content: '', category: 'Academic' });
     setEditorVisible(true);
   };
 
@@ -178,7 +178,7 @@ export default function NoticeScreen({ navigation }: any) {
     </Modal>
 
     <Modal visible={editorVisible} animationType="slide" transparent onRequestClose={() => setEditorVisible(false)}>
-      <View style={s.modalOverlay}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.modalOverlay}>
         <View style={s.modalCard}>
           <View style={s.modalHeader}>
             <Text style={[s.modalTitle, {fontSize: 20, fontWeight: '900', color: colors.text}]}>{editNotice ? 'Edit Notice' : 'New Notice'}</Text>
@@ -200,7 +200,7 @@ export default function NoticeScreen({ navigation }: any) {
             </TouchableOpacity>
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
 
   </SafeAreaView>;
