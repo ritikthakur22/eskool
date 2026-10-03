@@ -25,6 +25,8 @@ import OnboardingScreen from './src/features/onboarding/screens/OnboardingScreen
 import SplashScreen from "./src/features/onboarding/screens/SplashScreen";
 import LibraryScreen from './src/features/library/screens/LibraryScreen';
 import ExamsScreen from './src/features/exams/screens/ExamsScreen';
+import ExamQuestionsScreen from './src/features/exams/screens/ExamQuestionsScreen';
+import ExamTakingScreen from './src/features/exams/screens/ExamTakingScreen';
 import CalendarScreen from './src/features/calendar/screens/CalendarScreen';
 import GeneralSettingsScreen from "./src/features/profile/screens/GeneralSettingsScreen";
 import TermsScreen from "./src/features/profile/screens/TermsScreen";
@@ -86,6 +88,8 @@ function ThemedApp() {
         <Stack.Screen name="OnlineClass" component={OnlineClassScreen} />
         <Stack.Screen name="Library" component={LibraryScreen} />
         <Stack.Screen name="Exams" component={ExamsScreen} />
+        <Stack.Screen name="ExamQuestions" component={ExamQuestionsScreen} />
+        <Stack.Screen name="ExamTaking" component={ExamTakingScreen} />
         <Stack.Screen name="Calendar" component={CalendarScreen} />
         <Stack.Screen name="General Settings" component={GeneralSettingsScreen} />
         <Stack.Screen name="Terms" component={TermsScreen} />

@@ -144,6 +144,7 @@ model User {
   studentAttendances       Attendance[]         @relation("StudentAttendance")
   markedAttendances        Attendance[]         @relation("TeacherAttendance")
   studentResults           ExamResult[]         @relation("StudentResults")
+  examAttempts             ExamAttempt[]        @relation("StudentExamAttempts")
   feeInvoices              FeeInvoice[]         @relation("StudentFeeInvoices")
   feePaymentProofs         FeePaymentProof[]    @relation("StudentFeePaymentProofs")
   teacherHomeworks         Homework[]           @relation("TeacherHomework")
@@ -353,15 +354,20 @@ model Notice {
 }
 
 model Exam {
-  id        String       @id @default(uuid())
-  schoolId  String
-  title     String
-  date      DateTime
-  subjectId String
-  sectionId String
-  school    School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  subject   Subject      @relation(fields: [subjectId], references: [id])
-  results   ExamResult[]
+  id              String       @id @default(uuid())
+  schoolId        String
+  title           String
+  date            DateTime
+  subjectId       String
+  sectionId       String
+  type            String       @default("STANDARD") // "STANDARD" or "MCQ"
+  durationMinutes Int?
+  
+  school          School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subject         Subject      @relation(fields: [subjectId], references: [id])
+  results         ExamResult[]
+  questions       ExamQuestion[]
+  attempts        ExamAttempt[]
 
   @@index([schoolId, sectionId, subjectId])
 }
@@ -488,4 +494,30 @@ model Message {
 enum ConversationType {
   INDIVIDUAL
   GROUP
+}
+
+model ExamQuestion {
+  id                 String   @id @default(uuid())
+  examId             String
+  text               String
+  marks              Int      @default(1)
+  options            String[] 
+  correctOptionIndex Int
+  
+  exam               Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+}
+
+model ExamAttempt {
+  id          String   @id @default(uuid())
+  examId      String
+  studentId   String
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  score       Int?
+  answers     Json?     
+  
+  exam        Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  student     User     @relation("StudentExamAttempts", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, studentId])
 }

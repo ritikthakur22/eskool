@@ -77,7 +77,7 @@ export default function ExamsScreen({ navigation }: any) {
 
   const openEditor = (e: any = null) => {
     setEditExam(e);
-    setForm(e ? { title: e.title, subjectId: e.subjectId, sectionId: e.sectionId, date: e.date.split('T')[0] } : { title: '', subjectId: '', sectionId: '', date: new Date().toISOString().split('T')[0] });
+    setForm(e ? { title: e.title, subjectId: e.subjectId, sectionId: e.sectionId, date: e.date.split('T')[0], type: e.type || 'MCQ' } : { title: '', subjectId: '', sectionId: '', date: new Date().toISOString().split('T')[0], type: 'MCQ' });
     setEditorVisible(true);
   };
 
@@ -85,7 +85,7 @@ export default function ExamsScreen({ navigation }: any) {
     if (!form.title || !form.subjectId || !form.sectionId || !form.date) return Alert.alert('Error', 'Fill all fields.');
     setSaving(true);
     try {
-      if (editExam) await api.patch(`/exams/${editExam.id}`, { title: form.title, date: new Date(form.date).toISOString() });
+      if (editExam) await api.patch(`/exams/${editExam.id}`, { title: form.title, date: new Date(form.date).toISOString(), type: form.type });
       else await api.post('/exams', { ...form, date: new Date(form.date).toISOString() });
       setEditorVisible(false);
       loadData();
@@ -137,6 +137,25 @@ export default function ExamsScreen({ navigation }: any) {
                 <Ionicons name="chevron-forward" size={20} color={colors.subText} />
               </View>
               {isManagement && <Text style={{ color: colors.subText, fontSize: 11, marginTop: 8 }}>Class {exam.section?.class?.name} · Section {exam.section?.name}</Text>}
+              {exam.type === 'MCQ' && (
+                <View style={{ marginTop: 12 }}>
+                  {isManagement ? (
+                    <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.primary + '18' }]} onPress={() => navigation.navigate('ExamQuestions', { exam })}>
+                      <Text style={[styles.actionButtonText, { color: colors.primary }]}>Manage Questions</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    exam.score !== undefined ? (
+                      <View style={[styles.scoreBadge, { backgroundColor: colors.success + '18' }]}>
+                        <Text style={[styles.scoreText, { color: colors.success }]}>Score: {exam.score}</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.primary }]} onPress={() => navigation.navigate('ExamTaking', { exam })}>
+                        <Text style={[styles.actionButtonText, { color: '#fff' }]}>Take Quiz</Text>
+                      </TouchableOpacity>
+                    )
+                  )}
+                </View>
+              )}
             </TouchableOpacity>
           ))
         )}
@@ -217,5 +236,9 @@ const makeStyles = (c: any) => StyleSheet.create({
   input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15, marginBottom: 16 },
   chip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginRight: 8 },
   saveButton: { paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 10, marginBottom: 20 },
-  saveButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' }
+  saveButtonText: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  actionButton: { paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
+  actionButtonText: { fontSize: 14, fontWeight: '700' },
+  scoreBadge: { paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
+  scoreText: { fontSize: 14, fontWeight: '800' }
 });

@@ -1,7 +1,7 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Exam, ExamResult, Role } from '@prisma/client';
-import { CreateExamDto, AddExamResultDto, UpdateExamDto } from './dto/exam.dto.js';
+import { CreateExamDto, AddExamResultDto, UpdateExamDto, CreateQuestionDto, UpdateQuestionDto, SubmitAnswerDto } from './dto/exam.dto.js';
 import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
@@ -122,5 +122,154 @@ export class ExamsService {
     }, {} as any);
 
     return Object.values(grouped);
+  }
+
+  async addQuestion(examId: string, data: CreateQuestionDto, actor: { id: string; schoolId: string; role: Role }) {
+    const exam = await this.prisma.exam.findFirst({ where: { id: examId, schoolId: actor.schoolId } });
+    if (!exam) throw new NotFoundException('Exam not found.');
+    if (actor.role === Role.TEACHER) {
+      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId: exam.sectionId, subjectId: exam.subjectId } });
+      if (!assignment) throw new ForbiddenException('Not assigned to this exam.');
+    }
+    return this.prisma.examQuestion.create({
+      data: {
+        examId,
+        text: data.text,
+        options: data.options,
+        correctOptionIndex: data.correctOptionIndex,
+        marks: data.marks
+      }
+    });
+  }
+
+  async updateQuestion(questionId: string, data: UpdateQuestionDto, actor: { id: string; schoolId: string; role: Role }) {
+    const question = await this.prisma.examQuestion.findUnique({ where: { id: questionId }, include: { exam: true } });
+    if (!question || question.exam.schoolId !== actor.schoolId) throw new NotFoundException('Question not found.');
+    if (actor.role === Role.TEACHER) {
+      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId: question.exam.sectionId, subjectId: question.exam.subjectId } });
+      if (!assignment) throw new ForbiddenException('Not assigned to this exam.');
+    }
+    return this.prisma.examQuestion.update({
+      where: { id: questionId },
+      data: { ...data }
+    });
+  }
+
+  async deleteQuestion(questionId: string, actor: { id: string; schoolId: string; role: Role }) {
+    const question = await this.prisma.examQuestion.findUnique({ where: { id: questionId }, include: { exam: true } });
+    if (!question || question.exam.schoolId !== actor.schoolId) throw new NotFoundException('Question not found.');
+    if (actor.role === Role.TEACHER) {
+      const assignment = await this.prisma.teacherAssignment.findFirst({ where: { teacherId: actor.id, sectionId: question.exam.sectionId, subjectId: question.exam.subjectId } });
+      if (!assignment) throw new ForbiddenException('Not assigned to this exam.');
+    }
+    await this.prisma.examQuestion.delete({ where: { id: questionId } });
+    return { success: true };
+  }
+
+  async startAttempt(examId: string, actor: { id: string; schoolId: string; role: Role }) {
+    const exam = await this.prisma.exam.findFirst({ where: { id: examId, schoolId: actor.schoolId } });
+    if (!exam) throw new NotFoundException('Exam not found.');
+    const enrollment = await this.prisma.enrollment.findFirst({ where: { studentId: actor.id, sectionId: exam.sectionId } });
+    if (!enrollment) throw new ForbiddenException('Not enrolled in this exam section.');
+    
+    const existing = await this.prisma.examAttempt.findUnique({ where: { examId_studentId: { examId, studentId: actor.id } } });
+    if (existing) {
+      if (existing.completedAt) throw new BadRequestException('Exam already completed.');
+      return existing;
+    }
+    
+    return this.prisma.examAttempt.create({
+      data: {
+        examId,
+        studentId: actor.id,
+        answers: {}
+      }
+    });
+  }
+
+  async saveAnswer(attemptId: string, data: SubmitAnswerDto, actor: { id: string; schoolId: string; role: Role }) {
+    const attempt = await this.prisma.examAttempt.findUnique({ where: { id: attemptId } });
+    if (!attempt || attempt.studentId !== actor.id) throw new NotFoundException('Attempt not found.');
+    if (attempt.completedAt) throw new BadRequestException('Exam already completed.');
+    
+    const answers = (attempt.answers as Record<string, number>) || {};
+    answers[data.questionId] = data.selectedOptionIndex;
+    
+    return this.prisma.examAttempt.update({
+      where: { id: attemptId },
+      data: { answers: answers as any }
+    });
+  }
+
+  async finishAttempt(attemptId: string, actor: { id: string; schoolId: string; role: Role }) {
+    const attempt = await this.prisma.examAttempt.findUnique({ where: { id: attemptId }, include: { exam: true } });
+    if (!attempt || attempt.studentId !== actor.id) throw new NotFoundException('Attempt not found.');
+    if (attempt.completedAt) throw new BadRequestException('Exam already completed.');
+
+    const questions = await this.prisma.examQuestion.findMany({ where: { examId: attempt.examId } });
+    const answers = (attempt.answers as Record<string, number>) || {};
+    
+    let marksObtained = 0;
+    let totalMarks = 0;
+
+    for (const q of questions) {
+      totalMarks += q.marks;
+      if (answers[q.id] === q.correctOptionIndex) {
+        marksObtained += q.marks;
+      }
+    }
+
+    const completedAttempt = await this.prisma.examAttempt.update({
+      where: { id: attemptId },
+      data: {
+        completedAt: new Date(),
+        score: marksObtained,
+      }
+    });
+
+    const grade = totalMarks > 0 && (marksObtained / totalMarks) >= 0.4 ? 'PASS' : 'FAIL';
+
+    const existingResult = await this.prisma.examResult.findUnique({
+      where: { examId_studentId: { examId: attempt.examId, studentId: actor.id } }
+    });
+
+    if (existingResult) {
+      await this.prisma.examResult.update({
+        where: { id: existingResult.id },
+        data: { marksObtained, totalMarks, grade }
+      });
+    } else {
+      await this.prisma.examResult.create({
+        data: {
+          examId: attempt.examId,
+          studentId: actor.id,
+          marksObtained,
+          totalMarks,
+          grade,
+          schoolId: attempt.exam.schoolId
+        }
+      });
+    }
+
+    return completedAttempt;
+  }
+
+  async getQuestions(examId: string, actor: { id: string; schoolId: string; role: Role }) {
+    const exam = await this.prisma.exam.findFirst({ where: { id: examId, schoolId: actor.schoolId } });
+    if (!exam) throw new NotFoundException('Exam not found.');
+
+    const questions = await this.prisma.examQuestion.findMany({
+      where: { examId },
+      orderBy: { id: 'asc' }
+    });
+
+    if (actor.role === Role.STUDENT) {
+      return questions.map(q => {
+        const { correctOptionIndex, ...rest } = q;
+        return rest;
+      });
+    }
+
+    return questions;
   }
 }
