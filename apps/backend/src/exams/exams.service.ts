@@ -47,9 +47,10 @@ export class ExamsService {
   async getManagedExams(actor: { id: string; schoolId: string; role: Role }) {
     const where: Prisma.ExamWhereInput = { schoolId: actor.schoolId };
     if (actor.role === Role.TEACHER) {
-      const assignments = await this.prisma.teacherAssignment.findMany({ where: { teacherId: actor.id, section: { schoolId: actor.schoolId }, subject: { schoolId: actor.schoolId } }, select: { sectionId: true, subjectId: true } });
-      if (!assignments.length) return [];
-      where.OR = assignments.map(item => ({ sectionId: item.sectionId, subjectId: item.subjectId }));
+      const assignments = await this.prisma.teacherAssignment.findMany({ where: { teacherId: actor.id, section: { schoolId: actor.schoolId } }, select: { sectionId: true, subjectId: true } });
+      const validAssignments = assignments.filter(a => a.subjectId != null);
+      if (validAssignments.length === 0) return [];
+      where.OR = validAssignments.map(item => ({ sectionId: item.sectionId, subjectId: item.subjectId as string }));
     }
     return this.prisma.exam.findMany({ where, include: { subject: true, section: { include: { class: true } }, results: { select: { id: true, studentId: true, marksObtained: true, totalMarks: true, grade: true } } }, orderBy: { date: 'asc' }, take: 200 });
   }

@@ -104,7 +104,7 @@ export class AttendanceService {
       ? { sectionId: filters.sectionId, section: { schoolId: filters.schoolId, ...(filters.actorRole === Role.TEACHER && filters.actorId ? { teacherAssignments: { some: { teacherId: filters.actorId } } } : {}) } }
       : { section: { schoolId: filters.schoolId, ...(filters.actorRole === Role.TEACHER && filters.actorId ? { teacherAssignments: { some: { teacherId: filters.actorId } } } : {}) } };
     where.student = { enrollments: { some: sectionScope } };
-    return this.prisma.attendance.findMany({
+    const records = await this.prisma.attendance.findMany({
       where,
       orderBy: [{ date: 'desc' }, { student: { studentProfile: { lastName: 'asc' } } }],
       take: 500,
@@ -114,6 +114,22 @@ export class AttendanceService {
         teacher: { select: { id: true, email: true, teacherProfile: { select: { firstName: true, lastName: true } }, adminProfile: { select: { firstName: true, lastName: true } } } },
       },
     });
+    
+    let students: any[] = [];
+    if (filters.sectionId) {
+      const enrollments = await this.prisma.enrollment.findMany({
+        where: sectionScope,
+        select: {
+          studentId: true,
+          rollNo: true,
+          student: { select: { email: true, studentProfile: { select: { firstName: true, lastName: true, rollNo: true, grade: true, section: true } } } }
+        },
+        orderBy: [{ rollNo: 'asc' }, { student: { studentProfile: { lastName: 'asc' } } }]
+      });
+      students = enrollments;
+    }
+    
+    return { students, records };
   }
 
   async correctAttendance(id: string, data: CorrectAttendanceDto, actor: { id: string; schoolId: string; role: Role }) {
