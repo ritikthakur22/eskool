@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState, useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../core/theme/ThemeContext';
@@ -21,7 +21,7 @@ export default function ExamsScreen({ navigation }: any) {
   const [structure, setStructure] = useState<any>(null);
   const [editorVisible, setEditorVisible] = useState(false);
   const [editExam, setEditExam] = useState<any>(null);
-  const [form, setForm] = useState({ title: '', subjectId: '', sectionId: '', date: '' });
+  const [form, setForm] = useState({ title: '', subjectId: '', sectionId: '', date: '', type: 'MCQ' });
   const [saving, setSaving] = useState(false);
 
   const tabs = useMemo(() => {
