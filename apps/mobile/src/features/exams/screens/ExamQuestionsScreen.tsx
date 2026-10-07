@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
-import { KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAvoidingView, Platform, Ionicons } from '@expo/vector-icons';
-import { KeyboardAvoidingView, Platform, useTheme } from '../../../core/theme/ThemeContext';
-import { KeyboardAvoidingView, Platform, api } from '../../../core/networking/api';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../../core/theme/ThemeContext';
+import { api } from '../../../core/networking/api';
 
 export default function ExamQuestionsScreen({ route, navigation }: any) {
   const { exam } = route.params;

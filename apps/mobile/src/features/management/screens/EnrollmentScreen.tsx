@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, RefreshControl } from 'react-native';
-import { KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAvoidingView, Platform, Ionicons } from '@expo/vector-icons';
-import { KeyboardAvoidingView, Platform, api } from '../../../core/networking/api';
-import { KeyboardAvoidingView, Platform, useTheme } from '../../../core/theme/ThemeContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { api } from '../../../core/networking/api';
+import { useTheme } from '../../../core/theme/ThemeContext';
 
 export default function EnrollmentScreen({ navigation }: any) {
   const { colors } = useTheme(); const s = makeStyles(colors);

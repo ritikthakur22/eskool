@@ -1,11 +1,11 @@
-import { KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState, useMemo } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { KeyboardAvoidingView, Platform, Ionicons } from '@expo/vector-icons';
-import { KeyboardAvoidingView, Platform, useTheme } from '../../../core/theme/ThemeContext';
-import { KeyboardAvoidingView, Platform, api } from '../../../core/networking/api';
-import { KeyboardAvoidingView, Platform, getSelectedChildId } from '../../../core/utils/childSelection';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../../core/theme/ThemeContext';
+import { api } from '../../../core/networking/api';
+import { getSelectedChildId } from '../../../core/utils/childSelection';
 
 export default function ResultScreen({ navigation }: any) {
   const { colors } = useTheme(); const styles = makeStyles(colors);

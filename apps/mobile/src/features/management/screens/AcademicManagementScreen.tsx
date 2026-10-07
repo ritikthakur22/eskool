@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAvoidingView, Platform, Ionicons } from '@expo/vector-icons';
-import { KeyboardAvoidingView, Platform, api } from '../../../core/networking/api';
-import { KeyboardAvoidingView, Platform, useTheme } from '../../../core/theme/ThemeContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { api } from '../../../core/networking/api';
+import { useTheme } from '../../../core/theme/ThemeContext';
 
 type Structure = { academicYears: any[]; classes: any[]; subjects: any[]; assignments: any[] };
 type FormKind = 'class' | 'section' | 'subject' | 'year' | 'assignment';
@@ -83,7 +83,7 @@ export default function AcademicManagementScreen({ navigation }: any) {
     {modal === 'subject' && <TextInput value={secondary} onChangeText={setSecondary} placeholder="Subject code (optional)" placeholderTextColor={colors.subText} style={s.input} />}
     {modal === 'year' && <TextInput value={secondary} onChangeText={setSecondary} placeholder="Start year, e.g. 2026" keyboardType="number-pad" placeholderTextColor={colors.subText} style={s.input} />}
     
-    <TouchableOpacity disabled={saving} onPress={submit} style={s.primaryButton}>{saving ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>Save</Text>}</TouchableOpacity></View></View></Modal>
+    <TouchableOpacity disabled={saving} onPress={submit} style={s.primaryButton}>{saving ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>Save</Text>}</TouchableOpacity></View></KeyboardAvoidingView></Modal>
   </SafeAreaView>;
 }
 function Action({ label, icon, onPress }: any) { return <TouchableOpacity onPress={onPress} style={{ minHeight: 46, borderRadius: 12, backgroundColor: '#2F80ED', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 12 }}><Ionicons name={icon} size={18} color="#fff" /><Text style={{ color: '#fff', fontWeight: '900', fontSize: 12 }}>{label}</Text></TouchableOpacity>; }
