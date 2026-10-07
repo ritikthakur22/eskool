@@ -1,0 +1,64 @@
+name: Build iOS IPA (AltStore)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-13
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Dependencies
+        working-directory: apps/mobile
+        run: npm install
+
+      - name: Generate Native iOS Project
+        working-directory: apps/mobile
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Build Unsigned App
+        working-directory: apps/mobile/ios
+        run: |
+          xcodebuild \
+            -workspace eSkool.xcworkspace \
+            -scheme eSkool \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package into IPA
+        working-directory: apps/mobile/ios
+        run: |
+          mkdir Payload
+          cp -r build/Build/Products/Release-iphoneos/eSkool.app Payload/
+          zip -qr app-release-ios.ipa Payload
+          
+      - name: Upload to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: apps/mobile/ios
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          if [[ "${{ github.ref_type }}" != "tag" ]]; then
+            TAG_NAME="v1.0.0"
+          fi
+          
+          gh release upload $TAG_NAME app-release-ios.ipa --clobber
