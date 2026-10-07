@@ -1,9 +1,9 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../../core/theme/ThemeContext';
-import { api } from '../../../core/networking/api';
+import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
+import { KeyboardAvoidingView, Platform, Ionicons } from '@expo/vector-icons';
+import { KeyboardAvoidingView, Platform, useTheme } from '../../../core/theme/ThemeContext';
+import { KeyboardAvoidingView, Platform, api } from '../../../core/networking/api';
 
 export default function ChatScreen({ navigation }: any) {
   const { colors } = useTheme(); const styles = makeStyles(colors);
@@ -114,7 +114,7 @@ export default function ChatScreen({ navigation }: any) {
       </ScrollView>
 
       <Modal visible={createModalVisible} animationType="slide" transparent onRequestClose={() => setCreateModalVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.headerTitle, { color: colors.text }]}>New Chat</Text>
@@ -132,7 +132,7 @@ export default function ChatScreen({ navigation }: any) {
               })}
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

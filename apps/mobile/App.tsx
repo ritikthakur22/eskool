@@ -3,6 +3,9 @@ import { NavigationContainer } from '@react-navigation/native';
 import { ThemeProvider } from "./src/core/theme/ThemeContext";
 import { useTheme } from './src/core/theme/ThemeContext';
 import { StatusBar } from 'expo-status-bar';
+import { GlobalAlert, monkeyPatchAlert } from './src/core/components/CustomAlert';
+monkeyPatchAlert();
+
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { GOOGLE_WEB_CLIENT_ID } from './src/core/auth/google';
 
@@ -49,6 +52,7 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <ThemedApp />
+        <GlobalAlert />
       </ThemeProvider>
     </SafeAreaProvider>
   );

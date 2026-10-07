@@ -3,11 +3,13 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { ActivityIndicator, Alert, Image, Linking, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import { getCachedUserData } from '../../../core/networking/session';
+
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { API_BASE_URL, api } from '../../../core/networking/api';
-import { getInMemoryAccessToken, getInMemoryRefreshToken, setInMemoryAccessToken, setInMemoryRefreshToken } from '../../../core/networking/session';
+import { getInMemoryAccessToken, getInMemoryRefreshToken, setInMemoryAccessToken, setInMemoryRefreshToken, setCachedUserData } from '../../../core/networking/session';
 import { useTheme } from '../../../core/theme/ThemeContext';
 
 const privacyUrl = 'https://docs.google.com/document/d/1iqrr4JFwtllNiR9k_MGEGN8LICOE_i6nnhTFRSw4_vc/edit?usp=sharing';
@@ -80,7 +82,7 @@ export default function ProfileScreen({ navigation }: any) {
       // Keep the refresh token so the user can authenticate with biometrics
       // after signing out. Disable biometric login first for a full sign-out.
       if (!biometricIsEnabled) await SecureStore.deleteItemAsync('refresh_token');
-      await SecureStore.deleteItemAsync('user_data');
+      await setCachedUserData(null);
       await GoogleSignin.signOut();
     }
     catch (e) { console.log('Google signout error; clearing local session anyway.', e); }

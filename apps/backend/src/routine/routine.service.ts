@@ -59,4 +59,66 @@ export class RoutineService {
       select: { id: true, fileName: true, mimeType: true, storageUrl: true, createdAt: true, uploader: { select: { id: true, email: true, role: true, teacherProfile: { select: { firstName: true, lastName: true } }, adminProfile: { select: { firstName: true, lastName: true } } } } },
     });
   }
+  
+  // Class Routine (Timetable)
+  async createClassRoutine(schoolId: string, data: any) {
+    return this.prisma.classRoutine.create({
+      data: {
+        schoolId,
+        sectionId: data.sectionId,
+        subjectId: data.subjectId,
+        teacherId: data.teacherId,
+        dayOfWeek: data.dayOfWeek,
+        startTime: data.startTime,
+        endTime: data.endTime,
+      },
+    });
+  }
+
+  async updateClassRoutine(schoolId: string, id: string, data: any) {
+    return this.prisma.classRoutine.update({
+      where: { id, schoolId },
+      data,
+    });
+  }
+
+  async deleteClassRoutine(schoolId: string, id: string) {
+    return this.prisma.classRoutine.delete({
+      where: { id, schoolId },
+    });
+  }
+
+  async getAdminRoutines(schoolId: string) {
+    return this.prisma.classRoutine.findMany({
+      where: { schoolId },
+      include: {
+        subject: { select: { id: true, name: true } },
+        teacher: { select: { id: true, teacherProfile: { select: { firstName: true, lastName: true } } } },
+        section: { select: { id: true, name: true, class: { select: { id: true, name: true } } } },
+      },
+      orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }]
+    });
+  }
+
+  async getStudentRoutine(schoolId: string, sectionId: string) {
+    return this.prisma.classRoutine.findMany({
+      where: { schoolId, sectionId },
+      include: {
+        subject: { select: { id: true, name: true } },
+        teacher: { select: { id: true, teacherProfile: { select: { firstName: true, lastName: true } } } },
+      },
+      orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }]
+    });
+  }
+
+  async getTeacherRoutine(schoolId: string, teacherId: string) {
+    return this.prisma.classRoutine.findMany({
+      where: { schoolId, teacherId },
+      include: {
+        subject: { select: { id: true, name: true } },
+        section: { select: { id: true, name: true, class: { select: { id: true, name: true } } } },
+      },
+      orderBy: [{ dayOfWeek: 'asc' }, { startTime: 'asc' }]
+    });
+  }
 }

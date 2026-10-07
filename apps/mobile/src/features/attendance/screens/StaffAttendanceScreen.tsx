@@ -6,7 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { api, API_BASE_URL } from '../../../core/networking/api';
-import { getInMemoryAccessToken } from '../../../core/networking/session';
+import { getInMemoryAccessToken, getCachedUserData } from '../../../core/networking/session';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import BottomNavigation from '../../../core/components/BottomNavigation';
 
@@ -34,10 +34,11 @@ export default function StaffAttendanceScreen({ navigation }: any) {
   const [drafts, setDrafts] = useState<Record<string, Status>>({});
   const [editing, setEditing] = useState<any | null>(null);
   const [reason, setReason] = useState('');
+  const [markingModalVisible, setMarkingModalVisible] = useState(false);
 
   const loadBase = async () => {
     try {
-      const raw = await SecureStore.getItemAsync('user_data');
+      const raw = await getCachedUserData();
       if (raw) setRole(JSON.parse(raw).role || 'TEACHER');
       const struct = await api.get('/academics/structure').catch(() => ({ data: {} }));
       const allSections = (struct.data.classes || []).flatMap((c: any) => (c.sections || []).map((sec: any) => ({ ...sec, className: c.name })));
@@ -94,6 +95,7 @@ export default function StaffAttendanceScreen({ navigation }: any) {
         records: students.map(st => ({ studentId: st.studentId, status: drafts[st.studentId] }))
       };
       await api.post('/attendance/register/bulk', payload);
+      setMarkingModalVisible(false);
       await load();
       Alert.alert('Success', 'Attendance saved.');
     } catch (e: any) { Alert.alert('Error', e.response?.data?.message || 'Failed to save.'); }
@@ -151,18 +153,11 @@ export default function StaffAttendanceScreen({ navigation }: any) {
       {loading ? <View style={s.center}><ActivityIndicator color={colors.primary} /><Text style={s.muted}>Loading register…</Text></View> : error ? <View style={s.center}><Text style={s.muted}>{error}</Text></View> : <>
         {students.length > 0 && <View style={s.markCard}>
           <View style={s.cardHeader}>
-            <View><Text style={s.sectionTitle}>Mark {sectionLabel?.className} {sectionLabel?.name}</Text></View>
-            <TouchableOpacity disabled={saving} onPress={markBulk} style={s.saveButton}>{saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.saveText}>Save All</Text>}</TouchableOpacity>
+            <View><Text style={s.sectionTitle}>{sectionLabel?.className} {sectionLabel?.name}</Text><Text style={s.muted}>{students.length} Students</Text></View>
+            <TouchableOpacity onPress={() => setMarkingModalVisible(true)} style={s.saveButton}>
+              <Text style={s.saveText}>Mark Attendance</Text>
+            </TouchableOpacity>
           </View>
-          {students.map(st => {
-            const profile = st.student?.studentProfile;
-            const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || st.student?.email || 'Student';
-            const selected = drafts[st.studentId] || 'PRESENT';
-            return <View key={st.studentId} style={s.studentRow}>
-              <View style={{ flex: 1 }}><Text style={s.studentName}>{name}</Text><Text style={s.muted}>Roll {st.rollNo || profile?.rollNo || '—'}</Text></View>
-              <View style={s.statusRow}>{(['PRESENT', 'ABSENT', 'LATE'] as Status[]).map(status => <TouchableOpacity key={status} onPress={() => setStatus(st.studentId, status)} style={[s.statusButton, selected === status && { borderColor: statusColor(status), backgroundColor: statusColor(status) + '18' }]}><Text style={{ color: selected === status ? statusColor(status) : colors.subText, fontSize: 10, fontWeight: '900' }}>{status[0]}</Text></TouchableOpacity>)}</View>
-            </View>
-          })}
         </View>}
         <Text style={[s.sectionTitle, { marginTop: 17, marginBottom: 8 }]}>{rows.length} recorded sessions</Text>
         {rows.map(row => <TouchableOpacity key={row.id} onPress={() => setEditing(row)} style={s.record}>
@@ -176,7 +171,7 @@ export default function StaffAttendanceScreen({ navigation }: any) {
     <BottomNavigation navigation={navigation} activeRoute="Attendance" colors={colors} role={role} />
     
     <Modal visible={!!editing} transparent animationType="slide" onRequestClose={() => setEditing(null)}>
-      <View style={s.overlay}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.overlay}>
         <View style={s.modal}>
           <Text style={s.sectionTitle}>Correct Attendance</Text>
           <Text style={s.muted}>{editing ? nameFor(editing) : ''}</Text>
@@ -187,9 +182,32 @@ export default function StaffAttendanceScreen({ navigation }: any) {
             <TouchableOpacity disabled={saving} onPress={correct} style={s.saveButton}>{saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.saveText}>Save Correction</Text>}</TouchableOpacity>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
+    </Modal>
+    
+    <Modal visible={markingModalVisible} transparent animationType="slide" onRequestClose={() => setMarkingModalVisible(false)}>
+      <SafeAreaView style={s.fullscreenModal}>
+        <View style={s.modalHeaderFullscreen}>
+          <TouchableOpacity onPress={() => setMarkingModalVisible(false)}><Ionicons name="close" size={24} color={colors.text} /></TouchableOpacity>
+          <Text style={s.modalTitleFullscreen}>Mark Attendance</Text>
+          <TouchableOpacity disabled={saving} onPress={markBulk} style={s.saveButtonModal}>
+            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.saveTextModal}>Save</Text>}
+          </TouchableOpacity>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 15 }}>
+          {students.map(st => {
+            const profile = st.student?.studentProfile;
+            const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || st.student?.email || 'Student';
+            const selected = drafts[st.studentId] || 'PRESENT';
+            return <View key={st.studentId} style={s.studentRow}>
+              <View style={{ flex: 1 }}><Text style={s.studentName}>{name}</Text><Text style={s.muted}>Roll {st.rollNo || profile?.rollNo || '—'}</Text></View>
+              <View style={s.statusRow}>{(['PRESENT', 'ABSENT', 'LATE'] as Status[]).map(status => <TouchableOpacity key={status} onPress={() => setStatus(st.studentId, status)} style={[s.statusButton, selected === status && { borderColor: statusColor(status), backgroundColor: statusColor(status) + '18' }]}><Text style={{ color: selected === status ? statusColor(status) : colors.subText, fontSize: 10, fontWeight: '900' }}>{status[0]}</Text></TouchableOpacity>)}</View>
+            </View>
+          })}
+        </ScrollView>
+      </SafeAreaView>
     </Modal>
   </SafeAreaView>;
 }
 
-const makeStyles = (c: any) => StyleSheet.create({ screen: { flex: 1, backgroundColor: c.background }, header: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border }, back: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }, headerCopy: { flex: 1, marginLeft: 8 }, title: { color: c.text, fontSize: 19, fontWeight: '900', marginTop: 2 }, refresh: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }, content: { padding: 15, paddingBottom: 28 }, filters: { padding: 13, borderRadius: 15, backgroundColor: c.card, borderWidth: 1, borderColor: c.border }, dateInput: { height: 43, borderRadius: 10, borderWidth: 1, borderColor: c.border, color: c.text, paddingHorizontal: 11, fontSize: 12, backgroundColor: c.background }, sectionChoices: { gap: 7, paddingTop: 9 }, choice: { paddingHorizontal: 11, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: c.border, backgroundColor: c.card }, choiceActive: { backgroundColor: c.primary + '14', borderColor: c.primary }, choiceText: { color: c.subText, fontSize: 10, fontWeight: '800' }, choiceTextActive: { color: c.primary }, center: { minHeight: 220, alignItems: 'center', justifyContent: 'center', gap: 9 }, muted: { color: c.subText, fontSize: 10 }, markCard: { padding: 13, marginTop: 13, borderRadius: 15, backgroundColor: c.card, borderWidth: 1, borderColor: c.border }, cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }, sectionTitle: { color: c.text, fontSize: 14, fontWeight: '900' }, saveButton: { minHeight: 36, paddingHorizontal: 11, borderRadius: 9, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }, saveText: { color: '#fff', fontSize: 10, fontWeight: '900' }, studentRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderColor: c.border }, studentName: { color: c.text, fontSize: 11, fontWeight: '800' }, statusRow: { flexDirection: 'row', gap: 5 }, statusButton: { width: 29, height: 29, alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: c.border }, record: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 12, marginBottom: 7, borderRadius: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.border }, marker: { width: 7, height: 30, borderRadius: 4 }, overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000070' }, modal: { backgroundColor: c.card, padding: 19, borderTopLeftRadius: 22, borderTopRightRadius: 22 }, statusChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginVertical: 14 }, reason: { height: 46, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 11, color: c.text, backgroundColor: c.background }, modalActions: { flexDirection: 'row', gap: 8, marginTop: 13 }, cancel: { flex: 1, minHeight: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: c.mutedSurface }, cancelText: { color: c.text, fontWeight: '800', fontSize: 11 } });
+const makeStyles = (c: any) => StyleSheet.create({ screen: { flex: 1, backgroundColor: c.background }, header: { flexDirection: 'row', alignItems: 'center', padding: 15, backgroundColor: c.card, borderBottomWidth: 1, borderBottomColor: c.border }, back: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }, headerCopy: { flex: 1, marginLeft: 8 }, title: { color: c.text, fontSize: 19, fontWeight: '900', marginTop: 2 }, refresh: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' }, content: { padding: 15, paddingBottom: 28 }, filters: { padding: 13, borderRadius: 15, backgroundColor: c.card, borderWidth: 1, borderColor: c.border }, dateInput: { height: 43, borderRadius: 10, borderWidth: 1, borderColor: c.border, color: c.text, paddingHorizontal: 11, fontSize: 12, backgroundColor: c.background }, sectionChoices: { gap: 7, paddingTop: 9 }, choice: { paddingHorizontal: 11, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: c.border, backgroundColor: c.card }, choiceActive: { backgroundColor: c.primary + '14', borderColor: c.primary }, choiceText: { color: c.subText, fontSize: 10, fontWeight: '800' }, choiceTextActive: { color: c.primary }, center: { minHeight: 220, alignItems: 'center', justifyContent: 'center', gap: 9 }, muted: { color: c.subText, fontSize: 10 }, markCard: { padding: 13, marginTop: 13, borderRadius: 15, backgroundColor: c.card, borderWidth: 1, borderColor: c.border }, cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }, sectionTitle: { color: c.text, fontSize: 14, fontWeight: '900' }, saveButton: { minHeight: 36, paddingHorizontal: 11, borderRadius: 9, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }, saveText: { color: '#fff', fontSize: 10, fontWeight: '900' }, studentRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderTopWidth: 1, borderColor: c.border }, studentName: { color: c.text, fontSize: 11, fontWeight: '800' }, statusRow: { flexDirection: 'row', gap: 5 }, statusButton: { width: 29, height: 29, alignItems: 'center', justifyContent: 'center', borderRadius: 8, borderWidth: 1, borderColor: c.border }, record: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 12, marginBottom: 7, borderRadius: 12, backgroundColor: c.card, borderWidth: 1, borderColor: c.border }, marker: { width: 7, height: 30, borderRadius: 4 }, overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000070' }, modal: { backgroundColor: c.card, padding: 19, borderTopLeftRadius: 22, borderTopRightRadius: 22 }, statusChoices: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginVertical: 14 }, reason: { height: 46, borderWidth: 1, borderColor: c.border, borderRadius: 10, paddingHorizontal: 11, color: c.text, backgroundColor: c.background }, modalActions: { flexDirection: 'row', gap: 8, marginTop: 13 }, cancel: { flex: 1, minHeight: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: c.mutedSurface }, cancelText: { color: c.text, fontWeight: '800', fontSize: 11 }, fullscreenModal: { flex: 1, backgroundColor: c.background }, modalHeaderFullscreen: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, borderBottomWidth: 1, borderBottomColor: c.border, backgroundColor: c.card }, modalTitleFullscreen: { color: c.text, fontSize: 18, fontWeight: '900' }, saveButtonModal: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' }, saveTextModal: { color: '#fff', fontSize: 13, fontWeight: '900' } });

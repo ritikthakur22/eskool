@@ -34,6 +34,7 @@ model School {
   examResults      ExamResult[]
   auditLogs        AuditLog[]
   conversations    Conversation[]
+  classRoutines    ClassRoutine[]
 }
 
 model AcademicYear {
@@ -69,6 +70,9 @@ model Section {
   class              Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
   enrollments        Enrollment[]
   teacherAssignments TeacherAssignment[]
+  exams              Exam[]
+  homeworks          Homework[]
+  classRoutines      ClassRoutine[]
 
   @@unique([classId, name])
 }
@@ -82,6 +86,7 @@ model Subject {
   teacherAssignments TeacherAssignment[]
   homeworks          Homework[]
   exams              Exam[]
+  classRoutines      ClassRoutine[]
 
   @@unique([schoolId, name])
 }
@@ -162,6 +167,7 @@ model User {
   auditLogs                AuditLog[]
   conversations            ConversationParticipant[]
   messages                 Message[]
+  classRoutines            ClassRoutine[]
 }
 
 model AuthSession {
@@ -259,6 +265,9 @@ model Homework {
   school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   teacher     User                 @relation("TeacherHomework", fields: [teacherId], references: [id])
   subject     Subject              @relation(fields: [subjectId], references: [id])
+  section     Section?             @relation(fields: [sectionId], references: [id])
+  attachmentUrl String?
+  attachmentType String?
   submissions HomeworkSubmission[]
 
   @@index([schoolId, teacherId, sectionId])
@@ -338,17 +347,19 @@ model AdminProfile {
 }
 
 model Notice {
-  id        String   @id @default(uuid())
-  schoolId  String
-  title     String
-  content   String
-  category  String
-  authorId  String
-  date      DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  author    User     @relation("NoticeAuthor", fields: [authorId], references: [id])
+  id             String   @id @default(uuid())
+  schoolId       String
+  title          String
+  content        String
+  category       String
+  authorId       String
+  date           DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  attachmentUrl  String?
+  attachmentType String?
+  school         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  author         User     @relation("NoticeAuthor", fields: [authorId], references: [id])
 
   @@index([schoolId, date])
 }
@@ -365,6 +376,7 @@ model Exam {
   
   school          School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   subject         Subject      @relation(fields: [subjectId], references: [id])
+  section         Section      @relation(fields: [sectionId], references: [id])
   results         ExamResult[]
   questions       ExamQuestion[]
   attempts        ExamAttempt[]
@@ -520,4 +532,23 @@ model ExamAttempt {
   student     User     @relation("StudentExamAttempts", fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([examId, studentId])
+}
+
+model ClassRoutine {
+  id        String   @id @default(uuid())
+  schoolId  String
+  sectionId String
+  subjectId String
+  teacherId String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  section   Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  subject   Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, sectionId])
+  @@index([teacherId])
 }

@@ -45,7 +45,7 @@ export default function ExamsScreen({ navigation }: any) {
           api.get('/exams/manage'),
           api.get('/academics/structure').catch(() => ({ data: {} }))
         ]);
-        setExams(examRes.data);
+        setExams(Array.isArray(examRes.data) ? examRes.data : []);
         setStructure(structRes.data);
       } else {
         if (nextRole === 'PARENT') {
@@ -60,7 +60,7 @@ export default function ExamsScreen({ navigation }: any) {
         }
         const endpoint = nextRole === 'PARENT' ? `/exams/child/${childId}` : '/exams/me';
         const res = await api.get(endpoint);
-        setExams(res.data);
+        setExams(Array.isArray(res.data) ? res.data : []);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Could not load exams.');

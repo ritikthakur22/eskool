@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, RefreshControl } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../../core/networking/api';
-import { useTheme } from '../../../core/theme/ThemeContext';
+import { KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, RefreshControl } from 'react-native';
+import { KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, Ionicons } from '@expo/vector-icons';
+import { KeyboardAvoidingView, Platform, api } from '../../../core/networking/api';
+import { KeyboardAvoidingView, Platform, useTheme } from '../../../core/theme/ThemeContext';
 
 export default function EnrollmentScreen({ navigation }: any) {
   const { colors } = useTheme(); const s = makeStyles(colors);
@@ -100,7 +100,7 @@ export default function EnrollmentScreen({ navigation }: any) {
     </ScrollView>
 
     <Modal visible={!!modal} transparent animationType="slide" onRequestClose={() => setModal(null)}>
-      <View style={s.overlay}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.overlay}>
         <View style={s.modal}>
           <View style={s.modalHead}><Text style={s.modalTitle}>{modal === 'enroll' ? 'Enroll Student' : 'Link Parent'}</Text><TouchableOpacity onPress={() => setModal(null)}><Ionicons name="close-circle" size={25} color={colors.subText} /></TouchableOpacity></View>
           
@@ -125,8 +125,8 @@ export default function EnrollmentScreen({ navigation }: any) {
             <TouchableOpacity disabled={saving} onPress={submitLink} style={s.primaryButton}>{saving ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>Link Parent</Text>}</TouchableOpacity>
           </>}
         </View>
-      </View>
-    </Modal>
+      </KeyboardAvoidingView>
+      </Modal>
   </SafeAreaView>;
 }
 

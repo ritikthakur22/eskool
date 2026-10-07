@@ -1,11 +1,11 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState, useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../../core/theme/ThemeContext';
-import { api } from '../../../core/networking/api';
-import { getSelectedChildId } from '../../../core/utils/childSelection';
+import { KeyboardAvoidingView, Platform, Ionicons } from '@expo/vector-icons';
+import { KeyboardAvoidingView, Platform, useTheme } from '../../../core/theme/ThemeContext';
+import { KeyboardAvoidingView, Platform, api } from '../../../core/networking/api';
+import { KeyboardAvoidingView, Platform, getSelectedChildId } from '../../../core/utils/childSelection';
 
 export default function ResultScreen({ navigation }: any) {
   const { colors } = useTheme(); const styles = makeStyles(colors);
@@ -37,8 +37,8 @@ export default function ResultScreen({ navigation }: any) {
           api.get('/exams/manage'),
           api.get('/users/admin/users?role=STUDENT')
         ]);
-        setExams(examRes.data);
-        setStudents(studentRes.data);
+        setExams(Array.isArray(examRes.data) ? examRes.data : []);
+        setStudents(Array.isArray(studentRes.data) ? studentRes.data : []);
       } else {
         if (nextRole === 'PARENT') {
           const selectedId = (await getSelectedChildId()) || '';
@@ -144,7 +144,7 @@ export default function ResultScreen({ navigation }: any) {
       </ScrollView>
 
       <Modal visible={editorVisible} animationType="slide" transparent onRequestClose={() => setEditorVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>Add Result</Text>
@@ -178,7 +178,7 @@ export default function ResultScreen({ navigation }: any) {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

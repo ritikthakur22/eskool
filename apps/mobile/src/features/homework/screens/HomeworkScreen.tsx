@@ -1,10 +1,12 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState, useMemo } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Linking from 'expo-linking';
 import { useTheme } from '../../../core/theme/ThemeContext';
-import { api } from '../../../core/networking/api';
+import { API_BASE_URL, api } from '../../../core/networking/api';
 import { getSelectedChildId } from '../../../core/utils/childSelection';
 
 export default function HomeworkScreen({ navigation }: any) {
@@ -85,18 +87,47 @@ export default function HomeworkScreen({ navigation }: any) {
     return new Date(hw.dueDate).getTime() >= now;
   });
 
+  const [attachment, setAttachment] = useState<any>(null);
+
   const openEditor = (hw: any = null) => {
     setEditHomework(hw);
     setForm(hw ? { title: hw.title, description: hw.description, subjectId: hw.subjectId, sectionId: hw.sectionId, dueDate: hw.dueDate.split('T')[0] } : { title: '', description: '', subjectId: '', sectionId: '', dueDate: new Date().toISOString().split('T')[0] });
+    setAttachment(null);
     setEditorVisible(true);
+  };
+
+  const pickAttachment = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setAttachment(result.assets[0]);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to pick file.');
+    }
   };
 
   const saveHomework = async () => {
     if (!form.title || !form.subjectId || !form.sectionId || !form.dueDate) return Alert.alert('Error', 'Fill required fields.');
     setSaving(true);
     try {
-      if (editHomework) await api.patch(`/homework/${editHomework.id}`, { title: form.title, description: form.description, dueDate: new Date(form.dueDate).toISOString() });
-      else await api.post('/homework', { ...form, dueDate: new Date(form.dueDate).toISOString() });
+      let attachmentUrl = editHomework?.attachmentUrl;
+      let attachmentType = editHomework?.attachmentType;
+      
+      if (attachment) {
+        const formData = new FormData();
+        formData.append('file', { uri: attachment.uri, name: attachment.name, type: attachment.mimeType || 'application/octet-stream' } as any);
+        const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        attachmentUrl = uploadRes.data.url;
+        attachmentType = uploadRes.data.mimeType;
+      }
+      
+      let data: any = editHomework 
+        ? { title: form.title, description: form.description, dueDate: new Date(form.dueDate).toISOString(), attachmentUrl, attachmentType }
+        : { ...form, dueDate: new Date(form.dueDate).toISOString(), attachmentUrl, attachmentType };
+
+      if (editHomework) await api.patch(`/homework/${editHomework.id}`, data);
+      else await api.post('/homework', data);
       setEditorVisible(false);
       loadData();
     } catch (err: any) {
@@ -140,6 +171,11 @@ export default function HomeworkScreen({ navigation }: any) {
                 <View style={styles.cardHeaderCopy}>
                   <Text style={[styles.cardTitle, { color: colors.text }]}>{hw.title || hw.subject}</Text>
                   <Text style={[styles.cardSubtitle, { color: colors.subText }]}>{hw.description || 'No description'}</Text>
+                  {hw.attachmentUrl && (
+                    <TouchableOpacity onPress={() => Linking.openURL(API_BASE_URL + hw.attachmentUrl)}>
+                      <Text style={{ color: colors.primary, marginTop: 4, fontWeight: '700' }}>View Attachment</Text>
+                    </TouchableOpacity>
+                  )}
                   <Text style={[styles.cardSubtitle, { color: colors.primary, marginTop: 6, fontWeight: '700' }]}>Due: {isManagement ? new Date(hw.dueDate).toLocaleDateString() : hw.dueDate}</Text>
                 </View>
                 {!isManagement && <View style={[styles.badge, { backgroundColor: hw.status === 'Submitted' ? colors.success + '20' : colors.warning + '20' }]}><Text style={{ color: hw.status === 'Submitted' ? colors.success : colors.warning, fontSize: 12, fontWeight: '800' }}>{hw.status}</Text></View>}
@@ -185,6 +221,10 @@ export default function HomeworkScreen({ navigation }: any) {
                   </ScrollView>
                 </>
               )}
+              
+              <TouchableOpacity style={[styles.input, { borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', marginTop: 10 }]} onPress={pickAttachment}>
+                <Text style={{ color: colors.primary }}>{attachment ? `Attachment: ${attachment.name}` : 'Attach File/Image'}</Text>
+              </TouchableOpacity>
               
               <TouchableOpacity style={[styles.saveButton, { backgroundColor: colors.primary }]} onPress={saveHomework} disabled={saving}>
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Save Homework</Text>}

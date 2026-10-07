@@ -8,7 +8,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import BottomNavigation from '../../../core/components/BottomNavigation';
 import { API_BASE_URL, api } from '../../../core/networking/api';
-import { getInMemoryAccessToken } from '../../../core/networking/session';
+import { getInMemoryAccessToken, getCachedUserData } from '../../../core/networking/session';
 import { currentBsMonth, getBsMonthLabels, getGregorianMonthsForBsMonth } from '../../../core/utils/bsCalendar';
 import { isNoticeUnread, loadNoticeReadState, type NoticeReadState } from '../../../core/utils/noticeReadState';
 import { getSelectedChildId, setSelectedChildId as persistSelectedChildId } from '../../../core/utils/childSelection';
@@ -149,7 +149,7 @@ export default function DashboardScreen({ navigation }: Props) {
     } else {
       setProfile(null);
       try {
-        const raw = await SecureStore.getItemAsync('user_data');
+        const raw = await getCachedUserData();
         if (raw) {
           currentProfile = JSON.parse(raw) as Profile;
           setProfile(currentProfile);

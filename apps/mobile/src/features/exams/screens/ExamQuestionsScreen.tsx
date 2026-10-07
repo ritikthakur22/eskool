@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../../../core/theme/ThemeContext';
-import { api } from '../../../core/networking/api';
+import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
+import { KeyboardAvoidingView, Platform, SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, Ionicons } from '@expo/vector-icons';
+import { KeyboardAvoidingView, Platform, useTheme } from '../../../core/theme/ThemeContext';
+import { KeyboardAvoidingView, Platform, api } from '../../../core/networking/api';
 
 export default function ExamQuestionsScreen({ route, navigation }: any) {
   const { exam } = route.params;
@@ -114,7 +114,7 @@ export default function ExamQuestionsScreen({ route, navigation }: any) {
       </ScrollView>
 
       <Modal visible={editorVisible} animationType="slide" transparent onRequestClose={() => setEditorVisible(false)}>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.text }]}>{editQuestion ? 'Edit Question' : 'Add Question'}</Text>
@@ -139,7 +139,7 @@ export default function ExamQuestionsScreen({ route, navigation }: any) {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

@@ -2,11 +2,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ActivityIndicator, Modal, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../../core/networking/api';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Linking from 'expo-linking';
+import { API_BASE_URL, api } from '../../../core/networking/api';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { isNoticeUnread, loadNoticeReadState, markAllNoticesRead, markNoticeRead, saveNoticeReadState, type NoticeReadState } from '../../../core/utils/noticeReadState';
 
-type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; authorId?: string; author?: any };
+type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; authorId?: string; author?: any; attachmentUrl?: string; };
 const categories = ['All', 'Important', 'Academic', 'Exam', 'Holiday', 'Event'];
 const editCategories = ['Important', 'Academic', 'Exam', 'Holiday', 'Event'];
 const publisherName = (notice?: Notice | null) => {
@@ -80,21 +82,48 @@ export default function NoticeScreen({ navigation }: any) {
     return { name: 'school', color: colors.success, bg: colors.success + '18' };
   };
 
+  const [attachment, setAttachment] = useState<any>(null);
+
   const openEditor = (n: Notice | null = null) => {
     setEditNotice(n);
     setForm(n ? { title: n.title, content: n.content, category: n.category } : { title: '', content: '', category: 'Academic' });
+    setAttachment(null);
     setEditorVisible(true);
+  };
+
+  const pickAttachment = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true });
+      if (!result.canceled && result.assets && result.assets[0]) {
+        setAttachment(result.assets[0]);
+      }
+    } catch (err) {
+      Alert.alert('Error', 'Failed to pick file.');
+    }
   };
 
   const saveNotice = async () => {
     if (!form.title.trim() || !form.content.trim()) return Alert.alert('Error', 'Please enter a title and content.');
     setSaving(true);
     try {
+      let attachmentUrl = editNotice?.attachmentUrl;
+      let attachmentType = editNotice?.attachmentType;
+      
+      if (attachment) {
+        const formData = new FormData();
+        formData.append('file', { uri: attachment.uri, name: attachment.name, type: attachment.mimeType || 'application/octet-stream' } as any);
+        const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        attachmentUrl = uploadRes.data.url;
+        attachmentType = uploadRes.data.mimeType;
+      }
+      
+      let data = { ...form, attachmentUrl, attachmentType };
+
       if (editNotice) {
-        await api.patch(`/notices/${editNotice.id}`, form);
+        await api.patch(`/notices/${editNotice.id}`, data);
         Alert.alert('Success', 'Notice updated.');
       } else {
-        await api.post('/notices', form);
+        await api.post('/notices', data);
         Alert.alert('Success', 'Notice posted.');
       }
       setEditorVisible(false);
@@ -172,7 +201,14 @@ export default function NoticeScreen({ navigation }: any) {
             <Ionicons name="person-outline" size={14} color={colors.subText} /><Text style={s.modalDate}>{publisherName(selected)}</Text><Text style={s.modalSeparator}>·</Text>
             <Ionicons name="time-outline" size={14} color={colors.subText} /><Text style={s.modalDate}>{noticeTimestamp(selected)}</Text>
           </View>
-          <ScrollView><Text style={s.modalContent}>{selected?.content}</Text></ScrollView>
+          <ScrollView>
+            <Text style={s.modalContent}>{selected?.content}</Text>
+            {selected?.attachmentUrl && (
+              <TouchableOpacity onPress={() => Linking.openURL(API_BASE_URL + selected.attachmentUrl)} style={{ marginTop: 15, marginBottom: 25 }}>
+                <Text style={{ color: colors.primary, fontWeight: '700' }}>View Attachment</Text>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -188,13 +224,18 @@ export default function NoticeScreen({ navigation }: any) {
             <TextInput value={form.title} onChangeText={t => setForm({...form, title: t})} placeholder="Notice Title" placeholderTextColor={colors.subText} style={s.input} />
             <TextInput value={form.content} onChangeText={t => setForm({...form, content: t})} placeholder="Notice details..." placeholderTextColor={colors.subText} style={[s.input, { height: 120, textAlignVertical: 'top' }]} multiline />
             <Text style={{color: colors.subText, fontSize: 12, marginBottom: 8, fontWeight: '700', marginLeft: 5}}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8, marginBottom: 20}}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8, marginBottom: 15}}>
               {editCategories.map(cat => (
                 <TouchableOpacity key={cat} onPress={() => setForm({...form, category: cat})} style={[s.chip, form.category === cat && s.chipActive]}>
                   <Text style={[s.chipText, form.category === cat && s.chipTextActive]}>{cat}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
+            
+            <TouchableOpacity style={[s.input, { alignItems: 'center', justifyContent: 'center' }]} onPress={pickAttachment}>
+              <Text style={{ color: colors.primary }}>{attachment ? `Attachment: ${attachment.name}` : 'Attach File/Image'}</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity disabled={saving} onPress={saveNotice} style={s.primaryButton}>
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>{editNotice ? 'Save Changes' : 'Post Notice'}</Text>}
             </TouchableOpacity>
