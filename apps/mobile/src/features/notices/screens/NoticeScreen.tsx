@@ -8,7 +8,7 @@ import { API_BASE_URL, api } from '../../../core/networking/api';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { isNoticeUnread, loadNoticeReadState, markAllNoticesRead, markNoticeRead, saveNoticeReadState, type NoticeReadState } from '../../../core/utils/noticeReadState';
 
-type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; authorId?: string; author?: any; attachmentUrl?: string; };
+type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; authorId?: string; author?: any; attachmentUrl?: string; attachmentType?: string; };
 const categories = ['All', 'Important', 'Academic', 'Exam', 'Holiday', 'Event'];
 const editCategories = ['Important', 'Academic', 'Exam', 'Holiday', 'Event'];
 const publisherName = (notice?: Notice | null) => {

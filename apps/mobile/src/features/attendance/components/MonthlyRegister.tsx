@@ -25,7 +25,7 @@ export default function MonthlyRegister({ sectionId, students }: { sectionId: st
       const lastDay = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
       const res = await api.get(`/attendance/register?sectionId=${sectionId}&startDate=${firstDay}&endDate=${lastDay}`);
-      setAttendance(res.data || []);
+      setAttendance(res.data?.records || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -79,10 +79,13 @@ export default function MonthlyRegister({ sectionId, students }: { sectionId: st
               <View style={[styles.cell, styles.totalCell, styles.headerCell]}><Text style={styles.headerText}>Total</Text></View>
             </View>
 
-            {students.map(student => {
+            {students.map(enroll => {
+              const studentId = enroll.studentId;
+              const prof = enroll.student?.studentProfile || {};
+              const name = [prof.firstName, prof.lastName].filter(Boolean).join(' ') || enroll.student?.email || 'Unknown';
               let presentCount = 0;
               let totalCount = 0;
-              const stdGrid = grid[student.id] || {};
+              const stdGrid = grid[studentId] || {};
               
               daysArray.forEach(d => {
                 if (stdGrid[d]) {
@@ -94,9 +97,9 @@ export default function MonthlyRegister({ sectionId, students }: { sectionId: st
               const percentage = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 0;
 
               return (
-                <View key={student.id} style={styles.row}>
+                <View key={studentId} style={styles.row}>
                   <View style={[styles.cell, styles.nameCell]}>
-                    <Text style={styles.nameText} numberOfLines={1}>{student.firstName} {student.lastName}</Text>
+                    <Text style={styles.nameText} numberOfLines={1}>{name}</Text>
                   </View>
                   
                   {daysArray.map(d => {
