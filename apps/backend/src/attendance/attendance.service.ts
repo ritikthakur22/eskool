@@ -126,7 +126,7 @@ export class AttendanceService {
     let students: any[] = [];
     if (filters.sectionId) {
       const enrollments = await this.prisma.enrollment.findMany({
-        where: sectionScope,
+        where: { sectionId: filters.sectionId },
         select: {
           studentId: true,
           rollNo: true,
