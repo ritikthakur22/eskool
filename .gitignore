@@ -10,3 +10,4 @@ apps/backend/test-db.js
 eskool_credentials.md
 *.md
 !README.md
+\n# Keystore\n*.keystore
