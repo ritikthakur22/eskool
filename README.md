@@ -3,7 +3,7 @@
   
   <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&pause=1000&color=0EA5E9&center=true&vCenter=true&width=800&lines=Revolutionizing+Digital+Education;Empowering+Teachers,+Students,+and+Parents;Seamless.+Fast.+Secure." />
 
-  <img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/docs/assets/promotional.png" width="100%"/>
+  <img src="./docs/assets/promotional.png" width="100%"/>
 </div>
 
 ---
@@ -43,16 +43,16 @@
 <div align="center">
 <table>
 <tr>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/docs/assets/Screenshot_20260928-174503_eSkool.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/docs/assets/Screenshot_20260928-174514_eSkool.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/docs/assets/Screenshot_20260928-174519_eSkool.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/docs/assets/Screenshot_20260928-174526_eSkool.png" width="250"/></td>
+<td><img src="./docs/assets/Screenshot_20260928-174503_eSkool.png" width="250"/></td>
+<td><img src="./docs/assets/Screenshot_20260928-174514_eSkool.png" width="250"/></td>
+<td><img src="./docs/assets/Screenshot_20260928-174519_eSkool.png" width="250"/></td>
+<td><img src="./docs/assets/Screenshot_20260928-174526_eSkool.png" width="250"/></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/docs/assets/Screenshot_20260928-174607_eSkool.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/docs/assets/Screenshot_20260928-174614_Trebuchet.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/docs/assets/Screenshot_20260928-174630_eSkool.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/docs/assets/Screenshot_20260928-174825_eSkool.png" width="250"/></td>
+<td><img src="./docs/assets/Screenshot_20260928-174607_eSkool.png" width="250"/></td>
+<td><img src="./docs/assets/Screenshot_20260928-174614_Trebuchet.png" width="250"/></td>
+<td><img src="./docs/assets/Screenshot_20260928-174630_eSkool.png" width="250"/></td>
+<td><img src="./docs/assets/Screenshot_20260928-174825_eSkool.png" width="250"/></td>
 </tr>
 </table>
 </div>
@@ -175,24 +175,7 @@ eskool-software/
 
 ## 🔑 Demo and testing access
 
-This repository is for the development team. These are disposable development accounts only; never reuse them for production and rotate them if this repository is shared outside the team.
-
-| Role / class | Login ID | Password |
-| :--- | :--- | :--- |
-| Super Admin | `superadmin@eskool.com` | <REDACTED> |
-| Admin | `admin1@eskool.com` | <REDACTED> |
-| Admin | `admin2@eskool.com` | <REDACTED> |
-| Teacher | `teacher1@eskool.com` | <REDACTED> |
-| Class 10-A | `student10a1@eskool.com` | <REDACTED> |
-| Class 10-A | `student10a2@eskool.com` | <REDACTED> |
-| Class 11-A | `student11a1@eskool.com` | <REDACTED> |
-| Class 11-A | `student11a2@eskool.com` | <REDACTED> |
-| Class 11-A | `student11a3@eskool.com` | <REDACTED> |
-| Class 12-A | `student12a1@eskool.com` | <REDACTED> |
-| Class 12-A | `student12a2@eskool.com` | <REDACTED> |
-| Class 12-A | `student12a3@eskool.com` | <REDACTED> |
-| Class 12-B | `student12b1@eskool.com` | <REDACTED> |
-| Class 12-B | `student12b2@eskool.com` | <REDACTED> |
+This repository is for the development team. All testing and demo accounts are securely documented in the internal `eskool_credentials.md` file (which is git-ignored) and must NEVER be committed to this repository.
 
 Download links and release artifacts should be added only after verifying that the corresponding GitHub release and signed build exist.
 
