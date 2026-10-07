@@ -222,30 +222,28 @@ Responses use JSON unless an endpoint explicitly returns a file. API changes sho
 
 ## 💻 Installation & Setup Guide
 
-Want to run the eSkool platform locally? Follow these steps for **Windows** and **Linux**.
+Want to run the eSkool platform locally? Follow these steps for **Windows**, **Mac**, and **Linux**.
 
 ### 1️⃣ Prerequisites
 Ensure you have the following installed on your machine:
-*   **[Node.js](https://nodejs.org/en/)** (v18 or higher)
+*   **[Node.js](https://nodejs.org/en/)** (v20 or higher recommended)
 *   **[Git](https://git-scm.com/)**
-*   **Java JDK 17** & **Android Studio** (For building the mobile app)
+*   **Java JDK 17** & **Android Studio** (Required for building the Android app)
 *   *Windows Users:* We highly recommend using **WSL2** (Windows Subsystem for Linux) for the smoothest experience.
 
 ### 2️⃣ Clone the Repository
-Open your terminal (or PowerShell) and run:
+Open your terminal and run:
 ```bash
 git clone https://github.com/eskool33/eskool-software.git
 cd eskool-software
 ```
-
 
 ### 3️⃣ Backend Setup (NestJS & PostgreSQL)
 First, set up the API server and database.
 
 **Database Configuration (NeonDB):**
 1. Go to [Neon.tech](https://neon.tech/) and create a free PostgreSQL database.
-2. Copy your connection string.
-3. If it contains `?sslmode=require`, ensure your backend environment matches it.
+2. Copy your connection string. Be sure to use the **Direct Connection** URL (without `-pooler`) for Prisma migrations.
 
 ```bash
 cd apps/backend
@@ -257,36 +255,27 @@ npm install
 # Create a .env file in the backend folder and add your DB and Auth keys:
 echo 'DATABASE_URL="postgresql://user:pass@ep-rest-of-url.neon.tech/eskool?sslmode=require"' > .env
 echo 'JWT_SECRET="your-super-secret-key"' >> .env
+# (Optional) Add Cloudinary keys if you want to support file uploads:
+echo 'CLOUDINARY_CLOUD_NAME="your-cloud-name"' >> .env
+echo 'CLOUDINARY_API_KEY="your-key"' >> .env
+echo 'CLOUDINARY_API_SECRET="your-secret"' >> .env
 
 # 3. Generate Prisma Client & Run migrations
 npx prisma generate
 npx prisma migrate dev
 
-# Create test users through the authenticated admin workflow or a private seed tool.
-# Do not commit passwords or run a shared-password seed against production.
-
-# 5. Start the Development Server (Runs on port 3000)
+# 4. Start the Development Server (Runs on port 3000)
 npm run start:dev
 ```
-
-Run backend checks with:
-
-```bash
-npm run build
-npm test
-```
-
-
-
 
 ### 4️⃣ Mobile App Setup (React Native Expo)
 Open a **new** terminal window (keep the backend running).
 
 **Network Configuration:**
-By default, the app uses the configured deployed API URL. To test locally, set the API URL at runtime:
+By default, the app uses the configured deployed API URL. To test locally on a physical device, point it to your computer's local IP address (find this using `ipconfig` or `ip a`):
 
 ```bash
-export EXPO_PUBLIC_API_URL="http://192.168.1.5:3000"
+export EXPO_PUBLIC_API_URL="http://192.168.1.X:3000"
 ```
 
 ```bash
@@ -295,16 +284,33 @@ cd apps/mobile
 # 1. Install all dependencies
 npm install
 
-# 2. Start the Expo Metro Bundler
+# 2. Start the Expo Metro Bundler for live development
 npx expo start -c
 ```
 *   Press `a` in the terminal to open the app in an Android Emulator.
-*   For native Firebase and Google Sign-In features, use a development build (`npx expo run:android` or an EAS development build). Expo Go does not include every native module used by this project.
+*   *Note: Expo Go does not include every native module used by this project (like Document Picker). We recommend using a development build or building the APK directly.*
 
 > **Linux Pro-Tip:** If you encounter a `System limit for number of file watchers reached` error while running Expo on Linux, run this command:
 > `echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
 
+### 5️⃣ Building the Android Release APK
+To compile the app into a standalone APK that you can install on your physical Android device:
 
+```bash
+cd apps/mobile
+
+# 1. Export the Expo project for Android
+npx expo export --platform android -c
+
+# 2. Navigate to the android folder and build the release APK
+# Note: Ensure JAVA_HOME points to your JDK 17 installation
+cd android
+JAVA_HOME=/usr/lib/jvm/java-17-openjdk ./gradlew assembleRelease
+
+# 3. Install the APK on your connected Android device
+# Make sure your phone is plugged in with USB Debugging enabled
+adb install -r app/build/outputs/apk/release/app-release.apk
+```
 
 ## ⚖️ License & Copyright
 
