@@ -34,7 +34,7 @@
 ### 🚀 Why eSkool? (The Pros)
 ✨ **Responsive:** Built with Expo and React Native for Android, iOS, and web-oriented development.
 ✨ **Secure by default:** JWT authentication, SecureStore-backed mobile session storage, and role/tenant checks on protected API operations.
-✨ **School-focused:** Attendance, notices, homework, exams, routine, fees, profile, and academic-calendar workflows.
+✨ **School-focused:** Full Class Routine Engine, Teacher Bulk Attendance & Monthly Registers, PDF/Image Attachments for Homework & Notices, Interactive MCQ Exam Engine, Fees, Profile, and Academic Calendar workflows.
 ✨ **Themeable:** Light, dark, and system theme support.
 
 ---
@@ -225,8 +225,9 @@ The API base URL is configured in the mobile client with `EXPO_PUBLIC_API_URL`; 
 | `POST` | `/exams/result` | Admin/teacher | Add a validated result for a same-school student |
 | `GET` | `/fees/me` | Student | Read invoices and payment status |
 | `POST` | `/fees/:invoiceId/payment-proofs` | Student | Submit payment proof |
-| `GET` | `/routine/document` | Bearer | Read the latest school routine |
-| `POST` | `/routine/document` | Admin/teacher | Upload a routine document |
+| `GET` | `/routine` | Bearer | Read the weekly class routine for a student or teacher |
+| `POST` | `/routine` | Admin | Create a new class routine entry |
+| `POST` | `/upload` | Bearer | Upload images/PDFs for homework & notices |
 | `GET` | `/health` | Public | Check API/database health |
 
 Responses use JSON unless an endpoint explicitly returns a file. API changes should preserve school scoping, role checks, and server-derived actor IDs.
