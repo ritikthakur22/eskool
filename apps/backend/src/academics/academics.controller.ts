@@ -26,38 +26,38 @@ export class AcademicsController {
   getChildren(@Request() req: any) { return this.academics.getChildren(req.user.id, req.user.schoolId); }
 
   @Get('parent-links')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   listParentLinks(@Request() req: any) { return this.academics.listParentLinks(req.user.schoolId); }
 
   @Post('parent-links')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   createParentLink(@Body() data: CreateParentLinkDto, @Request() req: any) { return this.academics.createParentLink(data, req.user.schoolId, req.user.id); }
 
   @Delete('parent-links/:id')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   removeParentLink(@Param('id', new ParseUUIDPipe()) id: string, @Request() req: any) { return this.academics.removeParentLink(id, req.user.schoolId, req.user.id); }
 
   @Post('academic-years')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   createAcademicYear(@Body() data: CreateAcademicYearDto, @Request() req: any) { return this.academics.createAcademicYear(data, req.user.schoolId, req.user.id); }
 
   @Post('classes')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   createClass(@Body() data: CreateClassDto, @Request() req: any) { return this.academics.createClass(data, req.user.schoolId, req.user.id); }
 
   @Post('sections')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   createSection(@Body() data: CreateSectionDto, @Request() req: any) { return this.academics.createSection(data, req.user.schoolId, req.user.id); }
 
   @Post('subjects')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   createSubject(@Body() data: CreateSubjectDto, @Request() req: any) { return this.academics.createSubject(data, req.user.schoolId, req.user.id); }
 
   @Post('enrollments')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   enroll(@Body() data: CreateEnrollmentDto, @Request() req: any) { return this.academics.enroll(data, req.user.schoolId, req.user.id); }
 
   @Post('teacher-assignments')
-  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   assignTeacher(@Body() data: CreateTeacherAssignmentDto, @Request() req: any) { return this.academics.assignTeacher(data, req.user.schoolId, req.user.id); }
 }

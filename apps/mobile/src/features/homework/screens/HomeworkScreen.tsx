@@ -24,6 +24,7 @@ export default function HomeworkScreen({ navigation }: any) {
   const [editorVisible, setEditorVisible] = useState(false);
   const [editHomework, setEditHomework] = useState<any>(null);
   const [form, setForm] = useState({ title: '', description: '', subjectId: '', sectionId: '', dueDate: '' });
+  const [customSubjectName, setCustomSubjectName] = useState('');
   const [saving, setSaving] = useState(false);
 
   const tabs = useMemo(() => {
@@ -108,7 +109,17 @@ export default function HomeworkScreen({ navigation }: any) {
   };
 
   const saveHomework = async () => {
-    if (!form.title || !form.subjectId || !form.sectionId || !form.dueDate) return Alert.alert('Error', 'Fill required fields.');
+    let finalSubjectId = form.subjectId;
+    if (customSubjectName.trim()) {
+      try {
+        const res = await api.post('/academics/subjects', { name: customSubjectName.trim() });
+        finalSubjectId = res.data.id;
+      } catch (err) {
+        Alert.alert('Error', 'Failed to create custom subject');
+        return;
+      }
+    }
+    if (!form.title || !finalSubjectId || !form.sectionId || !form.dueDate) return Alert.alert('Error', 'Fill required fields.');
     setSaving(true);
     try {
       let attachmentUrl = editHomework?.attachmentUrl;
@@ -124,7 +135,7 @@ export default function HomeworkScreen({ navigation }: any) {
       
       let data: any = editHomework 
         ? { title: form.title, description: form.description, dueDate: new Date(form.dueDate).toISOString(), attachmentUrl, attachmentType }
-        : { ...form, dueDate: new Date(form.dueDate).toISOString(), attachmentUrl, attachmentType };
+        : { ...form, subjectId: finalSubjectId, dueDate: new Date(form.dueDate).toISOString(), attachmentUrl, attachmentType };
 
       if (editHomework) await api.patch(`/homework/${editHomework.id}`, data);
       else await api.post('/homework', data);
@@ -211,6 +222,7 @@ export default function HomeworkScreen({ navigation }: any) {
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
+                  <TextInput value={customSubjectName} onChangeText={t => { setCustomSubjectName(t); if(t) setForm({...form, subjectId: ''}); }} placeholder="Or type new subject..." placeholderTextColor={colors.subText} style={[styles.input, { marginBottom: 15 }]} />
                   <Text style={[styles.inputLabel, { color: colors.subText }]}>Section</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
                     {structure.classes?.flatMap((c: any) => c.sections?.map((sec: any) => (

@@ -22,6 +22,7 @@ export default function ExamsScreen({ navigation }: any) {
   const [editorVisible, setEditorVisible] = useState(false);
   const [editExam, setEditExam] = useState<any>(null);
   const [form, setForm] = useState({ title: '', subjectId: '', sectionId: '', date: '', type: 'MCQ' });
+  const [customSubjectName, setCustomSubjectName] = useState('');
   const [saving, setSaving] = useState(false);
 
   const tabs = useMemo(() => {
@@ -82,7 +83,17 @@ export default function ExamsScreen({ navigation }: any) {
   };
 
   const saveExam = async () => {
-    if (!form.title || !form.subjectId || !form.sectionId || !form.date) return Alert.alert('Error', 'Fill all fields.');
+    let finalSubjectId = form.subjectId;
+    if (customSubjectName.trim()) {
+      try {
+        const res = await api.post('/academics/subjects', { name: customSubjectName.trim() });
+        finalSubjectId = res.data.id;
+      } catch (err) {
+        Alert.alert('Error', 'Failed to create custom subject');
+        return;
+      }
+    }
+    if (!form.title || !finalSubjectId || !form.sectionId || !form.date) return Alert.alert('Error', 'Fill all fields.');
     setSaving(true);
     try {
       if (editExam) await api.patch(`/exams/${editExam.id}`, { title: form.title, date: new Date(form.date).toISOString(), type: form.type });
@@ -184,6 +195,7 @@ export default function ExamsScreen({ navigation }: any) {
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
+                  <TextInput value={customSubjectName} onChangeText={t => { setCustomSubjectName(t); if(t) setForm({...form, subjectId: ''}); }} placeholder="Or type new subject..." placeholderTextColor={colors.subText} style={[styles.input, { marginBottom: 15 }]} />
                   <Text style={[styles.inputLabel, { color: colors.subText }]}>Section</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
                     {structure.classes?.flatMap((c: any) => c.sections?.map((sec: any) => (

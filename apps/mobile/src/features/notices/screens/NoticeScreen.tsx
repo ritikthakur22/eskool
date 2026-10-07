@@ -224,6 +224,7 @@ export default function NoticeScreen({ navigation }: any) {
             <TextInput value={form.title} onChangeText={t => setForm({...form, title: t})} placeholder="Notice Title" placeholderTextColor={colors.subText} style={s.input} />
             <TextInput value={form.content} onChangeText={t => setForm({...form, content: t})} placeholder="Notice details..." placeholderTextColor={colors.subText} style={[s.input, { height: 120, textAlignVertical: 'top' }]} multiline />
             <Text style={{color: colors.subText, fontSize: 12, marginBottom: 8, fontWeight: '700', marginLeft: 5}}>Category</Text>
+            <TextInput value={form.category} onChangeText={t => setForm({...form, category: t})} placeholder="Type custom category..." placeholderTextColor={colors.subText} style={[s.input, { marginBottom: 15 }]} />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8, marginBottom: 15}}>
               {editCategories.map(cat => (
                 <TouchableOpacity key={cat} onPress={() => setForm({...form, category: cat})} style={[s.chip, form.category === cat && s.chipActive]}>
