@@ -45,8 +45,8 @@ export class AttendanceController {
 
   @Get('register')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
-  getSchoolRegister(@Query('date') date: string | undefined, @Query('sectionId', new ParseUUIDPipe({ optional: true })) sectionId: string | undefined, @Request() req: any) {
-    return this.attendanceService.getSchoolRegister({ schoolId: req.user.schoolId, date, sectionId, actorId: req.user.id, actorRole: req.user.role });
+  getSchoolRegister(@Query('date') date: string | undefined, @Query('startDate') startDate: string | undefined, @Query('endDate') endDate: string | undefined, @Query('sectionId', new ParseUUIDPipe({ optional: true })) sectionId: string | undefined, @Request() req: any) {
+    return this.attendanceService.getSchoolRegister({ schoolId: req.user.schoolId, date, startDate, endDate, sectionId, actorId: req.user.id, actorRole: req.user.role });
   }
 
   @Get('export')

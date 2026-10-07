@@ -91,7 +91,7 @@ export class AttendanceService {
     });
   }
 
-  async getSchoolRegister(filters: { schoolId: string; date?: string; sectionId?: string; actorId?: string; actorRole?: Role }) {
+  async getSchoolRegister(filters: { schoolId: string; date?: string; startDate?: string; endDate?: string; sectionId?: string; actorId?: string; actorRole?: Role }) {
     const where: Prisma.AttendanceWhereInput = { schoolId: filters.schoolId };
     if (filters.date) {
       const start = new Date(`${filters.date}T00:00:00.000Z`);
@@ -99,6 +99,10 @@ export class AttendanceService {
       const end = new Date(start);
       end.setUTCDate(end.getUTCDate() + 1);
       where.date = { gte: start, lt: end };
+    } else if (filters.startDate && filters.endDate) {
+      const start = new Date(`${filters.startDate}T00:00:00.000Z`);
+      const end = new Date(`${filters.endDate}T23:59:59.999Z`);
+      where.date = { gte: start, lte: end };
     }
     const sectionScope = filters.sectionId
       ? { sectionId: filters.sectionId, section: { schoolId: filters.schoolId, ...(filters.actorRole === Role.TEACHER && filters.actorId ? { teacherAssignments: { some: { teacherId: filters.actorId } } } : {}) } }
@@ -107,7 +111,7 @@ export class AttendanceService {
     const records = await this.prisma.attendance.findMany({
       where,
       orderBy: [{ date: 'desc' }, { student: { studentProfile: { lastName: 'asc' } } }],
-      take: 500,
+      take: 2500,
       select: {
         id: true, date: true, status: true, subject: true, remarks: true, createdAt: true, updatedAt: true,
         student: { select: { id: true, email: true, studentProfile: { select: { firstName: true, lastName: true, rollNo: true, grade: true, section: true } } } },
