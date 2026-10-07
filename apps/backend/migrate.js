@@ -1,4 +1,4 @@
-const { execSync } = require('child_process');
+import { execSync } from 'node:child_process';
 const dbUrl = process.env.DATABASE_URL || '';
 const directUrl = dbUrl.replace('-pooler', '');
 console.log('Running migrate deploy with direct URL (pooler stripped)...');
