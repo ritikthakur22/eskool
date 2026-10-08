@@ -1,13 +1,9 @@
-import { Header } from "@/components/layout/header";
-import Image from "next/image";
+// src/app/page.tsx
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-export default function Home() {
-  return (
-<>
-      <div className="flex flex-1 flex-col">
-        <Header />
-        <main className="flex-1 bg-muted/30 p-6 text-2xl">Hello Workd</main>
-      </div>
-</>
-  );
+export default async function Page() {
+  const store = await cookies();
+  const hasSession = store.has("access_token") || store.has("refresh_token");
+  redirect(hasSession ? "/dashboard" : "/login");
 }
