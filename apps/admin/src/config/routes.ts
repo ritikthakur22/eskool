@@ -1,0 +1,13 @@
+export const ROUTES = {
+  login: "/login",
+  dashboard: "/dashboard",
+  students: "/students",
+  studentNew: "/students/new",
+  teachers: "/teachers",
+  admins: "/admins",
+  classes: "/classes",
+  notices: "/notices",
+  auditLogs: "/audit-logs",
+  settings: "/settings",
+  support: "/support",
+} as const;
