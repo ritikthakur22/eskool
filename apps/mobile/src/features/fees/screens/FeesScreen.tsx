@@ -69,7 +69,10 @@ export default function FeesScreen({ navigation }: any) {
     }
 
     try {
-      const response = await api.get('/fees/me');
+      const [response, details] = await Promise.all([
+        api.get('/fees/me'),
+        api.get('/fees/payment-details').catch(() => null),
+      ]);
       const data = Array.isArray(response.data) ? response.data : [];
       setInvoices(data);
       try {
@@ -77,12 +80,7 @@ export default function FeesScreen({ navigation }: any) {
         await SecureStore.setItemAsync('cache_fees_me', JSON.stringify(data));
       } catch (e) {}
 
-      try {
-        const details = await api.get('/fees/payment-details');
-        setPaymentDetails({ ...demoPaymentDetails, ...details.data });
-      } catch {
-        setPaymentDetails(demoPaymentDetails);
-      }
+      setPaymentDetails(details?.data ? { ...demoPaymentDetails, ...details.data } : demoPaymentDetails);
     } catch (e: any) {
       setError(e.response?.status === 401 ? 'Your session expired. Please sign in again.' : 'We couldn’t load your fee statement. Please try again.');
     } finally {

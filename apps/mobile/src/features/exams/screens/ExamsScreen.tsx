@@ -15,7 +15,6 @@ export default function ExamsScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [role, setRole] = useState('');
-  const [childId, setChildId] = useState('');
   const [childName, setChildName] = useState('');
   
   // Management state
@@ -50,17 +49,17 @@ export default function ExamsScreen({ route, navigation }: any) {
         setExams(Array.isArray(examRes.data) ? examRes.data : []);
         setStructure(structRes.data);
       } else {
+        let resolvedChildId = '';
         if (nextRole === 'PARENT') {
-          const selectedId = (await getSelectedChildId()) || '';
-          setChildId(selectedId);
-          if (!selectedId) throw new Error('Select a child from the home screen first.');
+          resolvedChildId = (await getSelectedChildId()) || '';
+          if (!resolvedChildId) throw new Error('Select a child from the home screen first.');
           const childRes = await api.get('/academics/children').catch(() => ({ data: [] }));
           const data = Array.isArray(childRes.data) ? childRes.data : [];
-          const child = data.find((item: any) => item.student?.id === selectedId) || data[0];
+          const child = data.find((item: any) => item.student?.id === resolvedChildId) || data[0];
           const profile = child?.student?.studentProfile;
-          setChildName([profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || child?.student?.email || 'Selected child');
+          setChildName([profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || child?.student?.email || '');
         }
-        const endpoint = nextRole === 'PARENT' ? `/exams/child/${childId}` : '/exams/me';
+        const endpoint = nextRole === 'PARENT' ? `/exams/child/${resolvedChildId}` : '/exams/me';
         const res = await api.get(endpoint);
         setExams(Array.isArray(res.data) ? res.data : []);
       }
@@ -71,11 +70,13 @@ export default function ExamsScreen({ route, navigation }: any) {
     }
   };
 
-  useEffect(() => { loadData(); }, [activeTab]);
+  // Exam tabs are client-side views over the same result set.
+  useEffect(() => { loadData(); }, []);
 
   const now = Date.now();
   const visibleExams = exams.filter(exam => activeTab !== 'Upcoming' || new Date(exam.date).getTime() >= now);
   const isManagement = ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(role);
+  const canCreateSubject = ['ADMIN', 'SUPER_ADMIN'].includes(role);
 
   const openEditor = (e: any = null) => {
     setEditExam(e);
@@ -196,7 +197,7 @@ export default function ExamsScreen({ route, navigation }: any) {
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
-                  <TextInput value={customSubjectName} onChangeText={t => { setCustomSubjectName(t); if(t) setForm({...form, subjectId: ''}); }} placeholder="Or type new subject..." placeholderTextColor={colors.subText} style={[styles.input, { marginBottom: 15 }]} />
+                  {canCreateSubject && <TextInput value={customSubjectName} onChangeText={t => { setCustomSubjectName(t); if(t) setForm({...form, subjectId: ''}); }} placeholder="Or add a new subject..." placeholderTextColor={colors.subText} style={[styles.input, { marginBottom: 15 }]} />}
                   <Text style={[styles.inputLabel, { color: colors.subText }]}>Section</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
                     {structure.classes?.flatMap((c: any) => c.sections?.map((sec: any) => (

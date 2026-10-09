@@ -16,7 +16,6 @@ export default function HomeworkScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [role, setRole] = useState('');
-  const [childSectionId, setChildSectionId] = useState('');
   const [childName, setChildName] = useState('');
   
   // Management state for teachers
@@ -51,17 +50,18 @@ export default function HomeworkScreen({ navigation }: any) {
         setHomeworks(hwRes.data);
         setStructure(structRes.data);
       } else {
+        let resolvedSectionId = '';
         if (nextRole === 'PARENT') {
           const selectedId = (await getSelectedChildId()) || '';
           if (!selectedId) throw new Error('Select a child from the home screen first.');
           const childRes = await api.get('/academics/children').catch(() => ({ data: [] }));
           const data = Array.isArray(childRes.data) ? childRes.data : [];
           const child = data.find((item: any) => item.student?.id === selectedId) || data[0];
-          setChildSectionId(child?.student?.enrollments?.[0]?.sectionId || '');
+          resolvedSectionId = child?.student?.enrollments?.[0]?.sectionId || '';
           const childProfile = child?.student?.studentProfile;
-          setChildName([childProfile?.firstName, childProfile?.lastName].filter(Boolean).join(' ') || child?.student?.email || 'Selected child');
+          setChildName([childProfile?.firstName, childProfile?.lastName].filter(Boolean).join(' ') || child?.student?.email || '');
         }
-        const endpoint = nextRole === 'PARENT' ? `/homework/class/${childSectionId}` : '/homework/me';
+        const endpoint = nextRole === 'PARENT' ? `/homework/class/${resolvedSectionId}` : '/homework/me';
         const res = await api.get(endpoint, { params: { limit: 50 } });
         setHomeworks(res.data.map((item: any) => ({
           ...item,
@@ -78,9 +78,12 @@ export default function HomeworkScreen({ navigation }: any) {
     }
   };
 
-  useEffect(() => { loadData(); }, [activeTab, childSectionId]);
+  // Tabs only filter the already-loaded collection; don't repeat the network
+  // request every time a user switches between Assigned/Submitted/Upcoming.
+  useEffect(() => { loadData(); }, []);
 
   const isManagement = ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(role);
+  const canCreateSubject = ['ADMIN', 'SUPER_ADMIN'].includes(role);
   const now = Date.now();
   const visibleHomeworks = isManagement ? homeworks : homeworks.filter(hw => {
     if (activeTab === 'Assigned') return hw.status !== 'Submitted';
@@ -222,7 +225,7 @@ export default function HomeworkScreen({ navigation }: any) {
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
-                  <TextInput value={customSubjectName} onChangeText={t => { setCustomSubjectName(t); if(t) setForm({...form, subjectId: ''}); }} placeholder="Or type new subject..." placeholderTextColor={colors.subText} style={[styles.input, { marginBottom: 15 }]} />
+                  {canCreateSubject && <TextInput value={customSubjectName} onChangeText={t => { setCustomSubjectName(t); if(t) setForm({...form, subjectId: ''}); }} placeholder="Or add a new subject..." placeholderTextColor={colors.subText} style={[styles.input, { marginBottom: 15 }]} />}
                   <Text style={[styles.inputLabel, { color: colors.subText }]}>Section</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
                     {structure.classes?.flatMap((c: any) => c.sections?.map((sec: any) => (

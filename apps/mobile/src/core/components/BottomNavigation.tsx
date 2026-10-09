@@ -10,11 +10,19 @@ const studentTabs = [
   { route: 'Profile', label: 'Settings', icon: 'person-outline' },
 ];
 
-const operationalTabs = [
+const teacherTabs = [
   { route: 'Dashboard', label: 'Home', icon: 'home-outline' },
   { route: 'Attendance', label: 'Attendance', icon: 'checkmark-circle-outline' },
-  { route: 'Calendar', label: 'Calendar', icon: 'calendar-outline' },
-  { route: 'Fees', label: 'Fees', icon: 'receipt-outline' },
+  { route: 'Routine', label: 'Classes', icon: 'school-outline' },
+  { route: 'Notice', label: 'Notices', icon: 'notifications-outline' },
+  { route: 'Profile', label: 'Settings', icon: 'person-outline' },
+];
+
+const managementTabs = [
+  { route: 'Dashboard', label: 'Home', icon: 'home-outline' },
+  { route: 'StaffManagement', label: 'People', icon: 'people-outline' },
+  { route: 'AcademicManagement', label: 'Operations', icon: 'school-outline' },
+  { route: 'AuditLogs', label: 'Audit', icon: 'shield-checkmark-outline' },
   { route: 'Profile', label: 'Settings', icon: 'person-outline' },
 ];
 
@@ -22,12 +30,12 @@ const parentTabs = [
   { route: 'Dashboard', label: 'Home', icon: 'home-outline' },
   { route: 'Calendar', label: 'Calendar', icon: 'calendar-outline' },
   { route: 'Fees', label: 'Fees', icon: 'receipt-outline' },
-  { route: 'Fees', label: 'Fees', icon: 'receipt-outline' },
+  { route: 'Notice', label: 'Notices', icon: 'notifications-outline' },
   { route: 'Profile', label: 'Settings', icon: 'person-outline' },
 ];
 
 export default function BottomNavigation({ navigation, activeRoute, colors, role }: any) {
-  const tabs = role === 'TEACHER' || role === 'ADMIN' || role === 'SUPER_ADMIN' ? operationalTabs : role === 'PARENT' ? parentTabs : studentTabs;
+  const tabs = role === 'ADMIN' || role === 'SUPER_ADMIN' ? managementTabs : role === 'TEACHER' ? teacherTabs : role === 'PARENT' ? parentTabs : studentTabs;
   return (
     <View style={[styles.bar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
     {tabs.map(tab => {

@@ -51,7 +51,7 @@ export default function ProfileScreen({ navigation }: any) {
     }
     catch { if (!summary) setSummary(null); }
     finally { setLoading(false); }
-  }, [summary]);
+  }, []);
   useEffect(() => { loadSummary(); }, [loadSummary]);
   useEffect(() => {
     api.get('/auth/google/status').then(({ data }) => { setGoogleLinked(Boolean(data.linked)); setGoogleEmail(data.email || ''); }).catch(() => undefined);

@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import NepaliDate from 'nepali-date-converter';
 import { api } from '../../../core/networking/api';
+import { getCachedUserData } from '../../../core/networking/session';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import BottomNavigation from '../../../core/components/BottomNavigation';
 import { currentBsMonth, getBsMonthDays, getBsMonthLabels, getGregorianMonthsForBsMonth, shiftBsMonth, type BsMonth } from '../../../core/utils/bsCalendar';
@@ -47,8 +48,17 @@ export default function AttendanceScreen({ navigation }: any) {
     refresh ? setRefreshing(true) : setLoading(true);
     setError('');
     try {
-      const { data: profileResponse } = await api.get('/users/me');
-      const studentId = role === 'PARENT' ? childId : profileResponse?.id;
+      let studentId = role === 'PARENT' ? childId : '';
+      if (!studentId) {
+        const cachedUser = await getCachedUserData();
+        try { studentId = cachedUser ? JSON.parse(cachedUser).id || '' : ''; } catch { studentId = ''; }
+      }
+      // The authenticated profile is already saved at sign-in. Only fall back
+      // to the network if an older session cache doesn't contain the user id.
+      if (!studentId) {
+        const { data: profileResponse } = await api.get('/users/me');
+        studentId = profileResponse?.id || '';
+      }
       if (!studentId) throw new Error('Student profile is unavailable.');
       const adMonths = getGregorianMonthsForBsMonth(month);
       const responses = await Promise.all(adMonths.map(({ year, month: adMonth }) =>
