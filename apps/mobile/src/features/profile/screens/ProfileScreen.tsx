@@ -36,10 +36,22 @@ export default function ProfileScreen({ navigation }: any) {
   const [photoVersion, setPhotoVersion] = useState(0);
 
   const loadSummary = useCallback(async () => {
-    try { const { data } = await api.get('/users/me'); setSummary(data); setPhotoVersion(Date.now()); }
-    catch { setSummary(null); }
+    try {
+      const raw = await getCachedUserData();
+      if (raw) {
+        setSummary(JSON.parse(raw));
+        setLoading(false);
+      }
+    } catch {}
+
+    try { 
+      const { data } = await api.get('/users/me'); 
+      setSummary(data); 
+      setPhotoVersion(Date.now()); 
+    }
+    catch { if (!summary) setSummary(null); }
     finally { setLoading(false); }
-  }, []);
+  }, [summary]);
   useEffect(() => { loadSummary(); }, [loadSummary]);
   useEffect(() => {
     api.get('/auth/google/status').then(({ data }) => { setGoogleLinked(Boolean(data.linked)); setGoogleEmail(data.email || ''); }).catch(() => undefined);

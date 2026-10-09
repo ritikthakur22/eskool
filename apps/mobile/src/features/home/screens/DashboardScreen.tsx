@@ -15,7 +15,7 @@ import { isNoticeUnread, loadNoticeReadState, type NoticeReadState } from '../..
 import { getSelectedChildId, setSelectedChildId as persistSelectedChildId } from '../../../core/utils/childSelection';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
-type Feature = { name: string; icon: any; route?: string; accent: string; note?: string; disabled?: boolean; expand?: boolean };
+type Feature = { name: string; icon: any; route?: string; params?: any; accent: string; note?: string; disabled?: boolean; expand?: boolean };
 type Profile = { id: string; email: string; role: string; firstName?: string; lastName?: string; grade?: string | null; section?: string | null; studentId?: string | null; profilePictureUrl?: string | null };
 type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; author?: any };
 type Attendance = { id: string; status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY'; date: string };
@@ -27,9 +27,9 @@ const quickFeatures: Feature[] = [
   { name: 'Homework', icon: 'document-text-outline', route: 'Homework', accent: '#2389F5' },
   { name: 'Library', icon: 'library-outline', route: 'Library', accent: '#8B5CF6' },
   { name: 'Complain', icon: 'chatbubble-ellipses-outline', route: 'Feedback', accent: '#F28B20' },
-  { name: 'Online exams', icon: 'checkbox-outline', route: 'Exams', accent: '#10A981' },
+  { name: 'Online exams', icon: 'checkbox-outline', route: 'Exams', params: { tab: 'Online Exam' }, accent: '#10A981' },
   { name: 'Results', icon: 'podium-outline', route: 'Result', accent: '#F39A19' },
-  { name: 'Upcoming exams', icon: 'calendar-clear-outline', route: 'Exams', accent: '#EF5261' },
+  { name: 'Upcoming exams', icon: 'calendar-clear-outline', route: 'Exams', params: { tab: 'Upcoming' }, accent: '#EF5261' },
   { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
 ];
 
@@ -39,7 +39,7 @@ const operationalQuickFeatures: Feature[] = [
   { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#64748B' },
   { name: 'Attendance register', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#10A981' },
   { name: 'Homework manager', icon: 'document-text-outline', route: 'Homework', accent: '#2389F5' },
-  { name: 'Upcoming exams', icon: 'calendar-clear-outline', route: 'Exams', accent: '#EF5261' },
+  { name: 'Upcoming exams', icon: 'calendar-clear-outline', route: 'Exams', params: { tab: 'Upcoming' }, accent: '#EF5261' },
   { name: 'Results', icon: 'podium-outline', route: 'Result', accent: '#F39A19' },
   { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
 ];
@@ -143,28 +143,36 @@ export default function DashboardScreen({ navigation }: Props) {
 
   const loadDashboard = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
-    else if (!profile) setLoading(true);
     setNoticeError(false);
     setAttendanceError(false);
+
+    // Hydrate from cache first to avoid UI lag/spinner blink
+    if (!profile) {
+      try {
+        const raw = await getCachedUserData();
+        if (raw) {
+          setProfile(JSON.parse(raw) as Profile);
+          setLoading(false); // We have cached data, stop loading spinner
+        } else {
+          setLoading(true);
+        }
+      } catch {
+        setLoading(true);
+      }
+    }
+
     const [profileResult, noticesResult] = await Promise.allSettled([
       api.get('/users/me'),
       api.get('/notices', { params: { limit: 8 } }),
     ]);
 
-    let currentProfile: Profile | null = null;
+    let currentProfile: Profile | null = profile;
     if (profileResult.status === 'fulfilled') {
       currentProfile = profileResult.value.data as Profile;
       setProfile(currentProfile);
       setAvatarVersion(Date.now());
-    } else {
+    } else if (!currentProfile) {
       setProfile(null);
-      try {
-        const raw = await getCachedUserData();
-        if (raw) {
-          currentProfile = JSON.parse(raw) as Profile;
-          setProfile(currentProfile);
-        }
-      } catch { /* Keep the dashboard available with its default identity. */ }
     }
 
     if (noticesResult.status === 'fulfilled') {
@@ -172,9 +180,8 @@ export default function DashboardScreen({ navigation }: Props) {
       setNotices(fetchedNotices);
       setNoticeReadState(await loadNoticeReadState(fetchedNotices));
     } else {
-      setNotices([]);
+      if (notices.length === 0) setNoticeError(true);
       setNoticeReadState(await loadNoticeReadState());
-      setNoticeError(true);
     }
 
     if (currentProfile?.role === 'STUDENT' && currentProfile.id) {
@@ -186,7 +193,7 @@ export default function DashboardScreen({ navigation }: Props) {
         )));
         const rows = responses.flatMap(response => Array.isArray(response.data) ? response.data : []) as Attendance[];
         setAttendance([...new Map(rows.map(record => [record.id, record])).values()]);
-      } catch { setAttendance([]); setAttendanceError(true); }
+      } catch { if (attendance.length === 0) setAttendanceError(true); }
     } else {
       setAttendance([]);
     }
@@ -235,7 +242,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
   const openFeature = (feature: Feature) => {
     if (feature.expand) { setShowAllFeatures(value => !value); return; }
-    if (feature.route) navigation.navigate(feature.route);
+    if (feature.route) navigation.navigate(feature.route, feature.params);
   };
 
   return <SafeAreaView style={s.screen}>

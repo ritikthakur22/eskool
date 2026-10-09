@@ -7,9 +7,10 @@ import { useTheme } from '../../../core/theme/ThemeContext';
 import { api } from '../../../core/networking/api';
 import { getSelectedChildId } from '../../../core/utils/childSelection';
 
-export default function ExamsScreen({ navigation }: any) {
+export default function ExamsScreen({ route, navigation }: any) {
   const { colors } = useTheme(); const styles = makeStyles(colors);
-  const [activeTab, setActiveTab] = useState('Online Exam');
+  const initialTab = route?.params?.tab || 'Online Exam';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [exams, setExams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
