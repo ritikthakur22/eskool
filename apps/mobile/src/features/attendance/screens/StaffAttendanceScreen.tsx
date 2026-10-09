@@ -10,6 +10,7 @@ import { getInMemoryAccessToken, getCachedUserData } from '../../../core/network
 import { useTheme } from '../../../core/theme/ThemeContext';
 import MonthlyRegister from '../components/MonthlyRegister';
 import BottomNavigation from '../../../core/components/BottomNavigation';
+import { gradeTenSectionName, orderAcademicClasses } from '../../../core/utils/classOrdering';
 
 type Status = 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY';
 type RecordItem = { id: string; date: string; status: Status; subject?: string; createdAt?: string };
@@ -35,6 +36,9 @@ export default function StaffAttendanceScreen({ navigation }: any) {
   const [drafts, setDrafts] = useState<Record<string, Status>>({});
   const [editing, setEditing] = useState<any | null>(null);
   const [reason, setReason] = useState('');
+  const [backfillStudent, setBackfillStudent] = useState<Student | null>(null);
+  const [backfillStatus, setBackfillStatus] = useState<Status>('PRESENT');
+  const [backfillReason, setBackfillReason] = useState('');
   const [markingModalVisible, setMarkingModalVisible] = useState(false);
   const [activeMode, setActiveMode] = useState<'Daily'|'Monthly'>('Daily');
 
@@ -43,7 +47,11 @@ export default function StaffAttendanceScreen({ navigation }: any) {
       const raw = await getCachedUserData();
       if (raw) setRole(JSON.parse(raw).role || 'TEACHER');
       const struct = await api.get('/academics/structure').catch(() => ({ data: {} }));
-      const allSections = (struct.data.classes || []).flatMap((c: any) => (c.sections || []).map((sec: any) => ({ ...sec, className: c.name })));
+      const allSections = orderAcademicClasses(struct.data.classes || []).flatMap((c: any) => (c.sections || []).map((sec: any) => {
+        const gradeTenSection = gradeTenSectionName(String(c.name || ''));
+        const sectionName = gradeTenSection && (!sec.name || /^general$/i.test(sec.name) || sec.name.toUpperCase() === gradeTenSection) ? gradeTenSection : sec.name;
+        return { ...sec, name: sectionName, className: gradeTenSection ? '10' : c.name };
+      }));
       setSections(allSections);
       if (allSections.length && !sectionId) setSectionId(allSections[0].id);
       setSubjects(struct.data.subjects || []);
@@ -90,11 +98,13 @@ export default function StaffAttendanceScreen({ navigation }: any) {
   const setStatus = (id: string, st: Status) => setDrafts(d => ({ ...d, [id]: st }));
   
   const markBulk = async () => {
+    const unrecorded = students.filter(student => !recordedStudentIds.has(student.studentId));
+    if (!unrecorded.length) return Alert.alert('Already recorded', 'Every student already has an attendance record for this date. Edit a record to make a correction.');
     setSaving(true);
     try {
       const payload = {
         sectionId, date, subjectId: subjectId || undefined,
-        records: students.map(st => ({ studentId: st.studentId, status: drafts[st.studentId] }))
+        records: unrecorded.map(st => ({ studentId: st.studentId, status: drafts[st.studentId] }))
       };
       await api.post('/attendance/register/bulk', payload);
       setMarkingModalVisible(false);
@@ -115,7 +125,22 @@ export default function StaffAttendanceScreen({ navigation }: any) {
     finally { setSaving(false); }
   };
 
+  const backfill = async () => {
+    if (!backfillStudent || !backfillReason.trim()) return Alert.alert('Reason required', 'Explain why this attendance record is being added or corrected.');
+    setSaving(true);
+    try {
+      await api.post('/attendance/register/backfill', { studentId: backfillStudent.studentId, sectionId, date, status: backfillStatus, reason: backfillReason.trim() });
+      setBackfillStudent(null); setBackfillReason(''); await load();
+      Alert.alert('Attendance saved', 'The historical attendance record was saved.');
+    } catch (e: any) { Alert.alert('Could not save attendance', e.response?.data?.message || 'Please check the date and student enrollment.'); }
+    finally { setSaving(false); }
+  };
+
   const sectionLabel = sections.find(s => s.id === sectionId);
+  const recordedStudentIds = new Set(rows.map(row => row.studentId || row.student?.id));
+  const missedStudents = students.filter(student => !recordedStudentIds.has(student.studentId));
+  const canBackfill = role === 'ADMIN' || role === 'SUPER_ADMIN';
+  const viewingPastDate = date < new Date().toISOString().slice(0, 10);
   const nameFor = (row: any) => {
     const profile = row.student?.studentProfile;
     return [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || row.student?.email || 'Student';
@@ -164,9 +189,7 @@ export default function StaffAttendanceScreen({ navigation }: any) {
         {students.length > 0 && <View style={s.markCard}>
           <View style={s.cardHeader}>
             <View><Text style={s.sectionTitle}>{sectionLabel?.className} {sectionLabel?.name}</Text><Text style={s.muted}>{students.length} Students</Text></View>
-            <TouchableOpacity onPress={() => setMarkingModalVisible(true)} style={s.saveButton}>
-              <Text style={s.saveText}>Mark Attendance</Text>
-            </TouchableOpacity>
+            {!(canBackfill && viewingPastDate) && <TouchableOpacity onPress={() => setMarkingModalVisible(true)} style={s.saveButton}><Text style={s.saveText}>Mark Attendance</Text></TouchableOpacity>}
           </View>
         </View>}
         <Text style={[s.sectionTitle, { marginTop: 17, marginBottom: 8 }]}>{rows.length} recorded sessions</Text>
@@ -176,6 +199,10 @@ export default function StaffAttendanceScreen({ navigation }: any) {
           <Text style={{ color: statusColor(row.status), fontSize: 10, fontWeight: '900' }}>{row.status.replace('_', ' ')}</Text>
           <Ionicons name="create-outline" size={17} color={colors.subText} />
         </TouchableOpacity>)}
+        {canBackfill && missedStudents.length > 0 && <View style={s.markCard}>
+          <View style={s.cardHeader}><View style={{ flex: 1 }}><Text style={s.sectionTitle}>Missed attendance</Text><Text style={s.muted}>{missedStudents.length} student{missedStudents.length === 1 ? '' : 's'} have no record for {date}</Text></View></View>
+          {missedStudents.map(student => <View key={student.studentId} style={s.studentRow}><View style={{ flex: 1 }}><Text style={s.studentName}>{nameFor(student)}</Text><Text style={s.muted}>Roll {student.rollNo || student.student?.studentProfile?.rollNo || '—'}</Text></View><TouchableOpacity onPress={() => { setBackfillStudent(student); setBackfillStatus('PRESENT'); setBackfillReason(''); }} style={s.saveButton}><Text style={s.saveText}>Add record</Text></TouchableOpacity></View>)}
+        </View>}
       </>}
     </ScrollView>
     <BottomNavigation navigation={navigation} activeRoute="Attendance" colors={colors} role={role} />
@@ -191,6 +218,18 @@ export default function StaffAttendanceScreen({ navigation }: any) {
             <TouchableOpacity onPress={() => setEditing(null)} style={s.cancel}><Text style={s.cancelText}>Cancel</Text></TouchableOpacity>
             <TouchableOpacity disabled={saving} onPress={correct} style={s.saveButton}>{saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.saveText}>Save Correction</Text>}</TouchableOpacity>
           </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+
+    <Modal visible={!!backfillStudent} transparent animationType="slide" onRequestClose={() => setBackfillStudent(null)}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.overlay}>
+        <View style={s.modal}>
+          <Text style={s.sectionTitle}>Add missed attendance</Text>
+          <Text style={s.muted}>{backfillStudent ? nameFor(backfillStudent) : ''} · {date}</Text>
+          <View style={s.statusChoices}>{(['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY'] as Status[]).map(status => <TouchableOpacity key={status} onPress={() => setBackfillStatus(status)} style={[s.choice, backfillStatus === status && s.choiceActive]}><Text style={[s.choiceText, backfillStatus === status && s.choiceTextActive]}>{status.replace('_', ' ')}</Text></TouchableOpacity>)}</View>
+          <TextInput value={backfillReason} onChangeText={setBackfillReason} placeholder="Reason for backfill" placeholderTextColor={colors.subText} style={s.reason} />
+          <View style={s.modalActions}><TouchableOpacity onPress={() => setBackfillStudent(null)} style={s.cancel}><Text style={s.cancelText}>Cancel</Text></TouchableOpacity><TouchableOpacity disabled={saving} onPress={backfill} style={s.saveButton}>{saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.saveText}>Save record</Text>}</TouchableOpacity></View>
         </View>
       </KeyboardAvoidingView>
     </Modal>

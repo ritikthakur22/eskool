@@ -1,7 +1,7 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Attendance, Role } from '@prisma/client';
-import { BulkMarkAttendanceDto, CorrectAttendanceDto, MarkAttendanceDto } from './dto/attendance.dto.js';
+import { BackfillAttendanceDto, BulkMarkAttendanceDto, CorrectAttendanceDto, MarkAttendanceDto } from './dto/attendance.dto.js';
 import { AuditService } from '../audit/audit.service.js';
 
 @Injectable()
@@ -156,5 +156,29 @@ export class AttendanceService {
       reason: data.reason.trim(), before: { status: record.status, remarks: record.remarks }, after: { status: updated.status, remarks: updated.remarks }, studentId: record.studentId, date: record.date.toISOString(), subject: record.subject,
     } });
     return updated;
+  }
+
+  async backfillAttendance(data: BackfillAttendanceDto, actor: { id: string; schoolId: string; role: Role }) {
+    if (actor.role !== Role.ADMIN && actor.role !== Role.SUPER_ADMIN) throw new ForbiddenException('Only administrators can backfill a missed attendance record.');
+    const day = new Date(`${data.date.slice(0, 10)}T00:00:00.000Z`);
+    if (Number.isNaN(day.getTime())) throw new NotFoundException('Use a valid attendance date.');
+    const tomorrow = new Date(); tomorrow.setUTCHours(0, 0, 0, 0); tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    if (day >= tomorrow) throw new ForbiddenException('Backfill is only available for today or an earlier date.');
+    const end = new Date(day); end.setUTCDate(end.getUTCDate() + 1);
+    const [section, student, enrollment] = await Promise.all([
+      this.prisma.section.findFirst({ where: { id: data.sectionId, schoolId: actor.schoolId }, select: { id: true } }),
+      this.prisma.user.findFirst({ where: { id: data.studentId, schoolId: actor.schoolId, role: Role.STUDENT, status: 'ACTIVE' }, select: { id: true } }),
+      this.prisma.enrollment.findFirst({ where: { studentId: data.studentId, sectionId: data.sectionId, section: { schoolId: actor.schoolId } }, select: { id: true } }),
+    ]);
+    if (!section || !student || !enrollment) throw new NotFoundException('The active student must be enrolled in the selected section.');
+    const existing = await this.prisma.attendance.findFirst({ where: { studentId: student.id, schoolId: actor.schoolId, date: { gte: day, lt: end } }, select: { id: true, status: true, remarks: true, date: true } });
+    if (existing) {
+      const updated = await this.prisma.attendance.update({ where: { id: existing.id }, data: { status: data.status, remarks: data.reason.trim(), teacherId: actor.id } });
+      void this.audit.record({ action: 'ATTENDANCE_BACKFILLED_CORRECTION', entity: 'Attendance', entityId: existing.id, userId: actor.id, schoolId: actor.schoolId, details: { reason: data.reason.trim(), studentId: student.id, date: day.toISOString(), before: { status: existing.status, remarks: existing.remarks }, after: { status: updated.status, remarks: updated.remarks } } });
+      return { ...updated, created: false };
+    }
+    const created = await this.prisma.attendance.create({ data: { schoolId: actor.schoolId, studentId: student.id, teacherId: actor.id, date: day, status: data.status, remarks: data.reason.trim() } });
+    void this.audit.record({ action: 'ATTENDANCE_BACKFILLED_CREATED', entity: 'Attendance', entityId: created.id, userId: actor.id, schoolId: actor.schoolId, details: { reason: data.reason.trim(), studentId: student.id, date: day.toISOString(), status: data.status } });
+    return { ...created, created: true };
   }
 }

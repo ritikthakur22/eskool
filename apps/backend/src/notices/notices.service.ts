@@ -33,27 +33,31 @@ export class NoticesService {
   }
 
   async getAllNotices(category?: string, limit = 20, actor?: any): Promise<Notice[]> {
-    let studentClassId: string | null = null;
-    if (actor && actor.role === 'STUDENT') {
+    let studentClassIds: string[] = [];
+    const isStudent = actor?.role === 'STUDENT';
+    if (isStudent) {
       const studentProfile = await this.prisma.studentProfile.findUnique({
         where: { userId: actor.id },
         select: { grade: true }
       });
       if (studentProfile?.grade) {
-        const cls = await this.prisma.class.findFirst({
-          where: { name: studentProfile.grade, schoolId: actor.schoolId }
+        const grade = studentProfile.grade.trim().replace(/^(class|grade|standard)\s*/i, '').replace(/\s+/g, '');
+        const gradeTen = /^10[ab]?$/i.test(grade);
+        const classRecords = await this.prisma.class.findMany({
+          where: { schoolId: actor.schoolId, name: { in: gradeTen ? ['10', '10A', '10B', '10 A', '10 B', 'Class 10', 'Class 10A', 'Class 10B', 'Class 10 A', 'Class 10 B', 'Grade 10', 'Grade 10A', 'Grade 10B', 'Grade 10 A', 'Grade 10 B', 'Standard 10', 'Standard 10A', 'Standard 10B', 'Standard 10 A', 'Standard 10 B'] : [studentProfile.grade], mode: 'insensitive' } },
+          select: { id: true },
         });
-        if (cls) studentClassId = cls.id;
+        studentClassIds = classRecords.map(item => item.id);
       }
     }
 
     const where: Prisma.NoticeWhereInput = { 
       ...(category ? { category } : {}), 
       ...(actor ? { author: { schoolId: actor.schoolId } } : {}),
-      ...(studentClassId ? {
+      ...(isStudent ? {
         OR: [
           { targetClasses: { none: {} } },
-          { targetClasses: { some: { id: studentClassId } } }
+          ...(studentClassIds.length ? [{ targetClasses: { some: { id: { in: studentClassIds } } } }] : []),
         ]
       } : {})
     };

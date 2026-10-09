@@ -15,13 +15,14 @@ import { AuditModule } from './audit/audit.module.js';
 import { AcademicsModule } from './academics/academics.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { ChatModule } from './chat/chat.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
 import { ContextMiddleware } from './context/context.middleware.js';
 import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    PrismaModule, StorageModule, AuditModule, UsersModule, AuthModule, AttendanceModule, NoticesModule, HomeworkModule, ExamsModule, RoutineModule, FeesModule, AcademicsModule, DashboardModule, ChatModule
+    PrismaModule, StorageModule, AuditModule, UsersModule, AuthModule, AttendanceModule, NoticesModule, HomeworkModule, ExamsModule, RoutineModule, FeesModule, AcademicsModule, DashboardModule, ChatModule, NotificationsModule
   ],
   controllers: [AppController],
   providers: [AppService],

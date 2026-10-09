@@ -65,7 +65,7 @@ export class UsersService {
     return this.prisma.user.findFirst({
       where: { id, schoolId: actor.schoolId },
       select: {
-        id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true, updatedAt: true, userId: true, emisId: true,
+        id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true, updatedAt: true, userId: true, emisId: true, profilePictureUrl: true,
         studentProfile: true, teacherProfile: true, adminProfile: true,
       },
     });
@@ -239,6 +239,20 @@ export class UsersService {
   }
 
   async updateProfilePhoto(userId: string, file: { buffer: Buffer; mimetype: string }) {
+    return this.persistProfilePhoto(userId, file, userId);
+  }
+
+  async updateManagedProfilePhoto(userId: string, file: { buffer: Buffer; mimetype: string }, actor: { actorId: string; schoolId: string; actorRole: Role }) {
+    await this.getManagedTarget(userId, actor);
+    return this.persistProfilePhoto(userId, file, actor.actorId);
+  }
+
+  async getManagedProfilePhoto(userId: string, actor: { schoolId: string; actorRole: Role }) {
+    await this.getManagedTarget(userId, actor);
+    return this.getProfilePhoto(userId);
+  }
+
+  private async persistProfilePhoto(userId: string, file: { buffer: Buffer; mimetype: string }, auditActorId: string) {
     const owner = await this.prisma.user.findUnique({ where: { id: userId }, select: { schoolId: true } });
     if (!owner) throw new NotFoundException('User not found');
     if (this.cloudinary.isConfigured()) {
@@ -247,7 +261,7 @@ export class UsersService {
         UPDATE "User" SET "profilePicture" = NULL, "profilePictureMimeType" = ${file.mimetype}, "profilePictureUrl" = ${uploaded.secure_url}, "profilePicturePublicId" = ${uploaded.public_id}
         WHERE "id" = ${userId}
       `);
-      void this.audit.record({ action: 'PROFILE_PHOTO_UPDATED', entity: 'User', entityId: userId, userId, schoolId: owner.schoolId });
+      void this.audit.record({ action: 'PROFILE_PHOTO_UPDATED', entity: 'User', entityId: userId, userId: auditActorId, schoolId: owner.schoolId });
       return { success: true, profilePictureUrl: '/users/me/photo', storage: 'cloudinary' };
     }
     const updated = await this.prisma.$executeRaw(Prisma.sql`
@@ -255,7 +269,7 @@ export class UsersService {
       WHERE "id" = ${userId}
     `);
     if (!updated) throw new NotFoundException('User not found');
-    void this.audit.record({ action: 'PROFILE_PHOTO_UPDATED', entity: 'User', entityId: userId, userId, schoolId: owner.schoolId });
+    void this.audit.record({ action: 'PROFILE_PHOTO_UPDATED', entity: 'User', entityId: userId, userId: auditActorId, schoolId: owner.schoolId });
     return { success: true, profilePictureUrl: '/users/me/photo' };
   }
 }

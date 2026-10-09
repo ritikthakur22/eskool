@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +15,9 @@ export default function ExamTakingScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [deadline, setDeadline] = useState<number | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const submitStarted = useRef(false);
   
   const [answers, setAnswers] = useState<Record<string, number>>({});
 
@@ -23,6 +26,7 @@ export default function ExamTakingScreen({ route, navigation }: any) {
       try {
         const attemptRes = await api.post(`/exams/${exam.id}/attempts`);
         setAttemptId(attemptRes.data.id);
+        if (attemptRes.data.durationMinutes && attemptRes.data.startedAt) setDeadline(new Date(attemptRes.data.startedAt).getTime() + Number(attemptRes.data.durationMinutes) * 60_000);
         const qRes = await api.get(`/exams/${exam.id}/questions`);
         setQuestions(qRes.data);
       } catch (err: any) {
@@ -43,21 +47,38 @@ export default function ExamTakingScreen({ route, navigation }: any) {
     }
   };
 
-  const submitExam = async () => {
+  const submitExam = async (automatic = false) => {
+    const finish = async () => {
+      if (!attemptId || submitStarted.current) return;
+      submitStarted.current = true;
+      setSubmitting(true);
+      try {
+        await api.post(`/exams/attempts/${attemptId}/finish`);
+        Alert.alert('Submitted', automatic ? 'Time is up. Your saved answers were submitted.' : 'Exam submitted successfully.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      } catch (err: any) {
+        submitStarted.current = false;
+        Alert.alert('Error', err.response?.data?.message || 'Failed to submit exam.');
+        setSubmitting(false);
+      }
+    };
+    if (automatic) return finish();
     Alert.alert('Submit Exam', 'Are you sure you want to finish?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Submit', style: 'destructive', onPress: async () => {
-        setSubmitting(true);
-        try {
-          await api.post(`/exams/attempts/${attemptId}/finish`);
-          Alert.alert('Success', 'Exam submitted successfully.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
-        } catch (err: any) {
-          Alert.alert('Error', err.response?.data?.message || 'Failed to submit exam.');
-          setSubmitting(false);
-        }
-      }}
+      { text: 'Submit', style: 'destructive', onPress: () => void finish() }
     ]);
   };
+
+  useEffect(() => {
+    if (!deadline) return;
+    const tick = () => {
+      const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setRemainingSeconds(seconds);
+      if (seconds === 0) void submitExam(true);
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [deadline, attemptId]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -72,7 +93,7 @@ export default function ExamTakingScreen({ route, navigation }: any) {
         </TouchableOpacity>
         <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>{exam.title}</Text>
-          <Text style={styles.headerSubtitle}>Taking Exam</Text>
+          <Text style={styles.headerSubtitle}>{remainingSeconds === null ? 'Taking Exam' : `Time left · ${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, '0')}`}</Text>
         </View>
         <View style={{ width: 32 }} />
       </View>
@@ -110,7 +131,7 @@ export default function ExamTakingScreen({ route, navigation }: any) {
               </View>
             ))}
             
-            <TouchableOpacity style={[styles.submitButton, { backgroundColor: colors.primary }]} onPress={submitExam} disabled={submitting}>
+            <TouchableOpacity style={[styles.submitButton, { backgroundColor: colors.primary }]} onPress={() => void submitExam()} disabled={submitting}>
               {submitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitButtonText}>Submit Exam</Text>}
             </TouchableOpacity>
           </>

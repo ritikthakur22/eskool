@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Modal, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ActivityIndicator, Alert, Image, Modal, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import NepaliDate from 'nepali-date-converter';
-import { api } from '../../../core/networking/api';
+import * as DocumentPicker from 'expo-document-picker';
+import { API_BASE_URL, api } from '../../../core/networking/api';
+import { getInMemoryAccessToken } from '../../../core/networking/session';
 import { useTheme } from '../../../core/theme/ThemeContext';
 
-type ManagedUser = { id: string; email: string; role: string; status: string; studentProfile?: any; teacherProfile?: any; adminProfile?: any };
+type ManagedUser = { id: string; email: string; role: string; status: string; profilePictureUrl?: string | null; studentProfile?: any; teacherProfile?: any; adminProfile?: any };
 type PersonForm = { email: string; password: string; confirmPassword: string; firstName: string; lastName: string; role: string; grade: string; section: string; rollNo: string; department: string; emisId: string; userId: string; dob: string; dobBs: string; admissionDateTime: string; gender: string; bloodGroup: string; phone: string; address: string; temporaryAddress: string; fatherName: string; fatherPhone: string; motherName: string; motherPhone: string };
 const localAdmissionDateTime = (date = new Date()) => {
   const hour = date.getHours(); const suffix = hour >= 12 ? 'pm' : 'am';
@@ -60,6 +62,7 @@ export default function StaffManagementScreen({ navigation }: any) {
   const [dropdown, setDropdown] = useState<{ key: keyof PersonForm; title: string; options: string[] } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState<any>(null);
 
   const load = useCallback(async (refresh = false) => {
     refresh ? setRefreshing(true) : setLoading(true); setError('');
@@ -120,16 +123,31 @@ export default function StaffManagementScreen({ navigation }: any) {
     setDropdown({ key, title, options });
   };
   const dropdownField = (key: keyof PersonForm, title: string, options: string[], placeholder: string, required = false) => <View style={s.fieldGroup} key={key}><Text style={s.fieldLabel}>{title}{required && <Text style={s.required}> *</Text>}</Text><TouchableOpacity onPress={() => void openDropdown(key, title, options)} style={s.dropdownField}><Text numberOfLines={1} style={[s.dropdownValue, !form[key] && s.dropdownPlaceholder]}>{key === 'grade' && classesLoading ? 'Loading classes…' : form[key] || placeholder}</Text><Ionicons name="chevron-down" size={18} color={colors.subText} /></TouchableOpacity></View>;
-  const openCreate = () => { setEditingUser(null); setForm(emptyForm(allowedRoles.includes('STUDENT') ? 'STUDENT' : allowedRoles[0])); setShowPassword(false); setShowConfirmPassword(false); setModal(true); void loadClasses(); };
+  const openCreate = () => { setEditingUser(null); setProfilePhoto(null); setForm(emptyForm(allowedRoles.includes('STUDENT') ? 'STUDENT' : allowedRoles[0])); setShowPassword(false); setShowConfirmPassword(false); setModal(true); void loadClasses(); };
   const openEdit = async (user: ManagedUser) => {
-    setEditingUser(user); setModal(true);
+    setEditingUser(user); setProfilePhoto(null); setModal(true);
     try {
       const { data } = await api.get(`/users/admin/users/${user.id}`);
+      setEditingUser({ ...user, ...data });
       const profile = data.studentProfile || data.teacherProfile || data.adminProfile || {};
       const date = profile.admissionDate ? new Date(profile.admissionDate) : new Date();
       setForm({ ...emptyForm(data.role), email: data.email || user.email, firstName: profile.firstName || '', lastName: profile.lastName || '', grade: profile.grade || '', section: profile.section || '', rollNo: profile.rollNo || '', department: profile.department || '', emisId: data.emisId || '', userId: data.userId || '', dob: profile.dob ? new Date(profile.dob).toISOString().slice(0, 10) : '', dobBs: profile.dobBs || '', admissionDateTime: localAdmissionDateTime(date), gender: profile.gender || '', bloodGroup: profile.bloodGroup || '', phone: profile.phone || '', address: profile.address || '', temporaryAddress: profile.temporaryAddress || '', fatherName: profile.fatherName || '', fatherPhone: profile.fatherPhone || '', motherName: profile.motherName || '', motherPhone: profile.motherPhone || '' });
       if (data.role === 'STUDENT') void loadClasses();
     } catch (e: any) { setModal(false); setEditingUser(null); Alert.alert('Could not load account', e.response?.data?.message || 'Please try again.'); }
+  };
+  const chooseProfilePhoto = async () => {
+    const picked = await DocumentPicker.getDocumentAsync({ type: ['image/jpeg', 'image/png', 'image/webp'], copyToCacheDirectory: true });
+    if (!picked.canceled && picked.assets?.[0]) {
+      const file = picked.assets[0];
+      if ((file.size || 0) > 5 * 1024 * 1024) return Alert.alert('Photo too large', 'Choose an image smaller than 5 MB.');
+      setProfilePhoto(file);
+    }
+  };
+  const uploadProfilePhoto = async (userId: string) => {
+    if (!profilePhoto) return;
+    const data = new FormData();
+    data.append('file', { uri: profilePhoto.uri, name: profilePhoto.name || 'profile-photo.jpg', type: profilePhoto.mimeType || 'image/jpeg' } as any);
+    await api.post(`/users/admin/users/${userId}/photo`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
   };
   const create = async () => {
     if (!form.email.trim() || !form.firstName.trim() || !form.lastName.trim() || (!editingUser && form.password.length < 8)) { Alert.alert('Complete the form', 'Email and full name are required. New accounts need a password of at least 8 characters.'); return; }
@@ -145,8 +163,13 @@ export default function StaffManagementScreen({ navigation }: any) {
     try {
       const studentData = form.role === 'STUDENT' ? { emisId: form.emisId.trim(), userId: form.userId.trim() || undefined, grade: form.grade || undefined, section: form.section || undefined, rollNo: form.rollNo.trim() || undefined, dob: form.dob || undefined, dobBs: form.dobBs.trim() || undefined, admissionDate: parseAdmissionDateTime(form.admissionDateTime) || undefined, gender: form.gender || undefined, bloodGroup: form.bloodGroup || undefined, phone: form.phone.trim() || undefined, address: form.address.trim() || undefined, temporaryAddress: form.temporaryAddress.trim() || undefined, fatherName: form.fatherName.trim() || undefined, fatherPhone: form.fatherPhone.trim() || undefined, motherName: form.motherName.trim() || undefined, motherPhone: form.motherPhone.trim() || undefined } : {};
       const common = { email: form.email.trim().toLowerCase(), firstName: form.firstName.trim(), lastName: form.lastName.trim(), ...studentData };
+      let savedUser: any = editingUser;
       if (editingUser) await api.patch(`/users/admin/users/${editingUser.id}`, { ...common, section: form.section || undefined, department: form.department.trim() || undefined });
-      else await api.post('/users/admin/create-user', { role: form.role, password: form.password, ...common, department: form.department.trim() || undefined });
+      else { const response = await api.post('/users/admin/create-user', { role: form.role, password: form.password, ...common, department: form.department.trim() || undefined }); savedUser = response.data; }
+      if (profilePhoto && savedUser?.id) {
+        try { await uploadProfilePhoto(savedUser.id); }
+        catch (photoError: any) { Alert.alert('Account saved; photo upload failed', photoError.response?.data?.message || 'Edit this account and try uploading its photo again.'); }
+      }
       setModal(false); setEditingUser(null); setForm(emptyForm(allowedRoles.includes('STUDENT') ? 'STUDENT' : allowedRoles[0])); await load(true);
     }
     catch (e: any) { Alert.alert(editingUser ? 'Could not update user' : 'Could not create user', Array.isArray(e.response?.data?.message) ? e.response.data.message.join('\n') : e.response?.data?.message || 'Check the details and try again.'); }
@@ -163,6 +186,8 @@ export default function StaffManagementScreen({ navigation }: any) {
     </ScrollView>
     <Modal visible={modal} transparent animationType="slide" onRequestClose={() => { setModal(false); setEditingUser(null); }}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.overlay}><View style={s.modal}><View style={s.modalHead}><View><Text style={s.eyebrow}>SCHOOL ACCOUNT</Text><Text style={s.modalTitle}>{editingUser ? 'Edit account' : 'Create account'}</Text></View><TouchableOpacity onPress={() => { setModal(false); setEditingUser(null); }}><Ionicons name="close-circle" size={25} color={colors.subText} /></TouchableOpacity></View><ScrollView style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <Text style={s.modalHint}>{editingUser ? 'Update identity and student details.' : 'Fields marked * are required.'}</Text>
+      {editingUser?.profilePictureUrl && <Image source={{ uri: `${API_BASE_URL}/users/admin/users/${editingUser.id}/photo`, headers: { Authorization: `Bearer ${getInMemoryAccessToken() || ''}` } }} style={{ width: 64, height: 64, borderRadius: 20, marginBottom: 10, backgroundColor: colors.border }} />}
+      <TouchableOpacity onPress={chooseProfilePhoto} style={{ minHeight: 60, padding: 12, marginBottom: 12, borderRadius: 13, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, flexDirection: 'row', alignItems: 'center', gap: 11 }}><Ionicons name="camera-outline" size={22} color={colors.primary} /><View style={{ flex: 1 }}><Text style={{ color: colors.text, fontSize: 12, fontWeight: '800' }}>{profilePhoto ? profilePhoto.name : 'Add profile photo'}</Text><Text style={s.helper}>JPG, PNG or WEBP · up to 5 MB</Text></View><Text style={{ color: colors.primary, fontSize: 11, fontWeight: '900' }}>{profilePhoto ? 'Change' : 'Choose'}</Text></TouchableOpacity>
       {!editingUser && <View style={s.roleRow}>{allowedRoles.map(item => <TouchableOpacity key={item} onPress={() => setField('role', item)} style={[s.roleOption, form.role === item && s.roleSelected]}><Text style={[s.roleText, form.role === item && s.roleTextSelected]}>{roleLabels[item]}</Text></TouchableOpacity>)}</View>}
       <Text style={s.groupTitle}>ACCOUNT</Text><Text style={s.fieldLabel}>Email address<Text style={s.required}> *</Text></Text><TextInput value={form.email} onChangeText={value => setField('email', value)} placeholder="name@example.com" placeholderTextColor={colors.subText} keyboardType="email-address" autoCapitalize="none" style={s.input} />
       {!editingUser && <><Text style={s.fieldLabel}>Temporary password<Text style={s.required}> *</Text></Text><View style={s.passwordRow}><TextInput value={form.password} onChangeText={value => setField('password', value)} placeholder="At least 8 characters" placeholderTextColor={colors.subText} secureTextEntry={!showPassword} autoCapitalize="none" style={[s.input, s.passwordInput]} /><TouchableOpacity accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} onPress={() => setShowPassword(value => !value)} style={s.eyeButton}><Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={19} color={colors.subText} /></TouchableOpacity></View><Text style={s.fieldLabel}>Confirm password<Text style={s.required}> *</Text></Text><View style={s.passwordRow}><TextInput value={form.confirmPassword} onChangeText={value => setField('confirmPassword', value)} placeholder="Re-enter password" placeholderTextColor={colors.subText} secureTextEntry={!showConfirmPassword} autoCapitalize="none" style={[s.input, s.passwordInput]} /><TouchableOpacity accessibilityLabel={showConfirmPassword ? 'Hide confirmation' : 'Show confirmation'} onPress={() => setShowConfirmPassword(value => !value)} style={s.eyeButton}><Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={19} color={colors.subText} /></TouchableOpacity></View></>}

@@ -6,6 +6,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Linking from 'expo-linking';
 import { API_BASE_URL, api } from '../../../core/networking/api';
 import { useTheme } from '../../../core/theme/ThemeContext';
+import { noticeTargetClasses } from '../../../core/utils/classOrdering';
 import { isNoticeUnread, loadNoticeReadState, markAllNoticesRead, markNoticeRead, saveNoticeReadState, type NoticeReadState } from '../../../core/utils/noticeReadState';
 
 type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; authorId?: string; author?: any; attachmentUrl?: string; attachmentType?: string; targetClasses?: any[]; };
@@ -45,7 +46,7 @@ export default function NoticeScreen({ navigation }: any) {
         api.get('/notices').catch(() => ({ data: [] })),
         api.get('/users/me').catch(() => ({ data: null }))
       ]);
-      api.get('/academics/structure').then(res => setClasses(res.data.classes || [])).catch(() => {});
+      api.get('/academics/structure').then(res => setClasses(noticeTargetClasses(res.data.classes || []))).catch(() => {});
       const normalized = (nRes.data || []).map((n: any) => ({ ...n, content: n.content || '', category: n.category || 'General' }));
       setNotices(normalized);
       setReadState(await loadNoticeReadState(normalized));
@@ -249,12 +250,13 @@ export default function NoticeScreen({ navigation }: any) {
                 <Text style={{color: colors.subText, fontSize: 12, marginBottom: 8, fontWeight: '700', marginLeft: 5}}>Target Classes (Optional)</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8, marginBottom: 15}}>
                   {classes.map(c => {
-                    const isSelected = form.targetClassIds.includes(c.id);
+                    const targetIds: string[] = c.targetClassIds || [c.id];
+                    const isSelected = targetIds.every((id: string) => form.targetClassIds.includes(id));
                     return (
                       <TouchableOpacity key={c.id} onPress={() => {
                         setForm(f => ({
                           ...f,
-                          targetClassIds: isSelected ? f.targetClassIds.filter(id => id !== c.id) : [...f.targetClassIds, c.id]
+                          targetClassIds: isSelected ? f.targetClassIds.filter(id => !targetIds.includes(id)) : [...new Set([...f.targetClassIds, ...targetIds])]
                         }))
                       }} style={[s.chip, isSelected && s.chipActive]}>
                         <Text style={[s.chipText, isSelected && s.chipTextActive]}>{c.name || c.course?.name || 'Class'}</Text>
