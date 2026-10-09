@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsDateString, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString, IsOptional, MaxLength, IsArray, IsUUID } from 'class-validator';
 
 export class CreateNoticeDto {
   @IsString()
@@ -19,6 +19,11 @@ export class CreateNoticeDto {
   @IsDateString()
   @IsOptional()
   date?: string;
+
+  @IsArray()
+  @IsUUID('4', { each: true })
+  @IsOptional()
+  targetClassIds?: string[];
 }
 
 export class UpdateNoticeDto {
@@ -26,4 +31,5 @@ export class UpdateNoticeDto {
   @IsOptional() @IsString() @IsNotEmpty() @MaxLength(10000) content?: string;
   @IsOptional() @IsString() @IsNotEmpty() @MaxLength(40) category?: string;
   @IsDateString() @IsOptional() date?: string;
+  @IsArray() @IsUUID('4', { each: true }) @IsOptional() targetClassIds?: string[];
 }

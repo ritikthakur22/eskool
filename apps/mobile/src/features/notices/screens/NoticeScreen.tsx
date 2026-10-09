@@ -8,7 +8,7 @@ import { API_BASE_URL, api } from '../../../core/networking/api';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { isNoticeUnread, loadNoticeReadState, markAllNoticesRead, markNoticeRead, saveNoticeReadState, type NoticeReadState } from '../../../core/utils/noticeReadState';
 
-type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; authorId?: string; author?: any; attachmentUrl?: string; attachmentType?: string; };
+type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; authorId?: string; author?: any; attachmentUrl?: string; attachmentType?: string; targetClasses?: any[]; };
 const categories = ['All', 'Important', 'Academic', 'Exam', 'Holiday', 'Event'];
 const editCategories = ['Important', 'Academic', 'Exam', 'Holiday', 'Event'];
 const publisherName = (notice?: Notice | null) => {
@@ -34,7 +34,8 @@ export default function NoticeScreen({ navigation }: any) {
   const [me, setMe] = useState<any>(null);
   const [editorVisible, setEditorVisible] = useState(false);
   const [editNotice, setEditNotice] = useState<Notice | null>(null);
-  const [form, setForm] = useState({ title: '', content: '', category: 'Academic' });
+  const [form, setForm] = useState<{ title: string; content: string; category: string; targetClassIds: string[] }>({ title: '', content: '', category: 'Academic', targetClassIds: [] });
+  const [classes, setClasses] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
 
   const fetchData = useCallback(async (refresh = false) => {
@@ -44,6 +45,7 @@ export default function NoticeScreen({ navigation }: any) {
         api.get('/notices').catch(() => ({ data: [] })),
         api.get('/users/me').catch(() => ({ data: null }))
       ]);
+      api.get('/academics/structure').then(res => setClasses(res.data.classes || [])).catch(() => {});
       const normalized = (nRes.data || []).map((n: any) => ({ ...n, content: n.content || '', category: n.category || 'General' }));
       setNotices(normalized);
       setReadState(await loadNoticeReadState(normalized));
@@ -86,7 +88,7 @@ export default function NoticeScreen({ navigation }: any) {
 
   const openEditor = (n: Notice | null = null) => {
     setEditNotice(n);
-    setForm(n ? { title: n.title, content: n.content, category: n.category } : { title: '', content: '', category: 'Academic' });
+    setForm(n ? { title: n.title, content: n.content, category: n.category, targetClassIds: n.targetClasses?.map((c: any) => c.id) || [] } : { title: '', content: '', category: 'Academic', targetClassIds: [] });
     setAttachment(null);
     setEditorVisible(true);
   };
@@ -201,6 +203,15 @@ export default function NoticeScreen({ navigation }: any) {
             <Ionicons name="person-outline" size={14} color={colors.subText} /><Text style={s.modalDate}>{publisherName(selected)}</Text><Text style={s.modalSeparator}>·</Text>
             <Ionicons name="time-outline" size={14} color={colors.subText} /><Text style={s.modalDate}>{noticeTimestamp(selected)}</Text>
           </View>
+          {selected?.targetClasses && selected.targetClasses.length > 0 && (
+            <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12}}>
+              {selected.targetClasses.map((c: any) => (
+                <View key={c.id} style={{backgroundColor: colors.primary + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8}}>
+                  <Text style={{color: colors.primary, fontSize: 11, fontWeight: '700'}}>{c.name || c.course?.name || 'Class'}</Text>
+                </View>
+              ))}
+            </View>
+          )}
           <ScrollView>
             <Text style={s.modalContent}>{selected?.content}</Text>
             {selected?.attachmentUrl && (
@@ -233,6 +244,27 @@ export default function NoticeScreen({ navigation }: any) {
               ))}
             </ScrollView>
             
+            {classes.length > 0 && (
+              <>
+                <Text style={{color: colors.subText, fontSize: 12, marginBottom: 8, fontWeight: '700', marginLeft: 5}}>Target Classes (Optional)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap: 8, marginBottom: 15}}>
+                  {classes.map(c => {
+                    const isSelected = form.targetClassIds.includes(c.id);
+                    return (
+                      <TouchableOpacity key={c.id} onPress={() => {
+                        setForm(f => ({
+                          ...f,
+                          targetClassIds: isSelected ? f.targetClassIds.filter(id => id !== c.id) : [...f.targetClassIds, c.id]
+                        }))
+                      }} style={[s.chip, isSelected && s.chipActive]}>
+                        <Text style={[s.chipText, isSelected && s.chipTextActive]}>{c.name || c.course?.name || 'Class'}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </>
+            )}
+
             <TouchableOpacity style={[s.input, { alignItems: 'center', justifyContent: 'center' }]} onPress={pickAttachment}>
               <Text style={{ color: colors.primary }}>{attachment ? `Attachment: ${attachment.name}` : 'Attach File/Image'}</Text>
             </TouchableOpacity>
