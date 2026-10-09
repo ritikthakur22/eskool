@@ -40,6 +40,36 @@ export class ClassRoutineController {
     return this.routineService.getSectionClassRoutine(req.user.schoolId, sectionId);
   }
 
+  @Get('by-class/:classId')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  getForClass(@Param('classId', new ParseUUIDPipe()) classId: string, @Request() req: any) {
+    return this.routineService.getClassLevelRoutine(req.user.schoolId, classId);
+  }
+
+  @Patch('by-class/:classId/grid')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  updateClassGrid(@Param('classId', new ParseUUIDPipe()) classId: string, @Body() data: any, @Request() req: any) {
+    return this.routineService.updateClassLevelRoutineGrid(req.user.schoolId, req.user.id, classId, data);
+  }
+
+  @Delete('by-class/:classId')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  clearClass(@Param('classId', new ParseUUIDPipe()) classId: string, @Request() req: any) {
+    return this.routineService.clearClassLevelRoutine(req.user.schoolId, req.user.id, classId);
+  }
+
+  @Patch('section/:sectionId/grid')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  updateGrid(@Param('sectionId', new ParseUUIDPipe()) sectionId: string, @Body() data: any, @Request() req: any) {
+    return this.routineService.updateSectionRoutineGrid(req.user.schoolId, req.user.id, sectionId, data);
+  }
+
+  @Delete('section/:sectionId')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  clearSection(@Param('sectionId', new ParseUUIDPipe()) sectionId: string, @Request() req: any) {
+    return this.routineService.clearSectionClassRoutine(req.user.schoolId, req.user.id, sectionId);
+  }
+
   @Post()
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   create(@Body() data: any, @Request() req: any) {
