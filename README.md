@@ -207,8 +207,10 @@ The API base URL is configured in the mobile client with `EXPO_PUBLIC_API_URL`; 
 | `GET` | `/auth/me` | Bearer | Read the current token user |
 | `GET` | `/users/me` | Bearer | Read the current profile |
 | `PATCH` | `/users/me` | Bearer | Update allowed profile fields |
+| `GET` | `/users/stats/counts` | Bearer | Get total count of teachers, admins, students |
 | `PATCH` | `/users/me/password` | Bearer | Change password |
 | `GET` | `/notices?limit=8` | Bearer | Read school-scoped notices |
+| `GET` | `/notices/stats/count` | Bearer | Get total count of notices |
 | `POST` | `/notices` | Admin/teacher | Create a notice as the current user |
 | `GET` | `/attendance/student/:id` | Bearer | Read own attendance; staff may read students in their school |
 | `POST` | `/attendance/mark` | Admin/teacher | Mark attendance for a student in the same school |

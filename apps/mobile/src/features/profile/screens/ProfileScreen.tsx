@@ -8,6 +8,7 @@ import { getCachedUserData } from '../../../core/networking/session';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { getGoogleSignInError } from '../../../core/auth/google';
 import { API_BASE_URL, api } from '../../../core/networking/api';
 import { getInMemoryAccessToken, getInMemoryRefreshToken, setInMemoryAccessToken, setInMemoryRefreshToken, setCachedUserData } from '../../../core/networking/session';
 import { useTheme } from '../../../core/theme/ThemeContext';
@@ -58,7 +59,7 @@ export default function ProfileScreen({ navigation }: any) {
       setGoogleLinked(Boolean(data.linked)); setGoogleEmail(data.email || '');
       setGoogleDialog({ title: 'Google account linked', message: `${data.email || 'This Google account'} can now sign in to this school account.` });
     } catch (e: any) {
-      setGoogleDialog({ title: 'Could not link Google', message: e.response?.data?.message || e.message || 'Please try again.' });
+      setGoogleDialog({ title: 'Could not link Google', message: e.response?.data?.message || getGoogleSignInError(e, 'Please try again.') });
     } finally { setGoogleBusy(false); }
   };
   const unlinkGoogle = () => setGoogleDialog({

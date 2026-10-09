@@ -6,6 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Ionicons } from '@expo/vector-icons';
 import { API_BASE_URL, api } from '../../../core/networking/api';
+import { getGoogleSignInError } from '../../../core/auth/google';
 import { setInMemoryAccessToken, setInMemoryRefreshToken } from '../../../core/networking/session';
 import { useTheme } from '../../../core/theme/ThemeContext';
 
@@ -101,7 +102,11 @@ export default function LoginScreen({ navigation }: Props) {
       const apiResponse = await api.post('/auth/google', { idToken });
       await saveSession(apiResponse.data);
     } catch (err: any) {
-      setError(getLoginErrorMessage(err, 'An error occurred during Google sign-in. Please try again.'));
+      if (err.code || (err.message && err.message !== 'Google did not return a valid ID token.' && err.message !== 'Network Error')) {
+        setError(getGoogleSignInError(err));
+      } else {
+        setError(getLoginErrorMessage(err, 'An error occurred during Google sign-in. Please try again.'));
+      }
     } finally {
       setLoading(false);
     }
