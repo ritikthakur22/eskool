@@ -10,6 +10,27 @@ type FormKind = 'class' | 'section' | 'subject' | 'year' | 'assignment';
 const emptyStructure: Structure = { academicYears: [], classes: [], subjects: [], assignments: [] };
 const tabs = ['Years', 'Classes', 'Sections', 'Subjects', 'Assignments'];
 
+const classSortValue = (name: string) => {
+  const key = name.trim().toLowerCase().replace(/^(class|grade|standard)\s*/i, '').replace(/\s+/g, ' ');
+  const earlyYears: Record<string, number> = {
+    nursery: -3,
+    lkg: -2,
+    'lower kg': -2,
+    'lower kindergarten': -2,
+    ukg: -1,
+    'upper kg': -1,
+    'upper kindergarten': -1,
+  };
+  if (key in earlyYears) return earlyYears[key];
+  const match = key.match(/\d+/);
+  return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+};
+
+const orderClasses = (items: any[]) => [...items].sort((a, b) =>
+  classSortValue(String(a.name || '')) - classSortValue(String(b.name || '')) ||
+  String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }),
+);
+
 export default function AcademicManagementScreen({ navigation }: any) {
   const { colors } = useTheme(); const s = makeStyles(colors);
   const [structure, setStructure] = useState<Structure>(emptyStructure);
@@ -27,7 +48,7 @@ export default function AcademicManagementScreen({ navigation }: any) {
         api.get('/academics/structure'),
         api.get('/users/admin/users', { params: { role: 'TEACHER' } }).catch(() => ({ data: [] })),
       ]);
-      setStructure({ academicYears: res.data.academicYears || [], classes: res.data.classes || [], subjects: res.data.subjects || [], assignments: res.data.assignments || [] });
+      setStructure({ academicYears: res.data.academicYears || [], classes: orderClasses(res.data.classes || []), subjects: res.data.subjects || [], assignments: res.data.assignments || [] });
       setTeachers(Array.isArray(tRes.data) ? tRes.data : []);
     } catch (e: any) { setError(e.response?.data?.message || 'Could not load academic structure.'); }
     finally { setLoading(false); }
@@ -35,7 +56,11 @@ export default function AcademicManagementScreen({ navigation }: any) {
 
   useEffect(() => { load(); }, [load]);
 
-  const sections = useMemo(() => structure.classes.flatMap(item => (item.sections || []).map((section: any) => ({ ...section, classId: item.id, className: item.name }))), [structure.classes]);
+  const sections = useMemo(() => orderClasses(structure.classes).flatMap(item =>
+    [...(item.sections || [])]
+      .sort((a: any, b: any) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { numeric: true, sensitivity: 'base' }))
+      .map((section: any) => ({ ...section, classId: item.id, className: item.name })),
+  ), [structure.classes]);
   const duplicateSections = useMemo(() => {
     const groups = new Map<string, number>();
     sections.forEach((section: any) => { const key = `${section.classId}:${String(section.name).trim().toLocaleLowerCase()}`; groups.set(key, (groups.get(key) || 0) + 1); });
