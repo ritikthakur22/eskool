@@ -196,7 +196,7 @@ You can test the application using the following test accounts. The password for
 
 ## 🔌 API reference
 
-The API base URL is configured in the mobile client with `EXPO_PUBLIC_API_URL`; the deployed default is `https://eskool-api.onrender.com`. Protected requests use `Authorization: Bearer <access_token>`.
+The API base URL is configured in the mobile client with `EXPO_PUBLIC_API_URL`; the deployed default is `https://eskool-sd7s.onrender.com`. Protected requests use `Authorization: Bearer <access_token>`.
 
 | Method | Endpoint | Auth | Purpose |
 | :--- | :--- | :--- | :--- |
