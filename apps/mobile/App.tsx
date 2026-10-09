@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { ThemeProvider } from "./src/core/theme/ThemeContext";
 import { useTheme } from './src/core/theme/ThemeContext';
@@ -46,7 +46,6 @@ import AuditLogScreen from './src/features/audit/screens/AuditLogScreen';
 const Stack = createNativeStackNavigator();
 
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
 
 export default function App() {
