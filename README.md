@@ -3,7 +3,7 @@
   
   <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&pause=1000&color=0EA5E9&center=true&vCenter=true&width=800&lines=Revolutionizing+Digital+Education;Empowering+Teachers,+Students,+and+Parents;Seamless.+Fast.+Secure." />
 
-  <img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/playstore_assets/playstore_feature_graphic.png" width="100%"/>
+  <img src="playstore_assets/playstore_feature_graphic.png" width="100%"/>
 </div>
 
 ---
@@ -43,16 +43,16 @@
 <div align="center">
 <table>
 <tr>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/playstore_assets/screenshots/Screenshot_20260928-174503_eSkool.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/playstore_assets/screenshots/Screenshot_20260928-174514_eSkool.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/playstore_assets/screenshots/Screenshot_20260928-174519_eSkool.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/playstore_assets/screenshots/Screenshot_20260928-174526_eSkool.png" width="250"/></td>
+<td><img src="playstore_assets/screenshots/Screenshot_20260928-174503_eSkool.png" width="250"/></td>
+<td><img src="playstore_assets/screenshots/Screenshot_20260928-174514_eSkool.png" width="250"/></td>
+<td><img src="playstore_assets/screenshots/Screenshot_20260928-174519_eSkool.png" width="250"/></td>
+<td><img src="playstore_assets/screenshots/Screenshot_20260928-174526_eSkool.png" width="250"/></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/playstore_assets/screenshots/Screenshot_20260928-174607_eSkool.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/playstore_assets/screenshots/Screenshot_20260928-174614_Trebuchet.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/playstore_assets/screenshots/Screenshot_20260928-174630_eSkool.png" width="250"/></td>
-<td><img src="https://raw.githubusercontent.com/eskool33/eskool-software/main/playstore_assets/screenshots/Screenshot_20260928-174825_eSkool.png" width="250"/></td>
+<td><img src="playstore_assets/screenshots/Screenshot_20260928-174607_eSkool.png" width="250"/></td>
+<td><img src="playstore_assets/screenshots/Screenshot_20260928-174614_Trebuchet.png" width="250"/></td>
+<td><img src="playstore_assets/screenshots/Screenshot_20260928-174630_eSkool.png" width="250"/></td>
+<td><img src="playstore_assets/screenshots/Screenshot_20260928-174825_eSkool.png" width="250"/></td>
 </tr>
 </table>
 </div>
