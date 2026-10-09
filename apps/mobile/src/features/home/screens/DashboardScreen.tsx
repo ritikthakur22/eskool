@@ -5,6 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
+import * as Notifications from 'expo-notifications';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import BottomNavigation from '../../../core/components/BottomNavigation';
 import { API_BASE_URL, api } from '../../../core/networking/api';
@@ -120,6 +121,14 @@ export default function DashboardScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
+
+  useEffect(() => {
+    async function requestPermissions() {
+      await Notifications.requestPermissionsAsync();
+    }
+    requestPermissions();
+  }, []);
+
   const [notices, setNotices] = useState<Notice[]>([]);
   const [noticeReadState, setNoticeReadState] = useState<NoticeReadState>({ initialized: false, readThrough: 0, readIds: [] });
   const [attendance, setAttendance] = useState<Attendance[]>([]);
