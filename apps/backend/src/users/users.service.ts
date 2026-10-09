@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma, Role, User } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
@@ -158,29 +158,7 @@ export class UsersService {
     const fields: { firstName?: string; lastName?: string } = {};
     if (values.firstName !== undefined) fields.firstName = values.firstName;
     if (values.lastName !== undefined) fields.lastName = values.lastName;
-    if (user.role === 'STUDENT' && user.studentProfile) {
-    const studentFields: Record<string, string | Date | null | undefined> = { ...fields };
-      if (values.studentId !== undefined) studentFields.rollNo = values.studentId;
-      for (const key of ['phone', 'gender', 'address', 'parentName', 'parentPhone'] as const) {
-        if (values[key] !== undefined) studentFields[key] = values[key];
-      }
-      if (input.dob !== undefined) {
-        let dob: Date | null = null;
-        if (input.dob !== null && input.dob !== '') {
-          if (typeof input.dob !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(input.dob) || Number.isNaN(Date.parse(`${input.dob}T00:00:00.000Z`)) || new Date(`${input.dob}T00:00:00.000Z`).toISOString().slice(0, 10) !== input.dob) {
-            throw new BadRequestException('Date of birth must use YYYY-MM-DD format');
-          }
-          dob = new Date(`${input.dob}T00:00:00.000Z`);
-        }
-        studentFields.dob = dob;
-      }
-      const setClauses: Prisma.Sql[] = [];
-      for (const key of ['firstName', 'lastName', 'rollNo', 'phone', 'gender', 'address', 'parentName', 'parentPhone', 'dob'] as const) {
-        const value = studentFields[key];
-        if (value !== undefined) setClauses.push(Prisma.sql`${Prisma.raw(`"${key}"`)} = ${value}`);
-      }
-      if (setClauses.length) await this.prisma.$executeRaw(Prisma.sql`UPDATE "StudentProfile" SET ${Prisma.join(setClauses, ', ')} WHERE "userId" = ${userId}`);
-    } else if (user.role === 'TEACHER' && user.teacherProfile) {
+    if (user.role === 'TEACHER' && user.teacherProfile) {
       if ((['studentId', 'phone', 'gender', 'address', 'parentName', 'parentPhone'] as const).some(key => input[key] !== undefined)) throw new BadRequestException('These details are only available for student profiles');
       if (input.dob !== undefined) throw new BadRequestException('Only students can update date of birth');
       if (Object.keys(fields).length) await this.prisma.teacherProfile.update({ where: { userId }, data: fields });
