@@ -133,7 +133,8 @@ export default function DashboardScreen({ navigation }: Props) {
   const [operationsSummary, setOperationsSummary] = useState<OperationsSummary | null>(null);
 
   const loadDashboard = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
+    if (refresh) setRefreshing(true);
+    else if (!profile) setLoading(true);
     setNoticeError(false);
     setAttendanceError(false);
     const [profileResult, noticesResult] = await Promise.allSettled([
@@ -201,9 +202,9 @@ export default function DashboardScreen({ navigation }: Props) {
     setRefreshing(false);
   }, []);
 
-  useFocusEffect(useCallback(() => {
+  useEffect(() => {
     loadDashboard();
-  }, [loadDashboard]));
+  }, [loadDashboard]);
 
   const identity = useMemo(() => {
     const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || profile?.email?.split('@')[0] || 'Student';

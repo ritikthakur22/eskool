@@ -40,7 +40,7 @@ export default function ProfileScreen({ navigation }: any) {
     catch { setSummary(null); }
     finally { setLoading(false); }
   }, []);
-  useFocusEffect(useCallback(() => { loadSummary(); }, [loadSummary]));
+  useEffect(() => { loadSummary(); }, [loadSummary]);
   useEffect(() => {
     api.get('/auth/google/status').then(({ data }) => { setGoogleLinked(Boolean(data.linked)); setGoogleEmail(data.email || ''); }).catch(() => undefined);
     Promise.all([SecureStore.getItemAsync('biometric_enabled'), LocalAuthentication.hasHardwareAsync(), LocalAuthentication.isEnrolledAsync()]).then(([enabled, hardware, enrolled]) => {
