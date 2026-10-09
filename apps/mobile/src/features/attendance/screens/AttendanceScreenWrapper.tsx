@@ -1,24 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import { View } from 'react-native';
 import AttendanceScreen from './AttendanceScreen';
 import StaffAttendanceScreen from './StaffAttendanceScreen';
+import { getCachedUserDataSync, getCachedUserData } from '../../../core/networking/session';
 
 export default function AttendanceScreenWrapper(props: any) {
-  const [role, setRole] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(() => {
+    const raw = getCachedUserDataSync();
+    if (raw) {
+      try { return JSON.parse(raw).role || 'STUDENT'; } catch {}
+    }
+    return null;
+  });
 
   useEffect(() => {
-    SecureStore.getItemAsync('user_data').then(data => {
-      if (data) {
-        setRole(JSON.parse(data).role || 'STUDENT');
-      } else {
-        setRole('STUDENT');
-      }
-    });
-  }, []);
+    if (!role) {
+      getCachedUserData().then(data => {
+        if (data) {
+          try { setRole(JSON.parse(data).role || 'STUDENT'); } catch { setRole('STUDENT'); }
+        } else {
+          setRole('STUDENT');
+        }
+      });
+    }
+  }, [role]);
 
   if (!role) {
-    return <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator /></View>;
+    return <View style={{ flex: 1 }} />;
   }
 
   if (role === 'TEACHER' || role === 'ADMIN' || role === 'SUPER_ADMIN') {

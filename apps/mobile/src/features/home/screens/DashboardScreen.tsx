@@ -1,10 +1,11 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
+import * as Notifications from 'expo-notifications';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import BottomNavigation from '../../../core/components/BottomNavigation';
 import { API_BASE_URL, api } from '../../../core/networking/api';
@@ -14,7 +15,7 @@ import { isNoticeUnread, loadNoticeReadState, type NoticeReadState } from '../..
 import { getSelectedChildId, setSelectedChildId as persistSelectedChildId } from '../../../core/utils/childSelection';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
-type Feature = { name: string; icon: any; route?: string; accent: string; note?: string; disabled?: boolean; expand?: boolean };
+type Feature = { name: string; icon: any; route?: string; params?: any; accent: string; note?: string; disabled?: boolean; expand?: boolean };
 type Profile = { id: string; email: string; role: string; firstName?: string; lastName?: string; grade?: string | null; section?: string | null; studentId?: string | null; profilePictureUrl?: string | null };
 type Notice = { id: string; title: string; content: string; category: string; date: string; createdAt?: string; author?: any };
 type Attendance = { id: string; status: 'PRESENT' | 'ABSENT' | 'LATE' | 'HALF_DAY'; date: string };
@@ -26,9 +27,9 @@ const quickFeatures: Feature[] = [
   { name: 'Homework', icon: 'document-text-outline', route: 'Homework', accent: '#2389F5' },
   { name: 'Library', icon: 'library-outline', route: 'Library', accent: '#8B5CF6' },
   { name: 'Complain', icon: 'chatbubble-ellipses-outline', route: 'Feedback', accent: '#F28B20' },
-  { name: 'Online exams', icon: 'checkbox-outline', route: 'Exams', accent: '#10A981' },
+  { name: 'Online exams', icon: 'checkbox-outline', route: 'Exams', params: { tab: 'Online Exam' }, accent: '#10A981' },
   { name: 'Results', icon: 'podium-outline', route: 'Result', accent: '#F39A19' },
-  { name: 'Upcoming exams', icon: 'calendar-clear-outline', route: 'Exams', accent: '#EF5261' },
+  { name: 'Upcoming exams', icon: 'calendar-clear-outline', route: 'Exams', params: { tab: 'Upcoming' }, accent: '#EF5261' },
   { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
 ];
 
@@ -38,7 +39,7 @@ const operationalQuickFeatures: Feature[] = [
   { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#64748B' },
   { name: 'Attendance register', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#10A981' },
   { name: 'Homework manager', icon: 'document-text-outline', route: 'Homework', accent: '#2389F5' },
-  { name: 'Upcoming exams', icon: 'calendar-clear-outline', route: 'Exams', accent: '#EF5261' },
+  { name: 'Upcoming exams', icon: 'calendar-clear-outline', route: 'Exams', params: { tab: 'Upcoming' }, accent: '#EF5261' },
   { name: 'Results', icon: 'podium-outline', route: 'Result', accent: '#F39A19' },
   { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
 ];
@@ -78,7 +79,7 @@ const operationalMoreFeatureGroups: { title: string; features: Feature[] }[] = [
     { name: 'Online class', icon: 'videocam-outline', route: 'OnlineClass', accent: '#0EA5E9' },
     { name: 'Class chat', icon: 'chatbubbles-outline', route: 'Chat', accent: '#8B5CF6', note: 'Coming soon', disabled: true },
     { name: 'Attendance register', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#16A36A' },
-    { name: 'Fees review', icon: 'receipt-outline', accent: '#D18A0A', note: 'Management coming soon', disabled: true },
+    { name: 'Class routine', icon: 'calendar-outline', route: 'Routine', accent: '#16B86A' },
   ] },
   { title: 'Account', features: [
     { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#EF5261' },
@@ -120,6 +121,14 @@ export default function DashboardScreen({ navigation }: Props) {
   const { width } = useWindowDimensions();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
+
+  useEffect(() => {
+    async function requestPermissions() {
+      await Notifications.requestPermissionsAsync();
+    }
+    requestPermissions();
+  }, []);
+
   const [notices, setNotices] = useState<Notice[]>([]);
   const [noticeReadState, setNoticeReadState] = useState<NoticeReadState>({ initialized: false, readThrough: 0, readIds: [] });
   const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -133,28 +142,37 @@ export default function DashboardScreen({ navigation }: Props) {
   const [operationsSummary, setOperationsSummary] = useState<OperationsSummary | null>(null);
 
   const loadDashboard = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
+    if (refresh) setRefreshing(true);
     setNoticeError(false);
     setAttendanceError(false);
+
+    // Hydrate from cache first to avoid UI lag/spinner blink
+    if (!profile) {
+      try {
+        const raw = await getCachedUserData();
+        if (raw) {
+          setProfile(JSON.parse(raw) as Profile);
+          setLoading(false); // We have cached data, stop loading spinner
+        } else {
+          setLoading(true);
+        }
+      } catch {
+        setLoading(true);
+      }
+    }
+
     const [profileResult, noticesResult] = await Promise.allSettled([
       api.get('/users/me'),
       api.get('/notices', { params: { limit: 8 } }),
     ]);
 
-    let currentProfile: Profile | null = null;
+    let currentProfile: Profile | null = profile;
     if (profileResult.status === 'fulfilled') {
       currentProfile = profileResult.value.data as Profile;
       setProfile(currentProfile);
       setAvatarVersion(Date.now());
-    } else {
+    } else if (!currentProfile) {
       setProfile(null);
-      try {
-        const raw = await getCachedUserData();
-        if (raw) {
-          currentProfile = JSON.parse(raw) as Profile;
-          setProfile(currentProfile);
-        }
-      } catch { /* Keep the dashboard available with its default identity. */ }
     }
 
     if (noticesResult.status === 'fulfilled') {
@@ -162,9 +180,8 @@ export default function DashboardScreen({ navigation }: Props) {
       setNotices(fetchedNotices);
       setNoticeReadState(await loadNoticeReadState(fetchedNotices));
     } else {
-      setNotices([]);
+      if (notices.length === 0) setNoticeError(true);
       setNoticeReadState(await loadNoticeReadState());
-      setNoticeError(true);
     }
 
     if (currentProfile?.role === 'STUDENT' && currentProfile.id) {
@@ -176,7 +193,7 @@ export default function DashboardScreen({ navigation }: Props) {
         )));
         const rows = responses.flatMap(response => Array.isArray(response.data) ? response.data : []) as Attendance[];
         setAttendance([...new Map(rows.map(record => [record.id, record])).values()]);
-      } catch { setAttendance([]); setAttendanceError(true); }
+      } catch { if (attendance.length === 0) setAttendanceError(true); }
     } else {
       setAttendance([]);
     }
@@ -201,9 +218,9 @@ export default function DashboardScreen({ navigation }: Props) {
     setRefreshing(false);
   }, []);
 
-  useFocusEffect(useCallback(() => {
+  useEffect(() => {
     loadDashboard();
-  }, [loadDashboard]));
+  }, [loadDashboard]);
 
   const identity = useMemo(() => {
     const name = [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || profile?.email?.split('@')[0] || 'Student';
@@ -225,7 +242,7 @@ export default function DashboardScreen({ navigation }: Props) {
 
   const openFeature = (feature: Feature) => {
     if (feature.expand) { setShowAllFeatures(value => !value); return; }
-    if (feature.route) navigation.navigate(feature.route);
+    if (feature.route) navigation.navigate(feature.route, feature.params);
   };
 
   return <SafeAreaView style={s.screen}>

@@ -7,7 +7,18 @@ export class CreateAcademicYearDto {
   @IsOptional() @IsBoolean() isCurrent?: boolean;
 }
 
+export class UpdateAcademicYearDto {
+  @IsOptional() @IsString() @IsNotEmpty() @MaxLength(50) name?: string;
+  @IsOptional() @IsDateString() startDate?: string;
+  @IsOptional() @IsDateString() endDate?: string;
+  @IsOptional() @IsBoolean() isCurrent?: boolean;
+}
+
 export class CreateClassDto {
+  @IsString() @IsNotEmpty() @MaxLength(50) name!: string;
+}
+
+export class UpdateClassDto {
   @IsString() @IsNotEmpty() @MaxLength(50) name!: string;
 }
 
@@ -16,7 +27,16 @@ export class CreateSectionDto {
   @IsString() @IsNotEmpty() @MaxLength(50) name!: string;
 }
 
+export class UpdateSectionDto {
+  @IsString() @IsNotEmpty() @MaxLength(50) name!: string;
+}
+
 export class CreateSubjectDto {
+  @IsString() @IsNotEmpty() @MaxLength(100) name!: string;
+  @IsOptional() @IsString() @MaxLength(30) code?: string;
+}
+
+export class UpdateSubjectDto {
   @IsString() @IsNotEmpty() @MaxLength(100) name!: string;
   @IsOptional() @IsString() @MaxLength(30) code?: string;
 }

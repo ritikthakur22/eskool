@@ -10,7 +10,19 @@ export class NoticesService {
 
   async createNotice(data: CreateNoticeDto, actor: { id: string; schoolId: string }): Promise<Notice> {
     const dateObj = data.date ? new Date(data.date) : new Date();
-    const notice = await this.prisma.notice.create({ data: { title: data.title, content: data.content, category: data.category, date: dateObj, authorId: actor.id, schoolId: actor.schoolId } });
+    const notice = await this.prisma.notice.create({ 
+      data: { 
+        title: data.title, 
+        content: data.content, 
+        category: data.category, 
+        date: dateObj, 
+        authorId: actor.id, 
+        schoolId: actor.schoolId,
+        ...(data.targetClassIds && data.targetClassIds.length > 0 ? {
+          targetClasses: { connect: data.targetClassIds.map(id => ({ id })) }
+        } : {})
+      } 
+    });
     void this.audit.record({ action: 'NOTICE_CREATED', entity: 'Notice', entityId: notice.id, userId: actor.id, schoolId: actor.schoolId });
     return notice;
   }
@@ -20,8 +32,31 @@ export class NoticesService {
     return { totalNotices: total };
   }
 
-  async getAllNotices(category?: string, limit = 20, actor?: { schoolId: string }): Promise<Notice[]> {
-    const where: Prisma.NoticeWhereInput = { ...(category ? { category } : {}), ...(actor ? { author: { schoolId: actor.schoolId } } : {}) };
+  async getAllNotices(category?: string, limit = 20, actor?: any): Promise<Notice[]> {
+    let studentClassId: string | null = null;
+    if (actor && actor.role === 'STUDENT') {
+      const studentProfile = await this.prisma.studentProfile.findUnique({
+        where: { userId: actor.id },
+        select: { grade: true }
+      });
+      if (studentProfile?.grade) {
+        const cls = await this.prisma.class.findFirst({
+          where: { name: studentProfile.grade, schoolId: actor.schoolId }
+        });
+        if (cls) studentClassId = cls.id;
+      }
+    }
+
+    const where: Prisma.NoticeWhereInput = { 
+      ...(category ? { category } : {}), 
+      ...(actor ? { author: { schoolId: actor.schoolId } } : {}),
+      ...(studentClassId ? {
+        OR: [
+          { targetClasses: { none: {} } },
+          { targetClasses: { some: { id: studentClassId } } }
+        ]
+      } : {})
+    };
     return this.prisma.notice.findMany({
       where,
       take: Math.min(Math.max(limit, 1), 50),
@@ -32,13 +67,17 @@ export class NoticesService {
             adminProfile: { select: { firstName: true, lastName: true } },
             teacherProfile: { select: { firstName: true, lastName: true } }
           }
-        }
+        },
+        targetClasses: { select: { id: true, name: true } }
       }
     });
   }
 
   async getNoticeById(id: string, actor: { schoolId: string }): Promise<Notice> {
-    const notice = await this.prisma.notice.findFirst({ where: { id, author: { schoolId: actor.schoolId } } });
+    const notice = await this.prisma.notice.findFirst({ 
+      where: { id, author: { schoolId: actor.schoolId } },
+      include: { targetClasses: { select: { id: true, name: true } } }
+    });
     if (!notice) throw new NotFoundException('Notice not found.');
     return notice;
   }
@@ -52,6 +91,9 @@ export class NoticesService {
       ...(data.content !== undefined ? { content: data.content.trim() } : {}),
       ...(data.category !== undefined ? { category: data.category.trim() } : {}),
       ...(data.date !== undefined ? { date: new Date(data.date) } : {}),
+      ...(data.targetClassIds !== undefined ? {
+        targetClasses: { set: data.targetClassIds.map(id => ({ id })) }
+      } : {})
     } });
     void this.audit.record({ action: 'NOTICE_UPDATED', entity: 'Notice', entityId: existing.id, userId: actor.id, schoolId: actor.schoolId, details: {
       before: { title: existing.title, content: existing.content, category: existing.category, date: existing.date.toISOString() },

@@ -59,6 +59,7 @@ model Class {
   name     String
   school   School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   sections Section[]
+  notices  Notice[]  @relation("NoticeTargetClasses")
 
   @@unique([schoolId, name])
 }
@@ -373,6 +374,7 @@ model Notice {
   updatedAt      DateTime @updatedAt
   attachmentType String?
   attachmentUrl  String?
+  targetClasses  Class[]  @relation("NoticeTargetClasses")
   author         User     @relation("NoticeAuthor", fields: [authorId], references: [id])
   school         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
