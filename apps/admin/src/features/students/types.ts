@@ -1,97 +1,36 @@
-export type StudentEnrollment = {
-  sectionId: string;
-  sectionName: string;
-  classId: string;
-  className: string;
-  academicYearId: string;
-  academicYear: string;
-  rollNo: string | null;
-};
-
-// export type StudentProfile = {
-//   firstName: string;
-//   lastName: string;
-//   phone: string | null;
-//   gender: string | null;
-//   dob: string | null;
-//   address: string | null;
-//   parentName: string | null;
-//   parentPhone: string | null;
-// };
-
-// export type Student = {
-//   // User
-//   id: string;
-//   email: string;
-//   status: string;
-//   schoolId: string;
-//   createdAt: string;
-//   updatedAt: string;
-//   disabledAt: string | null;
-//   profilePictureUrl: string | null;
-//   // Relations
-//   profile: StudentProfile;
-//   enrollment: StudentEnrollment | null;
-// };
-
-export type StudentInput = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  gender?: string;
-  dob?: string;
-  address?: string;
-  parentName?: string;
-  parentPhone?: string;
-  classId?: string;
-  sectionId?: string;
-  rollNo?: string;
-  status: "ACTIVE" | "DISABLED";
-};
-
-// export type StudentFormPayload = StudentInput & { password?: string; profilePictureUrl: string | null };
-// export type CreateStudentPayload = StudentInput & { password: string; profilePictureUrl: string | null };
-// export type UpdateStudentPayload = StudentInput & { profilePictureUrl: string | null };
-
-// export type StudentsQuery = {
-//   page: number;
-//   pageSize: number;
-//   search: string;
-//   status: string; // "ALL" or a status value
-// };
-
-// export type StudentsPage = {
-//   data: Student[];
-//   total: number;
-// };
-
-
 export type StudentProfile = {
   firstName: string;
   lastName: string;
   grade: string | null;
   section: string | null;
   rollNo: string | null;
-  // Only returned by GET /users/admin/users/:id (read-only for admins)
+  // Only returned by GET /users/admin/users/:id
   dob: string | null;
-  phone: string | null;
+  dobBs: string | null;
   gender: string | null;
+  bloodGroup: string | null;
+  phone: string | null;
   address: string | null;
-  parentName: string | null;
-  parentPhone: string | null;
+  temporaryAddress: string | null;
+  admissionDate: string | null;
+  fatherName: string | null;
+  fatherPhone: string | null;
+  motherName: string | null;
+  motherPhone: string | null;
 };
 
 export type Student = {
   id: string;
   email: string;
   status: string; // "ACTIVE" | "DISABLED"
+  profilePictureUrl: string | null;
   createdAt: string;
   updatedAt: string | null; // not returned by the list endpoint
   disabledAt: string | null;
   profile: StudentProfile;
 };
 
+// Only the fields the backend persists for students
 export type StudentFormPayload = {
   firstName: string;
   lastName: string;
@@ -104,6 +43,17 @@ export type StudentFormPayload = {
 
 export type CreateStudentPayload = StudentFormPayload & { password: string };
 export type UpdateStudentPayload = Omit<StudentFormPayload, "password">;
+
+// create-user returns the whole user row (minus password)
+export type CreatedStudent = {
+  id: string;
+  email: string;
+  userId?: string | null;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string | null;
+  disabledAt?: string | null;
+};
 
 export type StudentsQuery = {
   page: number;

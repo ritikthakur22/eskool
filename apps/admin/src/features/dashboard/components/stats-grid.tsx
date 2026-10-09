@@ -1,19 +1,38 @@
 "use client";
 
-import { Megaphone, ShieldCheck, TrendingDown, TrendingUp, Users, GraduationCap } from "lucide-react";
+import {
+  Megaphone,
+  Users,
+  User2,
+  ShieldUser,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { dashboardStats } from "../mock-data";
-import type { StatKey } from "../types";
+import type { DashboardStat, StatKey } from "../types";
 
 const config = {
-  students: { icon: GraduationCap, tone: "bg-primary/10 text-primary" },
+  students: { icon: User2, tone: "bg-primary/10 text-primary" },
   teachers: { icon: Users, tone: "bg-success/10 text-success" },
-  admins: { icon: ShieldCheck, tone: "bg-warning/10 text-warning" },
+  admins: { icon: ShieldUser, tone: "bg-warning/10 text-warning" },
   notices: { icon: Megaphone, tone: "bg-violet-500/10 text-violet-500" },
 } satisfies Record<StatKey, { icon: React.ElementType; tone: string }>;
 
-export function StatsGrid() {
+interface statsGridProps {
+  studentCount: number;
+  teacherCount: number;
+  adminCount: number;
+  noticeCount: number;
+}
+
+export function StatsGrid({studentCount, teacherCount, adminCount, noticeCount}: statsGridProps) {
+
+  const dashboardStats: DashboardStat[] = [
+    { key: "students", label: "Total Students", value: studentCount },
+    { key: "teachers", label: "Total Teachers", value: teacherCount },
+    { key: "admins", label: "Total Admins", value: adminCount },
+    { key: "notices", label: "Total Notices", value: noticeCount },
+  ];
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {dashboardStats.map((stat) => {
@@ -23,11 +42,18 @@ export function StatsGrid() {
           <div key={stat.key} className="rounded-2xl border bg-card p-5">
             <p className="text-sm text-muted-foreground">{stat.label}</p>
             <div className="mt-3 flex items-center gap-4">
-              <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", tone)}>
+              <div
+                className={cn(
+                  "flex h-12 w-12 shrink-0 items-center justify-center rounded-full",
+                  tone,
+                )}
+              >
                 <Icon className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-2xl font-semibold">{stat.value.toLocaleString()}</p>
+                <p className="text-2xl font-semibold">
+                  {stat.value.toLocaleString()}
+                </p>
               </div>
             </div>
           </div>

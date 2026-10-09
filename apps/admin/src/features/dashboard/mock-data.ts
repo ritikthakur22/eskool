@@ -32,55 +32,55 @@ export const studentEnrollment = [
   { month: "Dec", students: 22 },
 ];
 
-const base = { schoolId: "sch_01", userAgent: "Mozilla/5.0 (X11; Linux x86_64)" };
+// const base = { schoolId: "sch_01", userAgent: "Mozilla/5.0 (X11; Linux x86_64)" };
 
-export const auditLogs: AuditLog[] = [
-  {
-    ...base, id: "log_01", userId: "usr_01", action: "LOGIN", entity: "User", entityId: "usr_01",
-    details: null, ipAddress: "103.69.124.18", requestId: "req_8f21c",
-    createdAt: "2026-10-08T09:12:00.000Z",
-    user: { name: "Aadarsh", email: "aadarsh@example.com" },
-  },
-  {
-    ...base, id: "log_02", userId: "usr_02", action: "CREATE", entity: "Student", entityId: "stu_4821",
-    details: { name: "Sunita Rai", class: "Class 8" }, ipAddress: "103.69.124.22", requestId: "req_8f21d",
-    createdAt: "2026-10-08T08:47:00.000Z",
-    user: { name: "Sita Karki", email: "sita@example.com" },
-  },
-  {
-    ...base, id: "log_03", userId: "usr_02", action: "UPDATE", entity: "Notice", entityId: "not_0192",
-    details: { field: "title" }, ipAddress: "103.69.124.22", requestId: "req_8f21e",
-    createdAt: "2026-10-08T08:15:00.000Z",
-    user: { name: "Sita Karki", email: "sita@example.com" },
-  },
-  {
-    ...base, id: "log_04", userId: "usr_03", action: "DELETE", entity: "Teacher", entityId: "tch_0077",
-    details: { reason: "resigned" }, ipAddress: "27.34.68.101", requestId: "req_8f21f",
-    createdAt: "2026-10-07T16:30:00.000Z",
-    user: { name: "Ramesh Thapa", email: "ramesh@example.com" },
-  },
-  {
-    ...base, id: "log_05", userId: "usr_03", action: "CREATE", entity: "Notice", entityId: "not_0193",
-    details: { title: "Dashain holidays" }, ipAddress: "27.34.68.101", requestId: "req_8f220",
-    createdAt: "2026-10-07T14:05:00.000Z",
-    user: { name: "Ramesh Thapa", email: "ramesh@example.com" },
-  },
-  {
-    ...base, id: "log_06", userId: "usr_04", action: "UPDATE", entity: "Student", entityId: "stu_3310",
-    details: { field: "guardianPhone" }, ipAddress: "182.93.80.45", requestId: "req_8f221",
-    createdAt: "2026-10-07T11:22:00.000Z",
-    user: { name: "Anita Gurung", email: "anita@example.com" },
-  },
-  {
-    ...base, id: "log_07", userId: null, action: "CREATE", entity: "Class", entityId: "cls_0010",
-    details: { source: "seed" }, ipAddress: null, requestId: "req_8f222",
-    createdAt: "2026-10-06T18:00:00.000Z",
-    user: null,
-  },
-  {
-    ...base, id: "log_08", userId: "usr_01", action: "LOGOUT", entity: "User", entityId: "usr_01",
-    details: null, ipAddress: "103.69.124.18", requestId: "req_8f223",
-    createdAt: "2026-10-06T17:41:00.000Z",
-    user: { name: "Aadarsh", email: "aadarsh@example.com" },
-  },
-];
+// export const auditLogs: AuditLog[] = [
+//   {
+//     ...base, id: "log_01", userId: "usr_01", action: "LOGIN", entity: "User", entityId: "usr_01",
+//     details: null, ipAddress: "103.69.124.18", requestId: "req_8f21c",
+//     createdAt: "2026-10-08T09:12:00.000Z",
+//     user: { name: "Aadarsh", email: "aadarsh@example.com" },
+//   },
+//   {
+//     ...base, id: "log_02", userId: "usr_02", action: "CREATE", entity: "Student", entityId: "stu_4821",
+//     details: { name: "Sunita Rai", class: "Class 8" }, ipAddress: "103.69.124.22", requestId: "req_8f21d",
+//     createdAt: "2026-10-08T08:47:00.000Z",
+//     user: { name: "Sita Karki", email: "sita@example.com" },
+//   },
+//   {
+//     ...base, id: "log_03", userId: "usr_02", action: "UPDATE", entity: "Notice", entityId: "not_0192",
+//     details: { field: "title" }, ipAddress: "103.69.124.22", requestId: "req_8f21e",
+//     createdAt: "2026-10-08T08:15:00.000Z",
+//     user: { name: "Sita Karki", email: "sita@example.com" },
+//   },
+//   {
+//     ...base, id: "log_04", userId: "usr_03", action: "DELETE", entity: "Teacher", entityId: "tch_0077",
+//     details: { reason: "resigned" }, ipAddress: "27.34.68.101", requestId: "req_8f21f",
+//     createdAt: "2026-10-07T16:30:00.000Z",
+//     user: { name: "Ramesh Thapa", email: "ramesh@example.com" },
+//   },
+//   {
+//     ...base, id: "log_05", userId: "usr_03", action: "CREATE", entity: "Notice", entityId: "not_0193",
+//     details: { title: "Dashain holidays" }, ipAddress: "27.34.68.101", requestId: "req_8f220",
+//     createdAt: "2026-10-07T14:05:00.000Z",
+//     user: { name: "Ramesh Thapa", email: "ramesh@example.com" },
+//   },
+//   {
+//     ...base, id: "log_06", userId: "usr_04", action: "UPDATE", entity: "Student", entityId: "stu_3310",
+//     details: { field: "guardianPhone" }, ipAddress: "182.93.80.45", requestId: "req_8f221",
+//     createdAt: "2026-10-07T11:22:00.000Z",
+//     user: { name: "Anita Gurung", email: "anita@example.com" },
+//   },
+//   {
+//     ...base, id: "log_07", userId: null, action: "CREATE", entity: "Class", entityId: "cls_0010",
+//     details: { source: "seed" }, ipAddress: null, requestId: "req_8f222",
+//     createdAt: "2026-10-06T18:00:00.000Z",
+//     user: null,
+//   },
+//   {
+//     ...base, id: "log_08", userId: "usr_01", action: "LOGOUT", entity: "User", entityId: "usr_01",
+//     details: null, ipAddress: "103.69.124.18", requestId: "req_8f223",
+//     createdAt: "2026-10-06T17:41:00.000Z",
+//     user: { name: "Aadarsh", email: "aadarsh@example.com" },
+//   },
+// ];

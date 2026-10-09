@@ -24,7 +24,7 @@ export function StatusPill({ status }: { status: string }) {
 export function StudentAvatar({ student, className }: { student: Student; className?: string }) {
   const name = getStudentName(student);
 
-  if (student.profilePictureUrl) {
+  if (student?.profilePictureUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img

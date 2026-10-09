@@ -45,7 +45,9 @@ export function StudentDetail({ userId }: { userId: string }) {
 
         <div className="flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-2xl font-semibold">{getStudentName(student)}</h2>
+            <h2 className="text-2xl font-semibold">
+              {getStudentName(student)}
+            </h2>
             <StatusPill status={student.status} />
           </div>
           <p className="text-sm text-muted-foreground">{student.email}</p>
@@ -55,7 +57,10 @@ export function StudentDetail({ userId }: { userId: string }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Link href={ROUTES.studentEdit(student.id)} className={cn(buttonVariants(), "h-10 rounded-xl px-4")}>
+          <Link
+            href={ROUTES.studentEdit(student.id)}
+            className={cn(buttonVariants(), "h-10 rounded-xl px-4")}
+          >
             <Pencil className="mr-1.5 h-4 w-4" />
             Edit
           </Link>
@@ -64,13 +69,19 @@ export function StudentDetail({ userId }: { userId: string }) {
             className="h-10 rounded-xl px-4"
             onClick={() => setStatusOpen(true)}
           >
-            {disabled ? <RotateCcw className="mr-1.5 h-4 w-4" /> : <Ban className="mr-1.5 h-4 w-4" />}
+            {disabled ? (
+              <RotateCcw className="mr-1.5 h-4 w-4" />
+            ) : (
+              <Ban className="mr-1.5 h-4 w-4" />
+            )}
             {disabled ? "Restore" : "Disable"}
           </Button>
         </div>
       </div>
 
       {/* Details */}
+      {/* Details */}
+            {/* Details */}
       <div className="grid gap-6 lg:grid-cols-2">
         <InfoCard
           title="Personal Information"
@@ -78,9 +89,10 @@ export function StudentDetail({ userId }: { userId: string }) {
             ["First name", profile.firstName],
             ["Last name", profile.lastName],
             ["Gender", profile.gender],
-            ["Date of birth", profile.dob ? formatDate(profile.dob) : null],
+            ["Date of birth (AD)", profile.dob ? formatDate(profile.dob) : null],
+            ["Date of birth (BS)", profile.dobBs],
+            ["Blood group", profile.bloodGroup],
             ["Phone", profile.phone],
-            ["Address", profile.address],
           ]}
         />
 
@@ -90,14 +102,25 @@ export function StudentDetail({ userId }: { userId: string }) {
             ["Grade", profile.grade],
             ["Section", profile.section],
             ["Roll number", profile.rollNo],
+            ["Admission date", profile.admissionDate ? formatDate(profile.admissionDate) : null],
+          ]}
+        />
+
+        <InfoCard
+          title="Address"
+          rows={[
+            ["Permanent", profile.address],
+            ["Temporary", profile.temporaryAddress],
           ]}
         />
 
         <InfoCard
           title="Guardian"
           rows={[
-            ["Name", profile.parentName],
-            ["Phone", profile.parentPhone],
+            ["Father's name", profile.fatherName],
+            ["Father's phone", profile.fatherPhone],
+            ["Mother's name", profile.motherName],
+            ["Mother's phone", profile.motherPhone],
           ]}
         />
 
@@ -114,11 +137,13 @@ export function StudentDetail({ userId }: { userId: string }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Gender, date of birth, phone, address and guardian details are managed by the student from
-        their own profile.
+        Name, email, grade, section and roll number can be edited by an admin. Other details come from the student's record.
       </p>
 
-      <StudentStatusDialog student={statusOpen ? student : null} onClose={() => setStatusOpen(false)} />
+      <StudentStatusDialog
+        student={statusOpen ? student : null}
+        onClose={() => setStatusOpen(false)}
+      />
     </div>
   );
 }
