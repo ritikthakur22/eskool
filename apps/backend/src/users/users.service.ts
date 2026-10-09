@@ -12,11 +12,33 @@ export class UsersService {
   constructor(private prisma: PrismaService, private readonly cloudinary: CloudinaryService, private readonly audit: AuditService) {}
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { email } });
+    return this.prisma.user.findFirst({ where: { email: { equals: email.trim(), mode: 'insensitive' } } });
+  }
+
+  async findByEmisId(emisId: string) {
+    return this.prisma.user.findFirst({ where: { emisId: { equals: emisId, mode: 'insensitive' } }, select: { id: true } });
+  }
+
+  async findByStudentId(studentId: string) {
+    return this.prisma.user.findFirst({ where: { userId: { equals: studentId, mode: 'insensitive' } }, select: { id: true } });
   }
 
   async create(data: Prisma.UserCreateInput): Promise<User> {
-    return this.prisma.user.create({ data });
+    try { return await this.prisma.user.create({ data }); }
+    catch (error: any) { if (error?.code === 'P2002') throw new ConflictException('Email, EMIS ID, or student ID is already assigned to another account.'); throw error; }
+  }
+
+  async createWithParentProfile(data: Prisma.UserCreateInput, profile: { firstName: string; lastName: string; phone?: string; address?: string; relationship?: string }): Promise<User> {
+    try {
+      return await this.prisma.$transaction(async tx => {
+        const user = await tx.user.create({ data });
+        await tx.$executeRaw(Prisma.sql`
+          INSERT INTO "ParentProfile" ("id", "userId", "firstName", "lastName", "phone", "address", "relationship")
+          VALUES (${crypto.randomUUID()}, ${user.id}, ${profile.firstName}, ${profile.lastName}, ${profile.phone || null}, ${profile.address || null}, ${profile.relationship || null})
+        `);
+        return user;
+      });
+    } catch (error: any) { if (error?.code === 'P2002') throw new ConflictException('Email or account ID is already assigned to another account.'); throw error; }
   }
 
   private async getManagedTarget(id: string, actor: { schoolId: string; actorRole: Role }) {
@@ -29,62 +51,150 @@ export class UsersService {
     return target;
   }
 
-  async listManagedUsers(filters: { schoolId: string; actorRole: Role; role?: string; status?: string; query?: string }) {
+  async listManagedUsers(filters: { schoolId: string; actorRole: Role; role?: string; status?: string; query?: string; limit?: number; offset?: number }) {
     const role = filters.role && Object.values(Role).includes(filters.role as Role) ? filters.role as Role : undefined;
     const status = filters.status === 'ACTIVE' || filters.status === 'DISABLED' ? filters.status : undefined;
-    const users = await this.prisma.user.findMany({
+    const paginated = filters.limit !== undefined || filters.offset !== undefined;
+    const limit = Math.min(Math.max(Number(filters.limit) || 30, 1), 50);
+    const offset = Math.max(Number(filters.offset) || 0, 0);
+    const query = filters.query?.trim().slice(0, 100);
+    const matchingParentIds = query ? await this.prisma.$queryRaw<Array<{ userId: string }>>(Prisma.sql`
+      SELECT "userId" FROM "ParentProfile" WHERE "firstName" ILIKE ${`%${query}%`} OR "lastName" ILIKE ${`%${query}%`} OR "phone" ILIKE ${`%${query}%`}
+    `) : [];
+    const args: Prisma.UserFindManyArgs = {
       where: {
         schoolId: filters.schoolId,
+        ...(filters.actorRole === Role.ADMIN ? { role: { not: Role.SUPER_ADMIN } } : {}),
         ...(role ? { role } : {}),
         ...(status ? { status } : {}),
-        ...(filters.query?.trim() ? { email: { contains: filters.query.trim(), mode: 'insensitive' } } : {}),
+        ...(query ? { OR: [
+          { email: { contains: query, mode: 'insensitive' } },
+          { userId: { contains: query, mode: 'insensitive' } },
+          { emisId: { contains: query, mode: 'insensitive' } },
+          { studentProfile: { is: { firstName: { contains: query, mode: 'insensitive' } } } },
+          { studentProfile: { is: { lastName: { contains: query, mode: 'insensitive' } } } },
+          { teacherProfile: { is: { firstName: { contains: query, mode: 'insensitive' } } } },
+          { teacherProfile: { is: { lastName: { contains: query, mode: 'insensitive' } } } },
+          { adminProfile: { is: { firstName: { contains: query, mode: 'insensitive' } } } },
+          { adminProfile: { is: { lastName: { contains: query, mode: 'insensitive' } } } },
+          ...(matchingParentIds.length ? [{ id: { in: matchingParentIds.map(profile => profile.userId) } }] : []),
+        ] } : {}),
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      ...(paginated ? { skip: offset, take: limit + 1 } : { take: 100 }),
       select: {
-        id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true,
+        id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true, userId: true, emisId: true, profilePictureUrl: true,
         studentProfile: { select: { firstName: true, lastName: true, grade: true, section: true, rollNo: true } },
         teacherProfile: { select: { firstName: true, lastName: true } },
         adminProfile: { select: { firstName: true, lastName: true, department: true } },
       },
-    });
-    return users.filter(user => canManageRole(filters.actorRole, user.role));
+    };
+    const users = await this.prisma.user.findMany(args);
+    const parentIds = users.filter(user => user.role === Role.PARENT).map(user => user.id);
+    const parentProfiles = parentIds.length ? await this.prisma.$queryRaw<Array<{ userId: string; firstName: string; lastName: string; phone: string | null; address: string | null; relationship: string | null }>>(Prisma.sql`
+      SELECT "userId", "firstName", "lastName", "phone", "address", "relationship" FROM "ParentProfile" WHERE "userId" IN (${Prisma.join(parentIds)})
+    `) : [];
+    const parentByUser = new Map(parentProfiles.map(profile => [profile.userId, profile]));
+    const hydratedUsers = users.map(user => user.role === Role.PARENT ? { ...user, parentProfile: parentByUser.get(user.id) || null } : user);
+    const manageable = hydratedUsers.filter(user => canManageRole(filters.actorRole, user.role));
+    if (!paginated) return manageable;
+    const items = manageable.slice(0, limit);
+    return { items, hasMore: users.length > limit, nextOffset: users.length > limit ? offset + limit : null };
   }
 
   async getManagedUser(id: string, actor: { schoolId: string; actorRole: Role }) {
     await this.getManagedTarget(id, actor);
-    return this.prisma.user.findFirst({
+    const user = await this.prisma.user.findFirst({
       where: { id, schoolId: actor.schoolId },
       select: {
-        id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true, updatedAt: true,
+        id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true, updatedAt: true, userId: true, emisId: true, profilePictureUrl: true,
         studentProfile: true, teacherProfile: true, adminProfile: true,
       },
     });
+    if (!user || user.role !== Role.PARENT) return user;
+    const [parentProfile] = await this.prisma.$queryRaw<Array<{ firstName: string; lastName: string; phone: string | null; address: string | null; relationship: string | null }>>(Prisma.sql`
+      SELECT "firstName", "lastName", "phone", "address", "relationship" FROM "ParentProfile" WHERE "userId" = ${id} LIMIT 1
+    `);
+    return { ...user, parentProfile: parentProfile || null };
   }
 
   async updateManagedUser(id: string, input: UpdateManagedUserDto, actor: { actorId: string; schoolId: string; actorRole: Role }) {
     const target = await this.getManagedTarget(id, actor);
     const email = input.email?.trim().toLowerCase();
     if (email && email !== target.email) {
-      const existing = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+      const existing = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, select: { id: true } });
       if (existing && existing.id !== id) throw new ConflictException('That email address is already in use.');
     }
     const firstName = input.firstName?.trim();
     const lastName = input.lastName?.trim();
     if ((input.firstName !== undefined && !firstName) || (input.lastName !== undefined && !lastName)) throw new BadRequestException('Name fields cannot be empty.');
-    const userData = email && email !== target.email ? { email } : {};
-    await this.prisma.$transaction(async tx => {
+    const studentFields = ['grade', 'section', 'rollNo', 'emisId', 'userId', 'dob', 'dobBs', 'gender', 'bloodGroup', 'temporaryAddress', 'admissionDate', 'fatherName', 'fatherPhone', 'motherName', 'motherPhone', 'parentPhone', 'parentAddress'] as const;
+    if (target.role === Role.STUDENT && ((Boolean(input.fatherName?.trim()) !== Boolean(input.fatherPhone?.trim())) || (Boolean(input.motherName?.trim()) !== Boolean(input.motherPhone?.trim())) || (!input.fatherName?.trim() && !input.motherName?.trim() && !input.fatherPhone?.trim() && !input.motherPhone?.trim()))) {
+      const existingProfile = await this.prisma.studentProfile.findUnique({ where: { userId: id }, select: { fatherName: true, fatherPhone: true, motherName: true, motherPhone: true } });
+      const fatherName = input.fatherName !== undefined ? input.fatherName.trim() : existingProfile?.fatherName?.trim() || '';
+      const fatherPhone = input.fatherPhone !== undefined ? input.fatherPhone.trim() : existingProfile?.fatherPhone?.trim() || '';
+      const motherName = input.motherName !== undefined ? input.motherName.trim() : existingProfile?.motherName?.trim() || '';
+      const motherPhone = input.motherPhone !== undefined ? input.motherPhone.trim() : existingProfile?.motherPhone?.trim() || '';
+      if (Boolean(fatherName) !== Boolean(fatherPhone) || Boolean(motherName) !== Boolean(motherPhone) || !((fatherName && fatherPhone) || (motherName && motherPhone))) throw new BadRequestException('Add a parent or guardian name and phone number.');
+    }
+    if (target.role !== Role.STUDENT && target.role !== Role.PARENT && studentFields.some(key => input[key] !== undefined)) throw new BadRequestException('Student-only fields cannot be changed on this account.');
+    if (target.role !== Role.TEACHER && input.subjects !== undefined) throw new BadRequestException('Teaching subjects can only be changed on teacher accounts.');
+    if (target.role === Role.PARENT && studentFields.some(key => input[key] !== undefined)) throw new BadRequestException('Student-only fields cannot be changed on a parent account.');
+    const emisId = input.emisId?.trim();
+    const userId = input.userId?.trim();
+    if (target.role === Role.STUDENT && input.emisId !== undefined && !emisId) throw new BadRequestException('A student EMIS ID cannot be empty.');
+    if (emisId) {
+      const duplicate = await this.prisma.user.findFirst({ where: { id: { not: id }, emisId: { equals: emisId, mode: 'insensitive' } }, select: { id: true } });
+      if (duplicate) throw new ConflictException('That EMIS ID is already assigned to another account.');
+    }
+    if (userId) {
+      const duplicate = await this.prisma.user.findFirst({ where: { id: { not: id }, userId: { equals: userId, mode: 'insensitive' } }, select: { id: true } });
+      if (duplicate) throw new ConflictException('That student ID is already assigned to another account.');
+    }
+    const userData = { ...(email && email !== target.email ? { email } : {}), ...(target.role === Role.STUDENT && input.emisId !== undefined ? { emisId: emisId?.toUpperCase() || null } : {}), ...(target.role === Role.STUDENT && input.userId !== undefined ? { userId: userId?.toUpperCase() || null } : {}) };
+    try { await this.prisma.$transaction(async tx => {
       if (Object.keys(userData).length) await tx.user.update({ where: { id }, data: userData });
       if (target.role === Role.STUDENT) {
-        await tx.studentProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.grade !== undefined ? { grade: input.grade.trim() || null } : {}), ...(input.section !== undefined ? { section: input.section.trim() || null } : {}), ...(input.rollNo !== undefined ? { rollNo: input.rollNo.trim() || null } : {}) } });
+        await tx.studentProfile.update({ where: { userId: id }, data: {
+          ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}),
+          ...(input.grade !== undefined ? { grade: input.grade.trim() || null } : {}),
+          ...(input.section !== undefined ? { section: (/^(?:[a-z]|\d+\s*[-_]?\s*[a-z]|[a-z]\s*[-_]?\s*\d+)$/i.test(input.section.trim()) ? input.section.trim().replace(/[a-z]/gi, letter => letter.toUpperCase()) : input.section.trim()) || null } : {}),
+          ...(input.rollNo !== undefined ? { rollNo: input.rollNo.trim() || null } : {}),
+          ...(input.dob !== undefined ? { dob: input.dob ? new Date(input.dob) : null } : {}),
+          ...(input.dobBs !== undefined ? { dobBs: input.dobBs.trim() || null } : {}),
+          ...(input.phone !== undefined ? { phone: input.phone.trim() || null } : {}),
+          ...(input.gender !== undefined ? { gender: input.gender.trim() || null } : {}),
+          ...(input.bloodGroup !== undefined ? { bloodGroup: input.bloodGroup.trim() || null } : {}),
+          ...(input.address !== undefined ? { address: input.address.trim() || null } : {}),
+          ...(input.temporaryAddress !== undefined ? { temporaryAddress: input.temporaryAddress.trim() || null } : {}),
+          ...(input.admissionDate !== undefined ? { admissionDate: input.admissionDate ? new Date(input.admissionDate) : null } : {}),
+          ...(input.fatherName !== undefined ? { fatherName: input.fatherName.trim() || null } : {}),
+          ...(input.fatherPhone !== undefined ? { fatherPhone: input.fatherPhone.trim() || null } : {}),
+          ...(input.motherName !== undefined ? { motherName: input.motherName.trim() || null } : {}),
+          ...(input.motherPhone !== undefined ? { motherPhone: input.motherPhone.trim() || null } : {}),
+        } });
       } else if (target.role === Role.TEACHER) {
-        await tx.teacherProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}) } });
+        await tx.teacherProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.subjects !== undefined ? { subjects: input.subjects.map(subject => subject.trim()).filter(Boolean).slice(0, 20) } : {}) } });
       } else if (target.role === Role.ADMIN || target.role === Role.SUPER_ADMIN) {
         await tx.adminProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.department !== undefined ? { department: input.department.trim() || null } : {}) } });
+      } else if (target.role === Role.PARENT) {
+        await tx.$executeRaw(Prisma.sql`
+          INSERT INTO "ParentProfile" ("id", "userId", "firstName", "lastName", "phone", "address", "relationship")
+          VALUES (${crypto.randomUUID()}, ${id}, ${firstName || 'Parent'}, ${lastName || 'Account'}, ${input.phone?.trim() || null}, ${input.address?.trim() || null}, ${input.relationship?.trim() || null})
+          ON CONFLICT ("userId") DO UPDATE SET
+            "firstName" = COALESCE(${firstName ?? null}, "ParentProfile"."firstName"),
+            "lastName" = COALESCE(${lastName ?? null}, "ParentProfile"."lastName"),
+            "phone" = CASE WHEN ${input.phone !== undefined} THEN ${input.phone?.trim() || null} ELSE "ParentProfile"."phone" END,
+            "address" = CASE WHEN ${input.address !== undefined} THEN ${input.address?.trim() || null} ELSE "ParentProfile"."address" END,
+            "relationship" = CASE WHEN ${input.relationship !== undefined} THEN ${input.relationship?.trim() || null} ELSE "ParentProfile"."relationship" END
+        `);
       } else if (firstName !== undefined || lastName !== undefined || input.grade !== undefined || input.section !== undefined || input.rollNo !== undefined || input.department !== undefined) {
         throw new BadRequestException('This account has no editable profile fields.');
       }
-    });
+    }); } catch (error: any) {
+      if (error?.code === 'P2002') throw new ConflictException('Email, EMIS ID, or student ID is already assigned to another account.');
+      throw error;
+    }
     void this.audit.record({ action: 'USER_UPDATED', entity: 'User', entityId: id, userId: actor.actorId, schoolId: actor.schoolId, details: { fields: Object.keys(input).filter(field => field !== 'email' || email !== target.email) } });
     return this.getManagedUser(id, actor);
   }
@@ -129,6 +239,11 @@ export class UsersService {
       if (!profile) return { ...userDetails, profilePictureUrl };
       return { ...userDetails, ...profile, profilePictureUrl };
     }
+    if (user.role === 'PARENT') {
+      const [profile] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`SELECT "firstName", "lastName", "phone", "address", "relationship" FROM "ParentProfile" WHERE "userId" = ${userId} LIMIT 1`);
+      if (!profile) return { ...userDetails, profilePictureUrl };
+      return { ...userDetails, ...profile, profilePictureUrl };
+    }
     return { ...userDetails, profilePictureUrl };
   }
 
@@ -152,7 +267,7 @@ export class UsersService {
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Enter a valid email address');
     const current = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
     if (email && email !== current?.email) {
-      const existing = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+      const existing = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, select: { id: true } });
       if (existing && existing.id !== userId) throw new ConflictException('That email address is already in use');
     }
     const fields: { firstName?: string; lastName?: string } = {};
@@ -169,7 +284,10 @@ export class UsersService {
     } else if (Object.values(values).some(value => value !== email) || input.dob !== undefined) {
       throw new BadRequestException('This account has no editable profile');
     }
-    if (email && email !== current?.email) await this.prisma.user.update({ where: { id: userId }, data: { email } });
+    if (email && email !== current?.email) {
+      try { await this.prisma.user.update({ where: { id: userId }, data: { email } }); }
+      catch (error: any) { if (error?.code === 'P2002') throw new ConflictException('That email address is already in use'); throw error; }
+    }
     const updatedProfile = await this.getOwnProfile(userId);
     void this.audit.record({ action: 'PROFILE_UPDATED', entity: 'User', entityId: userId, userId, schoolId: user.schoolId });
     return updatedProfile;
