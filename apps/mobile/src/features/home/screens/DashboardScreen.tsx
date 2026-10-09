@@ -78,7 +78,7 @@ const operationalMoreFeatureGroups: { title: string; features: Feature[] }[] = [
     { name: 'Online class', icon: 'videocam-outline', route: 'OnlineClass', accent: '#0EA5E9' },
     { name: 'Class chat', icon: 'chatbubbles-outline', route: 'Chat', accent: '#8B5CF6', note: 'Coming soon', disabled: true },
     { name: 'Attendance register', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#16A36A' },
-    { name: 'Fees review', icon: 'receipt-outline', accent: '#D18A0A', note: 'Management coming soon', disabled: true },
+    { name: 'Class routine', icon: 'calendar-outline', route: 'Routine', accent: '#16B86A' },
   ] },
   { title: 'Account', features: [
     { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#EF5261' },
