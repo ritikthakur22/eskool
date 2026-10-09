@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus, Get, UseGuards, Request, Delete } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, HttpCode, HttpStatus, Get, UseGuards, Request, Delete, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import { AuthRateLimitGuard } from './rate-limit.guard.js';
@@ -12,7 +12,11 @@ export class AuthController {
   @Post('login')
   @UseGuards(AuthRateLimitGuard)
   async login(@Body() body: LoginDto) {
-    const user = await this.authService.validateUser(body.email, body.password);
+    const identifier = body.identifier || body.email;
+    if (!identifier) {
+      throw new BadRequestException('Must provide email or identifier');
+    }
+    const user = await this.authService.validateUser(identifier, body.password);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -62,7 +66,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  getCurrentUser(@Request() req: any) {
-    return req.user;
+  async getCurrentUser(@Request() req: any) {
+    return this.authService.getCurrentUserFormatted(req.user.id);
   }
 }

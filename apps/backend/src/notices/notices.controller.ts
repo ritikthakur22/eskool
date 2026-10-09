@@ -29,6 +29,11 @@ export class NoticesController {
     return this.noticesService.deleteNotice(id, req.user);
   }
 
+  @Get('stats/count')
+  async getNoticesCount(@Request() req: any) {
+    return this.noticesService.getNoticesCount(req.user.schoolId);
+  }
+
   @Get()
   async getAllNotices(@Query('category') category?: string, @Query('limit') limit?: string, @Request() req?: any) {
     const parsedLimit = Number.parseInt(limit || '', 10);

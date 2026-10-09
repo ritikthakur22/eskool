@@ -1,12 +1,8 @@
-import { PrismaClient, Role } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+const fs = require('fs');
+const file = 'seed.ts';
+let code = fs.readFileSync(file, 'utf8');
 
-const prisma = new PrismaClient();
-
-async function main() {
-  const rawPassword = process.env.SEED_ADMIN_PASSWORD;
-  if (!rawPassword || rawPassword.length < 12) throw new Error('SEED_ADMIN_PASSWORD must be set to a 12+ character development-only password.');
-  
+const classSeedLogic = `
   const schools = await prisma.school.findMany();
   if (schools.length > 0) {
     const schoolId = schools[0].id;
@@ -46,32 +42,8 @@ async function main() {
     }
     console.log('Seeded classes and sections');
   }
+`;
 
-  const users = await prisma.user.findMany();
-  
-  if (users.length === 0) {
-    const password = await bcrypt.hash(rawPassword, 10);
-    const schools = await prisma.school.findMany();
-    const school = schools[0] || await prisma.school.create({
-      data: {
-        name: 'Demo eSkool',
-        address: '123 Test St',
-      }
-    });
+code = code.replace(/const users = await prisma.user.findMany\(\);/, classSeedLogic + '\n  const users = await prisma.user.findMany();');
 
-    const admin = await prisma.user.create({
-      data: {
-        email: 'admin@eskool.com',
-        password,
-        role: Role.SUPER_ADMIN,
-        schoolId: school.id,
-      }
-    });
-    console.log('Created development admin:', admin.email);
-  } else {
-    for (const u of users) {
-      console.log(`Role: ${u.role}, Email: ${u.email}`);
-    }
-  }
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
+fs.writeFileSync(file, code);

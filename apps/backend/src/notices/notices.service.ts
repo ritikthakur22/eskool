@@ -15,6 +15,11 @@ export class NoticesService {
     return notice;
   }
 
+  async getNoticesCount(schoolId: string) {
+    const total = await this.prisma.notice.count({ where: { schoolId } });
+    return { totalNotices: total };
+  }
+
   async getAllNotices(category?: string, limit = 20, actor?: { schoolId: string }): Promise<Notice[]> {
     const where: Prisma.NoticeWhereInput = { ...(category ? { category } : {}), ...(actor ? { author: { schoolId: actor.schoolId } } : {}) };
     return this.prisma.notice.findMany({

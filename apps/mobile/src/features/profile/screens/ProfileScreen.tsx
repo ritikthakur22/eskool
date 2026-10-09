@@ -86,7 +86,12 @@ export default function ProfileScreen({ navigation }: any) {
       await GoogleSignin.signOut();
     }
     catch (e) { console.log('Google signout error; clearing local session anyway.', e); }
-    finally { navigation.replace('Login'); }
+    finally { 
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    }
   };
   const toggleBiometric = async (enabled: boolean) => {
     if (enabled) {
@@ -149,7 +154,7 @@ export default function ProfileScreen({ navigation }: any) {
         <TouchableOpacity style={s.row} onPress={() => setPasswordModal(true)}><View style={[s.rowIcon, { backgroundColor: colors.primary + '15' }]}><Ionicons name="key-outline" size={18} color={colors.primary} /></View><View style={s.rowCopy}><Text style={s.rowTitle}>Change app password</Text><Text style={s.rowNote}>Update your sign-in password</Text></View><Ionicons name="chevron-forward" size={18} color={colors.subText} /></TouchableOpacity>
         <View style={[s.row, s.lastRow]}><View style={[s.rowIcon, { backgroundColor: '#8B5CF618' }]}><Ionicons name="finger-print-outline" size={19} color="#8B5CF6" /></View><View style={s.rowCopy}><Text style={s.rowTitle}>Biometric login</Text><Text style={s.rowNote}>{biometricReady ? 'Use face or fingerprint next time' : 'Set up biometrics on this device first'}</Text></View><Switch value={biometricEnabled} onValueChange={toggleBiometric} disabled={!biometricReady} trackColor={{ false: colors.border, true: colors.primary }} />
         </View>
-        <View style={[s.row, s.lastRow]}><View style={[s.rowIcon, { backgroundColor: '#EA433515' }]}><Ionicons name="logo-google" size={17} color="#EA4335" /></View><View style={s.rowCopy}><Text style={s.rowTitle}>Google account</Text><Text style={s.rowNote}>{googleLinked ? `Linked · ${googleEmail}` : 'Link Google to enable Google sign-in'}</Text></View><TouchableOpacity disabled={googleBusy} onPress={googleLinked ? unlinkGoogle : linkGoogle} style={[s.googleAction, googleLinked && s.googleActionLinked]}>{googleBusy ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[s.googleActionText, googleLinked && { color: colors.danger }]}>{googleLinked ? 'Unlink' : 'Link'}</Text>}</TouchableOpacity></View>
+        <View style={[s.row, s.lastRow]}><View style={[s.rowIcon, { backgroundColor: '#EA433515' }]}><Image source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png' }} style={{ width: 17, height: 17 }} /></View><View style={s.rowCopy}><Text style={s.rowTitle}>Google account</Text><Text style={s.rowNote}>{googleLinked ? `Linked · ${googleEmail}` : 'Link Google to enable Google sign-in'}</Text></View><TouchableOpacity disabled={googleBusy} onPress={googleLinked ? unlinkGoogle : linkGoogle} style={[s.googleAction, googleLinked && s.googleActionLinked]}>{googleBusy ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[s.googleActionText, googleLinked && { color: colors.danger }]}>{googleLinked ? 'Unlink' : 'Link'}</Text>}</TouchableOpacity></View>
       </View>
 
       <Text style={s.sectionEyebrow}>APPEARANCE</Text>

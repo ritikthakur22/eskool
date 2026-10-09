@@ -22,10 +22,17 @@ export class AuthService {
     private audit: AuditService,
   ) {}
 
-  async validateUser(email: string, pass: string): Promise<any> {
+  async validateUser(identifier: string, pass: string): Promise<any> {
     try {
-      const user = await this.prisma.user.findUnique({
-        where: { email: email.trim().toLowerCase() },
+      const trimmed = identifier.trim();
+      const user = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: trimmed.toLowerCase() },
+            { userId: trimmed },
+            { emisId: trimmed }
+          ]
+        },
         include: { school: { select: { status: true } } },
       });
       if (user && user.status === 'ACTIVE' && user.school.status === 'ACTIVE' && await bcrypt.compare(pass, user.password)) {
@@ -107,7 +114,8 @@ export class AuthService {
     const session = await this.createSession(user);
     void this.audit.record({ action: 'LOGIN_SUCCESS', entity: 'User', entityId: user.id, userId: user.id, schoolId: user.schoolId });
     const { sessionId: _sessionId, ...response } = session;
-    return response;
+    const formattedUser = await this.getCurrentUserFormatted(user.id);
+    return { ...response, user: formattedUser || response.user };
   }
 
   async refreshSession(refreshToken: string) {
@@ -144,6 +152,47 @@ export class AuthService {
     await this.prisma.$executeRaw(Prisma.sql`UPDATE "AuthSession" SET "revokedAt" = NOW() WHERE "tokenHash" = ${this.hashRefreshToken(refreshToken)} AND "revokedAt" IS NULL`);
     if (session) void this.audit.record({ action: 'LOGOUT', entity: 'AuthSession', entityId: session.id, userId: session.userId, schoolId: session.schoolId });
     return { success: true };
+  }
+
+  
+  async getCurrentUserFormatted(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: {
+        adminProfile: true,
+        teacherProfile: true,
+        studentProfile: true,
+      }
+    });
+    if (!user) return null;
+
+    let firstName = null;
+    let lastName = null;
+    let department = null;
+
+    if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+      firstName = user.adminProfile?.firstName;
+      lastName = user.adminProfile?.lastName;
+      department = user.adminProfile?.department;
+    } else if (user.role === 'TEACHER') {
+      firstName = user.teacherProfile?.firstName;
+      lastName = user.teacherProfile?.lastName;
+    } else if (user.role === 'STUDENT') {
+      firstName = user.studentProfile?.firstName;
+      lastName = user.studentProfile?.lastName;
+    }
+
+    return {
+      id: user.id,
+      userId: user.userId,
+      emisId: user.emisId,
+      email: user.email,
+      role: user.role,
+      firstName,
+      lastName,
+      department,
+      profilePic: user.profilePictureUrl
+    };
   }
 
   private hashRefreshToken(token: string) {

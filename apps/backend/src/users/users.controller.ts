@@ -16,6 +16,13 @@ import { canCreateRole } from './users.policy.js';
 export class UsersController {
   constructor(private readonly usersService: UsersService, private readonly audit: AuditService) {}
 
+  
+  @Get('stats/counts')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  async getUserCounts(@Request() req: any) {
+    return this.usersService.getUserCounts(req.user.schoolId);
+  }
+
   @Get('me')
   getOwnProfile(@Request() req: any) {
     return this.usersService.getOwnProfile(req.user.id);

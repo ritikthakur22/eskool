@@ -209,6 +209,26 @@ export class UsersService {
     return { success: true };
   }
 
+  async getUserCounts(schoolId: string) {
+    const counts = await this.prisma.user.groupBy({
+      by: ['role'],
+      where: { schoolId },
+      _count: { id: true },
+    });
+    
+    let teacherCount = 0;
+    let studentCount = 0;
+    let adminCount = 0;
+
+    counts.forEach(c => {
+      if (c.role === 'TEACHER') teacherCount = c._count.id;
+      else if (c.role === 'STUDENT') studentCount = c._count.id;
+      else if (c.role === 'ADMIN' || c.role === 'SUPER_ADMIN') adminCount += c._count.id;
+    });
+
+    return { teacherCount, studentCount, adminCount };
+  }
+
   async getProfilePhoto(userId: string) {
     const [photo] = await this.prisma.$queryRaw<Array<{ profilePicture: Uint8Array | null; profilePictureMimeType: string | null; profilePictureUrl: string | null }>>(Prisma.sql`
       SELECT "profilePicture", "profilePictureMimeType", "profilePictureUrl" FROM "User" WHERE "id" = ${userId} LIMIT 1
