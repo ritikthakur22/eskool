@@ -42,6 +42,25 @@ export class CorrectAttendanceDto {
   remarks?: string;
 }
 
+export class BackfillAttendanceDto {
+  @IsUUID()
+  studentId!: string;
+
+  @IsUUID()
+  sectionId!: string;
+
+  @IsDateString()
+  date!: string;
+
+  @IsEnum(AttendanceStatus)
+  status!: AttendanceStatus;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  reason!: string;
+}
+
 export class BulkAttendanceEntryDto {
   @IsUUID()
   studentId!: string;

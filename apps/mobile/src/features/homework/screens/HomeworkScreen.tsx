@@ -8,6 +8,14 @@ import * as Linking from 'expo-linking';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { API_BASE_URL, api } from '../../../core/networking/api';
 import { getSelectedChildId } from '../../../core/utils/childSelection';
+import { gradeTenSectionName, orderAcademicClasses } from '../../../core/utils/classOrdering';
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+};
+const teacherName = (teacher: any) => [teacher?.teacherProfile?.firstName || teacher?.adminProfile?.firstName, teacher?.teacherProfile?.lastName || teacher?.adminProfile?.lastName].filter(Boolean).join(' ') || teacher?.email || 'Teacher';
 
 export default function HomeworkScreen({ navigation }: any) {
   const { colors } = useTheme(); const styles = makeStyles(colors);
@@ -22,9 +30,13 @@ export default function HomeworkScreen({ navigation }: any) {
   const [structure, setStructure] = useState<any>(null);
   const [editorVisible, setEditorVisible] = useState(false);
   const [editHomework, setEditHomework] = useState<any>(null);
-  const [form, setForm] = useState({ title: '', description: '', subjectId: '', sectionId: '', dueDate: '' });
+  const [form, setForm] = useState({ title: '', description: '', subjectId: '', sectionId: '', classId: '', dueDate: '' });
   const [customSubjectName, setCustomSubjectName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [submissionsHomework, setSubmissionsHomework] = useState<any>(null);
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [submittingId, setSubmittingId] = useState('');
 
   const tabs = useMemo(() => {
     return ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(role) ? ['Manage', 'Submissions'] : ['Assigned', 'Submitted', 'Upcoming'];
@@ -50,25 +62,26 @@ export default function HomeworkScreen({ navigation }: any) {
         setHomeworks(hwRes.data);
         setStructure(structRes.data);
       } else {
-        let resolvedSectionId = '';
+        let parentChildId = '';
         if (nextRole === 'PARENT') {
           const selectedId = (await getSelectedChildId()) || '';
           if (!selectedId) throw new Error('Select a child from the home screen first.');
           const childRes = await api.get('/academics/children').catch(() => ({ data: [] }));
           const data = Array.isArray(childRes.data) ? childRes.data : [];
           const child = data.find((item: any) => item.student?.id === selectedId) || data[0];
-          resolvedSectionId = child?.student?.enrollments?.[0]?.sectionId || '';
+          parentChildId = child?.student?.id || selectedId;
           const childProfile = child?.student?.studentProfile;
           setChildName([childProfile?.firstName, childProfile?.lastName].filter(Boolean).join(' ') || child?.student?.email || '');
         }
-        const endpoint = nextRole === 'PARENT' ? `/homework/class/${resolvedSectionId}` : '/homework/me';
+        const endpoint = nextRole === 'PARENT' ? `/homework/child/${parentChildId}` : '/homework/me';
         const res = await api.get(endpoint, { params: { limit: 50 } });
         setHomeworks(res.data.map((item: any) => ({
           ...item,
-          subject: item.subjectName || 'Subject',
+          subject: item.subjectName || item.subject?.name || 'Subject',
+          teacherName: item.teacherName || teacherName(item.teacher),
           description: item.description || item.title,
-          dueDate: new Date(item.dueDate).toLocaleDateString(),
-          status: item.submission ? 'Submitted' : 'Pending'
+          submission: item.submission || item.submissions?.[0] || null,
+          status: (item.submission || item.submissions?.[0]) ? 'Submitted' : 'Pending',
         })));
       }
     } catch (err: any) {
@@ -84,6 +97,15 @@ export default function HomeworkScreen({ navigation }: any) {
 
   const isManagement = ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(role);
   const canCreateSubject = ['ADMIN', 'SUPER_ADMIN'].includes(role);
+  const sectionOptions = orderAcademicClasses(structure?.classes || []).flatMap((item: any) => {
+    const nursery = /^nursery$/i.test(String(item.name || '').replace(/^(class|grade)\s*/i, '').trim());
+    if (nursery) return ['ADMIN', 'SUPER_ADMIN'].includes(role) ? [{ id: `class:${item.id}`, classId: item.id, targetType: 'class', displayLabel: 'Nursery' }] : [];
+    return (item.sections || []).map((section: any) => {
+      const legacyGradeTenSection = gradeTenSectionName(String(item.name || ''));
+      const sectionName = legacyGradeTenSection && (!section.name || /^general$/i.test(section.name) || section.name.toUpperCase() === legacyGradeTenSection) ? legacyGradeTenSection : section.name;
+      return { ...section, classId: item.id, targetType: 'section', displayLabel: legacyGradeTenSection ? `Class 10${legacyGradeTenSection}` : `Class ${item.name} · Section ${sectionName}` };
+    });
+  });
   const now = Date.now();
   const visibleHomeworks = isManagement ? homeworks : homeworks.filter(hw => {
     if (activeTab === 'Assigned') return hw.status !== 'Submitted';
@@ -95,7 +117,7 @@ export default function HomeworkScreen({ navigation }: any) {
 
   const openEditor = (hw: any = null) => {
     setEditHomework(hw);
-    setForm(hw ? { title: hw.title, description: hw.description, subjectId: hw.subjectId, sectionId: hw.sectionId, dueDate: hw.dueDate.split('T')[0] } : { title: '', description: '', subjectId: '', sectionId: '', dueDate: new Date().toISOString().split('T')[0] });
+    setForm(hw ? { title: hw.title, description: hw.description, subjectId: hw.subjectId, sectionId: hw.sectionId || '', classId: hw.classId || '', dueDate: hw.dueDate.split('T')[0] } : { title: '', description: '', subjectId: '', sectionId: '', classId: '', dueDate: new Date().toISOString().split('T')[0] });
     setAttachment(null);
     setEditorVisible(true);
   };
@@ -122,7 +144,7 @@ export default function HomeworkScreen({ navigation }: any) {
         return;
       }
     }
-    if (!form.title || !finalSubjectId || !form.sectionId || !form.dueDate) return Alert.alert('Error', 'Fill required fields.');
+    if (!form.title || !finalSubjectId || (!form.sectionId && !form.classId) || !form.dueDate) return Alert.alert('Error', 'Fill required fields.');
     setSaving(true);
     try {
       let attachmentUrl = editHomework?.attachmentUrl;
@@ -138,7 +160,7 @@ export default function HomeworkScreen({ navigation }: any) {
       
       let data: any = editHomework 
         ? { title: form.title, description: form.description, dueDate: new Date(form.dueDate).toISOString(), attachmentUrl, attachmentType }
-        : { ...form, subjectId: finalSubjectId, dueDate: new Date(form.dueDate).toISOString(), attachmentUrl, attachmentType };
+        : { ...form, sectionId: form.sectionId || undefined, classId: form.classId || undefined, subjectId: finalSubjectId, dueDate: new Date(form.dueDate).toISOString(), attachmentUrl, attachmentType };
 
       if (editHomework) await api.patch(`/homework/${editHomework.id}`, data);
       else await api.post('/homework', data);
@@ -147,6 +169,29 @@ export default function HomeworkScreen({ navigation }: any) {
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to save homework.');
     } finally { setSaving(false); }
+  };
+
+  const markHomeworkComplete = async (homework: any) => {
+    if (homework.submission || submittingId) return;
+    setSubmittingId(homework.id);
+    try {
+      await api.post('/homework/submit', { homeworkId: homework.id, content: 'Marked complete by student' });
+      await loadData();
+      Alert.alert('Completed', 'Your completion time has been recorded.');
+    } catch (error: any) {
+      Alert.alert('Could not mark complete', error.response?.data?.message || 'Please try again.');
+    } finally { setSubmittingId(''); }
+  };
+
+  const openSubmissions = async (homework: any) => {
+    setSubmissionsHomework(homework); setSubmissions([]); setSubmissionsLoading(true);
+    try {
+      const { data } = await api.get(`/homework/${homework.id}/submissions`);
+      setSubmissions(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      setSubmissionsHomework(null);
+      Alert.alert('Could not load submissions', error.response?.data?.message || 'Please try again.');
+    } finally { setSubmissionsLoading(false); }
   };
 
   return (
@@ -190,11 +235,15 @@ export default function HomeworkScreen({ navigation }: any) {
                       <Text style={{ color: colors.primary, marginTop: 4, fontWeight: '700' }}>View Attachment</Text>
                     </TouchableOpacity>
                   )}
-                  <Text style={[styles.cardSubtitle, { color: colors.primary, marginTop: 6, fontWeight: '700' }]}>Due: {isManagement ? new Date(hw.dueDate).toLocaleDateString() : hw.dueDate}</Text>
+                  <Text style={[styles.cardSubtitle, { color: colors.primary, marginTop: 6, fontWeight: '700' }]}>Due: {formatDateTime(hw.dueDate)}</Text>
+                  <Text style={[styles.cardSubtitle, { color: colors.subText, marginTop: 5 }]}>Assigned {formatDateTime(hw.createdAt)} · by {isManagement ? teacherName(hw.teacher) : hw.teacherName || 'School teacher'}</Text>
+                  {hw.submission?.submittedAt && <Text style={[styles.cardSubtitle, { color: colors.success, marginTop: 5, fontWeight: '700' }]}>Completed {formatDateTime(hw.submission.submittedAt)}</Text>}
                 </View>
-                {!isManagement && <View style={[styles.badge, { backgroundColor: hw.status === 'Submitted' ? colors.success + '20' : colors.warning + '20' }]}><Text style={{ color: hw.status === 'Submitted' ? colors.success : colors.warning, fontSize: 12, fontWeight: '800' }}>{hw.status}</Text></View>}
+                {!isManagement && <View style={[styles.badge, { backgroundColor: hw.status === 'Submitted' ? colors.success + '20' : colors.warning + '20' }]}><Text style={{ color: hw.status === 'Submitted' ? colors.success : colors.warning, fontSize: 12, fontWeight: '800' }}>{hw.status === 'Submitted' ? 'Completed' : 'Pending'}</Text></View>}
               </View>
-              {isManagement && <Text style={{ color: colors.subText, fontSize: 11, marginTop: 8 }}>Class {hw.section?.class?.name} · Section {hw.section?.name}</Text>}
+              {isManagement && <Text style={{ color: colors.subText, fontSize: 11, marginTop: 8 }}>{hw.section ? `Class ${hw.section.class?.name} · Section ${hw.section.name}` : hw.class?.name || 'Class-wide homework'}</Text>}
+              {isManagement && <View style={styles.managerActions}><Text style={{ color: colors.subText, fontSize: 11 }}>{hw._count?.submissions || 0} completed</Text><TouchableOpacity onPress={() => void openSubmissions(hw)} style={[styles.submissionsButton, { borderColor: colors.primary + '55', backgroundColor: colors.primary + '10' }]}><Text style={{ color: colors.primary, fontSize: 11, fontWeight: '800' }}>View students</Text></TouchableOpacity></View>}
+              {!isManagement && !hw.submission && role === 'STUDENT' && <TouchableOpacity disabled={submittingId === hw.id} onPress={() => void markHomeworkComplete(hw)} style={[styles.completeButton, { backgroundColor: colors.primary }]}>{submittingId === hw.id ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveButtonText}>Mark as complete</Text>}</TouchableOpacity>}
             </TouchableOpacity>
           ))
         )}
@@ -226,13 +275,13 @@ export default function HomeworkScreen({ navigation }: any) {
                     ))}
                   </ScrollView>
                   {canCreateSubject && <TextInput value={customSubjectName} onChangeText={t => { setCustomSubjectName(t); if(t) setForm({...form, subjectId: ''}); }} placeholder="Or add a new subject..." placeholderTextColor={colors.subText} style={[styles.input, { marginBottom: 15 }]} />}
-                  <Text style={[styles.inputLabel, { color: colors.subText }]}>Section</Text>
+                  <Text style={[styles.inputLabel, { color: colors.subText }]}>Class / section</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 15 }}>
-                    {structure.classes?.flatMap((c: any) => c.sections?.map((sec: any) => (
-                      <TouchableOpacity key={sec.id} onPress={() => setForm({...form, sectionId: sec.id})} style={[styles.chip, { borderColor: colors.border, backgroundColor: form.sectionId === sec.id ? colors.primary + '18' : colors.card }]}>
-                        <Text style={{ color: form.sectionId === sec.id ? colors.primary : colors.subText }}>Class {c.name} {sec.name}</Text>
+                    {sectionOptions.map((section: any) => (
+                      <TouchableOpacity key={section.id} onPress={() => setForm({...form, sectionId: section.targetType === 'section' ? section.id : '', classId: section.targetType === 'class' ? section.classId : ''})} style={[styles.chip, { borderColor: colors.border, backgroundColor: (form.sectionId === section.id || form.classId === section.classId) ? colors.primary + '18' : colors.card }]}>
+                        <Text style={{ color: (form.sectionId === section.id || form.classId === section.classId) ? colors.primary : colors.subText }}>{section.displayLabel}</Text>
                       </TouchableOpacity>
-                    )))}
+                    ))}
                   </ScrollView>
                 </>
               )}
@@ -247,6 +296,18 @@ export default function HomeworkScreen({ navigation }: any) {
             </ScrollView>
           </View>
         </View>
+      </Modal>
+
+      <Modal visible={!!submissionsHomework} transparent animationType="slide" onRequestClose={() => setSubmissionsHomework(null)}>
+        <View style={styles.modalOverlay}><View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+          <View style={styles.modalHeader}><View><Text style={[styles.modalTitle, { color: colors.text }]}>Student progress</Text><Text style={{ color: colors.subText, fontSize: 12 }}>{submissionsHomework?.title}</Text></View><TouchableOpacity onPress={() => setSubmissionsHomework(null)}><Ionicons name="close" size={24} color={colors.subText} /></TouchableOpacity></View>
+          {submissionsLoading ? <View style={styles.center}><ActivityIndicator color={colors.primary} /></View> : submissions.length ? <ScrollView>{submissions.map(item => {
+            const student = item.student?.studentProfile;
+            const name = [student?.firstName, student?.lastName].filter(Boolean).join(' ') || item.student?.email || 'Student';
+            const complete = item.status === 'COMPLETED';
+            return <View key={item.student?.id || name} style={[styles.progressRow, { borderColor: colors.border }]}><View style={{ flex: 1 }}><Text style={{ color: colors.text, fontWeight: '800' }}>{name}</Text><Text style={{ color: colors.subText, fontSize: 11, marginTop: 4 }}>{complete ? `Completed ${formatDateTime(item.submittedAt)}` : 'Not completed yet'}</Text></View><View style={[styles.badge, { backgroundColor: (complete ? colors.success : colors.warning) + '20' }]}><Text style={{ color: complete ? colors.success : colors.warning, fontSize: 11, fontWeight: '800' }}>{complete ? 'Done' : 'Pending'}</Text></View></View>;
+          })}</ScrollView> : <View style={styles.center}><Text style={{ color: colors.subText }}>No students have completed this homework yet.</Text></View>}
+        </View></View>
       </Modal>
     </SafeAreaView>
   );
@@ -271,6 +332,10 @@ const makeStyles = (c: any) => StyleSheet.create({
   card: { padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 12 },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start' },
   cardHeaderCopy: { flex: 1, marginRight: 10 },
+  managerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: c.border },
+  submissionsButton: { minHeight: 35, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderRadius: 10 },
+  completeButton: { minHeight: 40, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 10, marginTop: 12 },
+  progressRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, borderBottomWidth: 1 },
   cardTitle: { fontSize: 16, fontWeight: '800' },
   cardSubtitle: { fontSize: 13, marginTop: 4 },
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },

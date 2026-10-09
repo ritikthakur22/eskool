@@ -20,10 +20,15 @@ export class CreateHomeworkDto {
   @IsUUID()
   subjectId: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @IsUUID()
-  sectionId: string;
+  sectionId?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsUUID()
+  classId?: string;
 }
 
 export class SubmitHomeworkDto {

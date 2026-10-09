@@ -4,13 +4,19 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, KeyboardAvo
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../core/theme/ThemeContext';
 
-export default function FeedbackScreen({ navigation }: any) {
+export default function FeedbackScreen({ navigation, route }: any) {
   const { colors } = useTheme();
   const [feedback, setFeedback] = useState('');
+  const isLeaveRequest = route?.params?.mode === 'leave';
+  const isComplaint = route?.params?.mode === 'complaint';
+  const title = isLeaveRequest ? 'Request Leave' : isComplaint ? 'Submit a Complaint' : 'Send Feedback';
+  const prompt = isLeaveRequest ? 'Describe the dates and reason for your leave request.' : isComplaint ? 'Tell the school what happened and how it can help.' : 'How can we improve the app?';
+  const placeholder = isLeaveRequest ? 'Leave dates and reason…' : isComplaint ? 'Write your complaint…' : 'Type your suggestions here…';
+  const emailSubject = isLeaveRequest ? 'eSkool leave request' : isComplaint ? 'eSkool school complaint' : 'eSkool app feedback';
 
   const submitFeedback = async () => {
     if (!feedback.trim()) { Alert.alert('Write a message', 'Add your feedback before opening your email app.'); return; }
-    const url = `mailto:contact@eskool.com?subject=${encodeURIComponent('eSkool app feedback')}&body=${encodeURIComponent(feedback.trim())}`;
+    const url = `mailto:contact@eskool.com?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(feedback.trim())}`;
     try { await Linking.openURL(url); }
     catch { Alert.alert('Email unavailable', 'Set up an email app, then try sending your feedback again.'); }
   };
@@ -21,22 +27,22 @@ export default function FeedbackScreen({ navigation }: any) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Send Feedback</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
         <View style={{ width: 24 }} />
       </View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.content}>
-        <Text style={[styles.label, { color: colors.text }]}>How can we improve the app?</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{prompt}</Text>
         <TextInput 
           style={[styles.input, { backgroundColor: colors.card, borderColor: colors.border, color: colors.text }]}
           multiline 
-          placeholder="Type your suggestions here..."
+          placeholder={placeholder}
           placeholderTextColor={colors.subText}
           value={feedback}
           onChangeText={setFeedback}
           textAlignVertical="top"
         />
         <TouchableOpacity style={styles.submitBtn} onPress={submitFeedback}>
-          <Text style={styles.submitText}>Submit</Text>
+          <Text style={styles.submitText}>{isLeaveRequest ? 'Continue to email' : isComplaint ? 'Send complaint' : 'Submit'}</Text>
         </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>

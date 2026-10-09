@@ -42,6 +42,14 @@ export class HomeworkController {
     return this.homeworkService.getHomeworkForStudent(req.user.id, req.user.schoolId, take);
   }
 
+  @Get('child/:studentId')
+  @Roles(Role.PARENT)
+  async getChildHomework(@Param('studentId', new ParseUUIDPipe()) studentId: string, @Query('limit') limit: string | undefined, @Request() req: any) {
+    const parsedLimit = Number.parseInt(limit || '', 10);
+    const take = Number.isInteger(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 50;
+    return this.homeworkService.getHomeworkForChild(studentId, req.user, take);
+  }
+
   @Get('class/:sectionId')
   async getHomeworkForClass(@Param('sectionId', new ParseUUIDPipe()) sectionId: string, @Query('limit') limit: string | undefined, @Request() req: any) {
     const parsedLimit = Number.parseInt(limit || '', 10);

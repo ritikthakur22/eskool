@@ -1,11 +1,12 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import BottomNavigation from '../../../core/components/BottomNavigation';
 import { API_BASE_URL, api } from '../../../core/networking/api';
@@ -13,6 +14,8 @@ import { getInMemoryAccessToken, getCachedUserData } from '../../../core/network
 import { currentBsMonth, getBsMonthLabels, getGregorianMonthsForBsMonth } from '../../../core/utils/bsCalendar';
 import { isNoticeUnread, loadNoticeReadState, type NoticeReadState } from '../../../core/utils/noticeReadState';
 import { getSelectedChildId, setSelectedChildId as persistSelectedChildId } from '../../../core/utils/childSelection';
+
+Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }) });
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 type Feature = { name: string; icon: any; route?: string; params?: any; accent: string; note?: string; disabled?: boolean; expand?: boolean };
@@ -26,28 +29,28 @@ const quickFeatures: Feature[] = [
   { name: 'Class routine', icon: 'calendar-outline', route: 'Routine', accent: '#16B86A' },
   { name: 'Homework', icon: 'document-text-outline', route: 'Homework', accent: '#2389F5' },
   { name: 'Library', icon: 'library-outline', route: 'Library', accent: '#8B5CF6' },
-  { name: 'Complain', icon: 'chatbubble-ellipses-outline', route: 'Feedback', accent: '#F28B20' },
-  { name: 'Online exams', icon: 'checkbox-outline', route: 'Exams', params: { tab: 'Online Exam' }, accent: '#10A981' },
+  { name: 'Complain', icon: 'chatbubble-ellipses-outline', route: 'Feedback', params: { mode: 'complaint' }, accent: '#F28B20' },
+  { name: 'Leave request', icon: 'calendar-outline', route: 'Feedback', params: { mode: 'leave' }, accent: '#EF5261' },
+  { name: 'Exams', icon: 'school-outline', route: 'Exams', params: { tab: 'Weekly MCQ' }, accent: '#10A981' },
   { name: 'Results', icon: 'podium-outline', route: 'Result', accent: '#F39A19' },
-  { name: 'Upcoming exams', icon: 'calendar-clear-outline', route: 'Exams', params: { tab: 'Upcoming' }, accent: '#EF5261' },
   { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
 ];
 
 const operationalQuickFeatures: Feature[] = [
   { name: 'Class routine', icon: 'calendar-outline', route: 'Routine', accent: '#16B86A' },
-  { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#8B5CF6' },
+  { name: 'Leave request', icon: 'calendar-outline', route: 'Feedback', params: { mode: 'leave' }, accent: '#EF5261' },
   { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#64748B' },
   { name: 'Attendance register', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#10A981' },
   { name: 'Homework manager', icon: 'document-text-outline', route: 'Homework', accent: '#2389F5' },
-  { name: 'Upcoming exams', icon: 'calendar-clear-outline', route: 'Exams', params: { tab: 'Upcoming' }, accent: '#EF5261' },
-  { name: 'Results', icon: 'podium-outline', route: 'Result', accent: '#F39A19' },
+  { name: 'Exams & results', icon: 'school-outline', route: 'Exams', params: { tab: 'Weekly MCQ' }, accent: '#F39A19' },
   { name: 'View more', icon: 'grid-outline', accent: '#64748B', expand: true },
 ];
 
 const parentQuickFeatures: Feature[] = [
   { name: 'Fees & invoices', icon: 'receipt-outline', route: 'Fees', accent: '#D18A0A' },
   { name: 'Academic calendar', icon: 'calendar-number-outline', route: 'Calendar', accent: '#2389F5' },
-  { name: 'Notices', icon: 'notifications-outline', route: 'Notice', accent: '#8B5CF6' },
+  { name: 'Complain', icon: 'chatbubble-ellipses-outline', route: 'Feedback', params: { mode: 'complaint' }, accent: '#F28B20' },
+  { name: 'Leave request', icon: 'calendar-outline', route: 'Feedback', params: { mode: 'leave' }, accent: '#EF5261' },
   { name: 'Class routine', icon: 'calendar-outline', route: 'Routine', accent: '#16B86A' },
   { name: 'Homework', icon: 'document-text-outline', route: 'Homework', accent: '#2389F5', note: 'Select a child first' },
   { name: 'Attendance', icon: 'checkmark-circle-outline', route: 'Attendance', accent: '#10A981', note: 'Select a child first' },
@@ -72,6 +75,7 @@ const moreFeatureGroups: { title: string; features: Feature[] }[] = [
 
 const operationalMoreFeatureGroups: { title: string; features: Feature[] }[] = [
   { title: 'School operations', features: [
+    { name: 'Complaints & requests', icon: 'chatbubble-ellipses-outline', route: 'Feedback', params: { mode: 'complaint' }, accent: '#F28B20' },
     { name: 'People & accounts', icon: 'people-outline', route: 'StaffManagement', accent: '#14A9A1' },
     { name: 'Enrollments & Links', icon: 'link-outline', route: 'Enrollment', accent: '#8B5CF6' },
     { name: 'Academic structure', icon: 'school-outline', route: 'AcademicManagement', accent: '#2389F5' },
@@ -123,11 +127,30 @@ export default function DashboardScreen({ navigation }: Props) {
   const [avatarVersion, setAvatarVersion] = useState(0);
 
   useEffect(() => {
-    async function requestPermissions() {
-      await Notifications.requestPermissionsAsync();
-    }
-    requestPermissions();
-  }, []);
+    if (!profile?.id) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('homework', { name: 'Homework', importance: Notifications.AndroidImportance.HIGH, sound: 'default' });
+        const permissions = await Notifications.requestPermissionsAsync();
+        if (!permissions.granted) return;
+        const projectId = Constants.easConfig?.projectId || Constants.expoConfig?.extra?.eas?.projectId;
+        const result = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+        if (!cancelled) await api.post('/notifications/push-token', { token: result.data, platform: Platform.OS });
+      } catch (error) {
+        console.warn('push_token_registration_unavailable', error);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [profile?.id]);
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data as any;
+      if (data?.type === 'HOMEWORK_ASSIGNED') navigation.navigate('Homework');
+    });
+    return () => subscription.remove();
+  }, [navigation]);
 
   const [notices, setNotices] = useState<Notice[]>([]);
   const [noticeReadState, setNoticeReadState] = useState<NoticeReadState>({ initialized: false, readThrough: 0, readIds: [] });

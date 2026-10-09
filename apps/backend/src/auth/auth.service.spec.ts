@@ -7,7 +7,7 @@ import { AuditService } from '../audit/audit.service.js';
 
 describe('AuthService', () => {
   let service: AuthService;
-  const prismaMock = { user: { findUnique: vi.fn() }, $executeRaw: vi.fn() };
+  const prismaMock = { user: { findFirst: vi.fn(), findUnique: vi.fn() }, $executeRaw: vi.fn() };
   const jwtMock = { sign: vi.fn(() => 'access-token') };
 
   beforeEach(async () => {
@@ -23,17 +23,18 @@ describe('AuthService', () => {
   });
 
   it('returns no user for invalid credentials without exposing account details', async () => {
-    prismaMock.user.findUnique.mockResolvedValueOnce(null);
+    prismaMock.user.findFirst.mockResolvedValueOnce(null);
     await expect(service.validateUser('invalid@example.com', 'wrong-password')).resolves.toBeNull();
   });
 
   it('converts database lookup failures into a controlled service-unavailable error', async () => {
-    prismaMock.user.findUnique.mockRejectedValueOnce(new Error('schema drift'));
+    prismaMock.user.findFirst.mockRejectedValueOnce(new Error('schema drift'));
     await expect(service.validateUser('user@example.com', 'password')).rejects.toMatchObject({ response: { message: 'Authentication service is temporarily unavailable. Please try again later.' } });
   });
 
   it('does not expose the internal auth session id in login responses', async () => {
     prismaMock.$executeRaw.mockResolvedValueOnce(1);
+    prismaMock.user.findUnique.mockResolvedValueOnce(null);
     const response = await service.login({ id: 'user-id', email: 'user@example.com', role: 'STUDENT', schoolId: 'school-id', tokenVersion: 0 });
     expect(response).toMatchObject({ access_token: 'access-token', user: { sub: 'user-id' } });
     expect(response).not.toHaveProperty('sessionId');

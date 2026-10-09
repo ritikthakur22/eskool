@@ -74,10 +74,31 @@ export class UsersController {
     return this.usersService.getManagedUser(id, { schoolId: req.user.schoolId, actorRole: req.user.role as Role });
   }
 
+  @Get('admin/users/:id/photo')
+  @Header('Cache-Control', 'private, no-store')
+  async getManagedUserPhoto(@Param('id') id: string, @Request() req: any) {
+    const photo = await this.usersService.getManagedProfilePhoto(id, { schoolId: req.user.schoolId, actorRole: req.user.role as Role });
+    return new StreamableFile(photo.buffer, { type: photo.mimeType, length: photo.buffer.length });
+  }
+
   @Patch('admin/users/:id')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   updateManagedUser(@Param('id') id: string, @Body() data: UpdateManagedUserDto, @Request() req: any) {
     return this.usersService.updateManagedUser(id, data, { actorId: req.user.id, schoolId: req.user.schoolId, actorRole: req.user.role as Role });
+  }
+
+  @Post('admin/users/:id/photo')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    fileFilter: (_req, file, callback) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)
+      ? callback(null, true)
+      : callback(new BadRequestException('Choose a JPG, PNG, or WEBP profile photo.'), false),
+  }))
+  updateManagedProfilePhoto(@Param('id') id: string, @UploadedFile() file: { buffer: Buffer; mimetype: string } | undefined, @Request() req: any) {
+    if (!file) throw new BadRequestException('Choose a profile photo to upload.');
+    assertFileSignature(file);
+    return this.usersService.updateManagedProfilePhoto(id, file, { actorId: req.user.id, schoolId: req.user.schoolId, actorRole: req.user.role as Role });
   }
 
   @Post('admin/users/:id/disable')

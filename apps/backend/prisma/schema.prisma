@@ -31,6 +31,8 @@ model School {
   homeworks        Homework[]
   submissions      HomeworkSubmission[]
   notices          Notice[]
+  assessmentSchemes AssessmentScheme[]
+  examRoutineDocuments ExamRoutineDocument[]
   routineDocuments RoutineDocument[]
   routineGrids     RoutineGrid[]
   sections         Section[]
@@ -63,6 +65,8 @@ model Class {
   classRoutines ClassRoutine[]
   routineGrid RoutineGrid?
   notices  Notice[]  @relation("NoticeTargetClasses")
+  homeworks Homework[]
+  assessmentSchemes AssessmentScheme[]
 
   @@unique([schoolId, name])
 }
@@ -76,6 +80,7 @@ model Section {
   routineGrid        RoutineGrid?
   enrollments        Enrollment[]
   exams              Exam[]
+  examRoutineDocuments ExamRoutineDocument[]
   homeworks          Homework[]
   class              Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
   school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -159,6 +164,7 @@ model User {
   markedAttendances        Attendance[]              @relation("TeacherAttendance")
   auditLogs                AuditLog[]
   sessions                 AuthSession[]
+  pushTokens               PushDeviceToken[]
   classRoutines            ClassRoutine[]
   conversations            ConversationParticipant[]
   enrollments              Enrollment[]
@@ -173,6 +179,7 @@ model User {
   parentStudents           ParentStudent[]           @relation("ParentToStudent")
   studentParents           ParentStudent[]           @relation("StudentToParent")
   uploadedRoutineDocuments RoutineDocument[]
+  uploadedExamRoutineDocuments ExamRoutineDocument[] @relation("ExamRoutineUploader")
   studentProfile           StudentProfile?
   teacherAssignments       TeacherAssignment[]
   teacherProfile           TeacherProfile?
@@ -196,6 +203,18 @@ model AuthSession {
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt, expiresAt])
+}
+
+model PushDeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  platform  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model FeeInvoice {
@@ -274,17 +293,20 @@ model Homework {
   subjectId      String
   teacherId      String
   sectionId      String?
+  classId        String?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   attachmentType String?
   attachmentUrl  String?
   school         School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   section        Section?             @relation(fields: [sectionId], references: [id])
+  class          Class?               @relation(fields: [classId], references: [id])
   subject        Subject              @relation(fields: [subjectId], references: [id])
   teacher        User                 @relation("TeacherHomework", fields: [teacherId], references: [id])
   submissions    HomeworkSubmission[]
 
   @@index([schoolId, teacherId, sectionId])
+  @@index([schoolId, classId])
 }
 
 model HomeworkSubmission {
@@ -393,6 +415,11 @@ model Exam {
   subjectId       String
   sectionId       String
   type            String         @default("STANDARD")
+  assessmentCategory String      @default("OTHER")
+  assessmentSnapshot Json?
+  startTime       String?
+  endTime         String?
+  venue           String?
   durationMinutes Int?
   school          School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   section         Section        @relation(fields: [sectionId], references: [id])
@@ -402,6 +429,41 @@ model Exam {
   results         ExamResult[]
 
   @@index([schoolId, sectionId, subjectId])
+}
+
+model ExamRoutineDocument {
+  id         String   @id @default(uuid())
+  schoolId   String
+  sectionId  String
+  title      String
+  url        String
+  mimeType   String
+  publicId   String?
+  uploadedById String
+  createdAt  DateTime @default(now())
+  school     School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  section    Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  uploadedBy User    @relation("ExamRoutineUploader", fields: [uploadedById], references: [id])
+
+  @@index([schoolId, sectionId, createdAt])
+}
+
+model AssessmentScheme {
+  id              String   @id @default(uuid())
+  schoolId        String
+  classId         String
+  categoryWeights Json
+  gradeBands      Json
+  templateUrl     String?
+  templateName    String?
+  updatedById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  school          School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class           Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, classId])
+  @@index([schoolId])
 }
 
 model ExamResult {

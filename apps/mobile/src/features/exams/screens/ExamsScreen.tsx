@@ -3,30 +3,37 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Linking from 'expo-linking';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { api } from '../../../core/networking/api';
 import { getSelectedChildId } from '../../../core/utils/childSelection';
+import { orderAcademicClasses } from '../../../core/utils/classOrdering';
 
 export default function ExamsScreen({ route, navigation }: any) {
   const { colors } = useTheme(); const styles = makeStyles(colors);
-  const initialTab = route?.params?.tab || 'Online Exam';
+  const requestedTab = route?.params?.tab || 'Weekly MCQ';
+  const initialTab = requestedTab === 'Online Exam' ? 'Weekly MCQ' : requestedTab === 'Upcoming' ? 'Exam routine' : requestedTab === 'Result' ? 'Results' : requestedTab;
   const [activeTab, setActiveTab] = useState(initialTab);
   const [exams, setExams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [role, setRole] = useState('');
   const [childName, setChildName] = useState('');
+  const [routineDocuments, setRoutineDocuments] = useState<any[]>([]);
   
   // Management state
   const [structure, setStructure] = useState<any>(null);
   const [editorVisible, setEditorVisible] = useState(false);
   const [editExam, setEditExam] = useState<any>(null);
-  const [form, setForm] = useState({ title: '', subjectId: '', sectionId: '', date: '', type: 'MCQ' });
+  const [form, setForm] = useState({ title: '', subjectId: '', sectionId: '', date: '', type: 'MCQ', assessmentCategory: 'WEEKLY', startTime: '', endTime: '', venue: '', durationMinutes: '20' });
   const [customSubjectName, setCustomSubjectName] = useState('');
+  const [routineSectionId, setRoutineSectionId] = useState('');
+  const [routineFile, setRoutineFile] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
   const tabs = useMemo(() => {
-    return ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(role) ? ['Manage', 'Results'] : ['Online Exam', 'Upcoming', 'Result'];
+    return ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(role) ? ['Manage', 'Results'] : ['Weekly MCQ', 'Exam routine', 'Results'];
   }, [role]);
 
   useEffect(() => {
@@ -48,6 +55,8 @@ export default function ExamsScreen({ route, navigation }: any) {
         ]);
         setExams(Array.isArray(examRes.data) ? examRes.data : []);
         setStructure(structRes.data);
+        const sectionIds = (structRes.data?.classes || []).flatMap((item: any) => item.sections || []).map((item: any) => item.id);
+        setRoutineSectionId((current: string) => current || sectionIds[0] || '');
       } else {
         let resolvedChildId = '';
         if (nextRole === 'PARENT') {
@@ -61,7 +70,12 @@ export default function ExamsScreen({ route, navigation }: any) {
         }
         const endpoint = nextRole === 'PARENT' ? `/exams/child/${resolvedChildId}` : '/exams/me';
         const res = await api.get(endpoint);
-        setExams(Array.isArray(res.data) ? res.data : []);
+        const examRows = Array.isArray(res.data) ? res.data : [];
+        setExams(examRows);
+        const docs = nextRole === 'PARENT'
+          ? await api.get(`/exams/routine/child/${resolvedChildId}`).catch(() => ({ data: [] }))
+          : await api.get('/exams/routine/me').catch(() => ({ data: [] }));
+        setRoutineDocuments(Array.isArray(docs.data) ? docs.data : []);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Could not load exams.');
@@ -74,13 +88,17 @@ export default function ExamsScreen({ route, navigation }: any) {
   useEffect(() => { loadData(); }, []);
 
   const now = Date.now();
-  const visibleExams = exams.filter(exam => activeTab !== 'Upcoming' || new Date(exam.date).getTime() >= now);
+  const visibleExams = exams.filter(exam => {
+    if (activeTab === 'Weekly MCQ') return exam.type === 'MCQ' && exam.assessmentCategory === 'WEEKLY';
+    if (activeTab === 'Exam routine') return new Date(exam.date).getTime() >= now && !(exam.type === 'MCQ' && exam.assessmentCategory === 'WEEKLY');
+    return true;
+  });
   const isManagement = ['TEACHER', 'ADMIN', 'SUPER_ADMIN'].includes(role);
   const canCreateSubject = ['ADMIN', 'SUPER_ADMIN'].includes(role);
 
   const openEditor = (e: any = null) => {
     setEditExam(e);
-    setForm(e ? { title: e.title, subjectId: e.subjectId, sectionId: e.sectionId, date: e.date.split('T')[0], type: e.type || 'MCQ' } : { title: '', subjectId: '', sectionId: '', date: new Date().toISOString().split('T')[0], type: 'MCQ' });
+    setForm(e ? { title: e.title, subjectId: e.subjectId, sectionId: e.sectionId, date: e.date.split('T')[0], type: e.type || 'MCQ', assessmentCategory: e.assessmentCategory || 'OTHER', startTime: e.startTime || '', endTime: e.endTime || '', venue: e.venue || '', durationMinutes: String(e.durationMinutes || 20) } : { title: '', subjectId: '', sectionId: '', date: new Date().toISOString().split('T')[0], type: 'MCQ', assessmentCategory: 'WEEKLY', startTime: '', endTime: '', venue: '', durationMinutes: '20' });
     setEditorVisible(true);
   };
 
@@ -96,15 +114,34 @@ export default function ExamsScreen({ route, navigation }: any) {
       }
     }
     if (!form.title || !finalSubjectId || !form.sectionId || !form.date) return Alert.alert('Error', 'Fill all fields.');
+    if (form.type === 'MCQ' && (!Number.isInteger(Number(form.durationMinutes)) || Number(form.durationMinutes) < 1 || Number(form.durationMinutes) > 240)) return Alert.alert('Invalid time limit', 'Set the MCQ time limit between 1 and 240 minutes.');
     setSaving(true);
     try {
-      if (editExam) await api.patch(`/exams/${editExam.id}`, { title: form.title, date: new Date(form.date).toISOString(), type: form.type });
-      else await api.post('/exams', { ...form, date: new Date(form.date).toISOString() });
+      if (editExam) await api.patch(`/exams/${editExam.id}`, { title: form.title, date: new Date(form.date).toISOString(), type: form.type, assessmentCategory: form.assessmentCategory, startTime: form.startTime, endTime: form.endTime, venue: form.venue, durationMinutes: form.type === 'MCQ' ? Number(form.durationMinutes) : undefined });
+      else await api.post('/exams', { ...form, durationMinutes: form.type === 'MCQ' ? Number(form.durationMinutes) : undefined, date: new Date(form.date).toISOString() });
       setEditorVisible(false);
       loadData();
     } catch (err: any) {
       Alert.alert('Error', err.response?.data?.message || 'Failed to save exam.');
     } finally { setSaving(false); }
+  };
+
+  const uploadRoutine = async () => {
+    if (!routineSectionId) return Alert.alert('Choose a class section', 'Create or select a section before uploading an exam routine.');
+    const picked = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'], copyToCacheDirectory: true });
+    if (picked.canceled || !picked.assets?.[0]) return;
+    setRoutineFile(picked.assets[0]);
+    try {
+      const data = new FormData();
+      data.append('file', { uri: picked.assets[0].uri, name: picked.assets[0].name, type: picked.assets[0].mimeType || 'application/octet-stream' } as any);
+      data.append('title', 'Exam routine');
+      await api.post(`/exams/routine/section/${routineSectionId}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setRoutineFile(null);
+      await loadData();
+      Alert.alert('Uploaded', 'Exam routine is now available to this class.');
+    } catch (error: any) {
+      Alert.alert('Upload failed', error.response?.data?.message || 'Could not upload this routine.');
+    }
   };
 
   return (
@@ -119,27 +156,45 @@ export default function ExamsScreen({ route, navigation }: any) {
 
       <View style={styles.tabsContainer}>
         {tabs.map((tab) => (
-          <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.activeTab, { borderColor: activeTab === tab ? colors.primary : colors.border }]} onPress={() => setActiveTab(tab)}>
+          <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.activeTab, { borderColor: activeTab === tab ? colors.primary : colors.border }]} onPress={() => { if (tab === 'Results') navigation.navigate('Result'); else setActiveTab(tab); }}>
             <Text style={[styles.tabText, activeTab === tab && styles.activeTabText, { color: activeTab === tab ? colors.primary : colors.subText }]}>{tab}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {!isManagement && activeTab === 'Results' ? <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}><Text style={[styles.cardTitle, { color: colors.text }]}>Results & progress reports</Text><Text style={[styles.cardSubtitle, { color: colors.subText, marginTop: 7 }]}>Review past weekly MCQs, monthly and terminal marksheets, and your current progress.</Text><TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.primary, marginTop: 12 }]} onPress={() => navigation.navigate('Result')}><Text style={[styles.actionButtonText, { color: '#fff' }]}>Open results</Text></TouchableOpacity></View> : null}
         {isManagement && activeTab === 'Manage' && (
-          <TouchableOpacity style={styles.addButton} onPress={() => openEditor()}>
-            <Text style={styles.addButtonText}>+ Create New Exam</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity style={styles.addButton} onPress={() => openEditor()}><Text style={styles.addButtonText}>+ Add exam to routine</Text></TouchableOpacity>
+            <Text style={[styles.inputLabel, { color: colors.subText }]}>Upload a routine photo or PDF for this section</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+              {orderAcademicClasses(structure?.classes || []).flatMap((c: any) => (c.sections || []).map((sec: any) => ({ ...sec, className: c.name }))).map((sec: any) => (
+                <TouchableOpacity key={sec.id} onPress={() => setRoutineSectionId(sec.id)} style={[styles.chip, { borderColor: routineSectionId === sec.id ? colors.primary : colors.border, backgroundColor: routineSectionId === sec.id ? colors.primary + '18' : colors.card }]}><Text style={{ color: routineSectionId === sec.id ? colors.primary : colors.subText }}>Class {sec.className} · {sec.name}</Text></TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.primary + '18', marginBottom: 14 }]} onPress={uploadRoutine}><Text style={[styles.actionButtonText, { color: colors.primary }]}>{routineFile ? `Uploading ${routineFile.name}…` : 'Upload exam routine (PDF / photo)'}</Text></TouchableOpacity>
+          </>
         )}
         
-        {loading ? (
+        {!isManagement && activeTab === 'Results' ? null : loading ? (
           <View style={styles.center}><ActivityIndicator color={colors.primary} /><Text style={{ color: colors.subText, marginTop: 10 }}>Loading exams...</Text></View>
         ) : error ? (
           <View style={styles.center}><Text style={{ color: colors.danger }}>{error}</Text></View>
-        ) : visibleExams.length === 0 ? (
+        ) : visibleExams.length === 0 && routineDocuments.length === 0 ? (
           <View style={styles.center}><Text style={{ color: colors.subText }}>No exams found.</Text></View>
         ) : (
-          visibleExams.map((exam) => (
+          <>
+          {!isManagement && visibleExams.length > 0 && <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, padding: 0, overflow: 'hidden' }]}>
+            <View style={[styles.scheduleHeader, { backgroundColor: colors.primary + '12', borderBottomColor: colors.border }]}><Text style={[styles.scheduleHeading, { color: colors.text, flex: 1.1 }]}>Subject</Text><Text style={[styles.scheduleHeading, { color: colors.text, flex: 1 }]}>Date / time</Text><Text style={[styles.scheduleHeading, { color: colors.text, flex: 1 }]}>Exam</Text></View>
+            {visibleExams.map((exam, index) => <View key={exam.id} style={[styles.scheduleRow, { borderBottomColor: colors.border }]}>
+              <View style={{ flex: 1.1 }}><Text style={[styles.scheduleSubject, { color: colors.text }]}>{exam.subject?.name || exam.title}</Text><Text style={[styles.scheduleMeta, { color: colors.subText }]}>{exam.assessmentCategory?.replaceAll('_', ' ') || 'ASSESSMENT'}</Text></View>
+              <View style={{ flex: 1 }}><Text style={[styles.scheduleMeta, { color: colors.text }]}>{new Date(exam.date).toLocaleDateString()}</Text><Text style={[styles.scheduleMeta, { color: colors.subText }]}>{exam.startTime || 'Time TBA'}{exam.endTime ? ` – ${exam.endTime}` : ''}</Text></View>
+              <View style={{ flex: 1 }}><Text style={[styles.scheduleMeta, { color: colors.text }]}>{exam.venue || 'Venue TBA'}</Text>{exam.type === 'MCQ' && <TouchableOpacity onPress={() => navigation.navigate('ExamTaking', { exam })} style={{ marginTop: 5 }}><Text style={{ color: colors.primary, fontWeight: '800', fontSize: 11 }}>Take MCQ</Text></TouchableOpacity>}</View>
+            </View>)}
+          </View>}
+          {!isManagement && activeTab === 'Exam routine' && routineDocuments.map(document => <TouchableOpacity key={document.id} onPress={() => Linking.openURL(document.url)} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}><View style={styles.cardHeader}><Ionicons name={document.mimeType === 'application/pdf' ? 'document-text-outline' : 'image-outline'} size={22} color={colors.primary} /><Text style={[styles.cardTitle, { color: colors.text, marginLeft: 10, flex: 1 }]}>{document.title || 'Uploaded exam routine'}</Text><Ionicons name="open-outline" size={18} color={colors.primary} /></View><Text style={[styles.cardSubtitle, { color: colors.subText, marginTop: 6 }]}>Open uploaded {document.mimeType === 'application/pdf' ? 'PDF' : 'image'} routine</Text></TouchableOpacity>)}
+          {isManagement && visibleExams.map((exam) => (
             <TouchableOpacity key={exam.id} style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => isManagement && openEditor(exam)}>
               <View style={styles.cardHeader}>
                 <View style={[styles.iconContainer, { backgroundColor: colors.primary + '18' }]}><Ionicons name="document-text" size={20} color={colors.primary} /></View>
@@ -170,7 +225,8 @@ export default function ExamsScreen({ route, navigation }: any) {
                 </View>
               )}
             </TouchableOpacity>
-          ))
+          ))}
+          </>
         )}
       </ScrollView>
 
@@ -186,6 +242,20 @@ export default function ExamsScreen({ route, navigation }: any) {
               <TextInput value={form.title} onChangeText={t => setForm({...form, title: t})} style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Midterm Exam" placeholderTextColor={colors.subText} />
               <Text style={[styles.inputLabel, { color: colors.subText }]}>Date (YYYY-MM-DD)</Text>
               <TextInput value={form.date} onChangeText={t => setForm({...form, date: t})} style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="2026-12-01" placeholderTextColor={colors.subText} />
+              <Text style={[styles.inputLabel, { color: colors.subText }]}>Assessment period</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                {['WEEKLY', 'MONTHLY', 'TERMINAL_1', 'TERMINAL_2', 'TERMINAL_3', 'FINAL', 'OTHER'].map(category => <TouchableOpacity key={category} onPress={() => setForm({ ...form, assessmentCategory: category })} style={[styles.chip, { borderColor: form.assessmentCategory === category ? colors.primary : colors.border, backgroundColor: form.assessmentCategory === category ? colors.primary + '18' : colors.card }]}><Text style={{ color: form.assessmentCategory === category ? colors.primary : colors.subText }}>{category.replaceAll('_', ' ')}</Text></TouchableOpacity>)}
+              </ScrollView>
+              <Text style={[styles.inputLabel, { color: colors.subText }]}>Exam mode</Text>
+              <View style={{ flexDirection: 'row', marginBottom: 14 }}>
+                {(['STANDARD', 'MCQ'] as const).map(type => <TouchableOpacity key={type} onPress={() => setForm({ ...form, type })} style={[styles.chip, { borderColor: form.type === type ? colors.primary : colors.border, backgroundColor: form.type === type ? colors.primary + '18' : colors.card }]}><Text style={{ color: form.type === type ? colors.primary : colors.subText }}>{type === 'MCQ' ? 'Online MCQ' : 'Marks only'}</Text></TouchableOpacity>)}
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}><Text style={[styles.inputLabel, { color: colors.subText }]}>Start time</Text><TextInput value={form.startTime} onChangeText={t => setForm({ ...form, startTime: t })} style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="9:00 AM" placeholderTextColor={colors.subText} /></View>
+                <View style={{ flex: 1 }}><Text style={[styles.inputLabel, { color: colors.subText }]}>End time</Text><TextInput value={form.endTime} onChangeText={t => setForm({ ...form, endTime: t })} style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="12:00 PM" placeholderTextColor={colors.subText} /></View>
+              </View>
+              <TextInput value={form.venue} onChangeText={t => setForm({ ...form, venue: t })} style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="Room / venue (optional)" placeholderTextColor={colors.subText} />
+              {form.type === 'MCQ' && <><Text style={[styles.inputLabel, { color: colors.subText }]}>Time limit (minutes)</Text><TextInput value={form.durationMinutes} onChangeText={t => setForm({ ...form, durationMinutes: t.replace(/[^0-9]/g, '') })} keyboardType="number-pad" style={[styles.input, { color: colors.text, borderColor: colors.border, backgroundColor: colors.background }]} placeholder="20" placeholderTextColor={colors.subText} /></>}
               
               {!editExam && structure && (
                 <>
@@ -237,6 +307,7 @@ const makeStyles = (c: any) => StyleSheet.create({
   addButton: { paddingVertical: 14, borderRadius: 12, backgroundColor: c.primary, alignItems: 'center', marginBottom: 16 },
   addButtonText: { color: '#fff', fontSize: 14, fontWeight: '800' },
   card: { padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 12 },
+  scheduleHeader: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 11, borderBottomWidth: 1 }, scheduleHeading: { fontSize: 10, fontWeight: '900', textTransform: 'uppercase' }, scheduleRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, borderBottomWidth: 1, gap: 8 }, scheduleSubject: { fontSize: 12, fontWeight: '800' }, scheduleMeta: { fontSize: 10, lineHeight: 15 },
   cardHeader: { flexDirection: 'row', alignItems: 'center' },
   iconContainer: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   cardHeaderCopy: { flex: 1 },
