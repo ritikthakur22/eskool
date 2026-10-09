@@ -6,8 +6,8 @@ export class UpdateProfileDto {
   @IsOptional() @IsString() @MinLength(1) @MaxLength(100) lastName?: string;
   @IsOptional() @IsEmail() @MaxLength(254) email?: string;
   @IsOptional() @IsString() @MaxLength(100) studentId?: string;
-  @IsOptional() @IsString() @MaxLength(30) gender?: string;
   @IsOptional() @IsString() @MaxLength(30) phone?: string;
+  @IsOptional() @IsString() @MaxLength(30) gender?: string;
   @IsOptional() @IsString() @MaxLength(500) address?: string;
   @IsOptional() @IsString() @MaxLength(150) parentName?: string;
   @IsOptional() @IsString() @MaxLength(30) parentPhone?: string;
@@ -47,9 +47,6 @@ export class CreateUserDto {
   @IsOptional() @IsString() @MaxLength(30) fatherPhone?: string;
   @IsOptional() @IsString() @MaxLength(150) motherName?: string;
   @IsOptional() @IsString() @MaxLength(30) motherPhone?: string;
-  @IsOptional() @IsString() @MaxLength(30) parentPhone?: string;
-  @IsOptional() @IsString() @MaxLength(500) parentAddress?: string;
-  @IsOptional() @IsString() @MaxLength(150) relationship?: string;
 }
 
 export class UpdateManagedUserDto {
@@ -60,24 +57,20 @@ export class UpdateManagedUserDto {
   @IsOptional() @IsString() @MaxLength(50) section?: string;
   @IsOptional() @IsString() @MaxLength(50) rollNo?: string;
   @IsOptional() @IsString() @MaxLength(100) department?: string;
-  @IsOptional() @IsArray() @ArrayMaxSize(20) @IsString({ each: true }) subjects?: string[];
-  @IsOptional() @IsString() @MaxLength(30) phone?: string;
-  @IsOptional() @IsString() @MaxLength(500) address?: string;
-  @IsOptional() @IsString() @MaxLength(150) relationship?: string;
 
   // Student specific fields
   @IsOptional() @IsString() @MaxLength(50) emisId?: string;
   @IsOptional() @IsString() @MaxLength(50) userId?: string; // Admission No
   @IsOptional() @IsDateString() dob?: string | null;
   @IsOptional() @IsString() @MaxLength(20) dobBs?: string;
+  @IsOptional() @IsString() @MaxLength(30) phone?: string;
   @IsOptional() @IsString() @MaxLength(30) gender?: string;
   @IsOptional() @IsString() @MaxLength(10) bloodGroup?: string;
+  @IsOptional() @IsString() @MaxLength(500) address?: string;
   @IsOptional() @IsString() @MaxLength(500) temporaryAddress?: string;
   @IsOptional() @IsDateString() admissionDate?: string | null;
   @IsOptional() @IsString() @MaxLength(150) fatherName?: string;
   @IsOptional() @IsString() @MaxLength(30) fatherPhone?: string;
   @IsOptional() @IsString() @MaxLength(150) motherName?: string;
   @IsOptional() @IsString() @MaxLength(30) motherPhone?: string;
-  @IsOptional() @IsString() @MaxLength(30) parentPhone?: string;
-  @IsOptional() @IsString() @MaxLength(500) parentAddress?: string;
 }
