@@ -16,8 +16,8 @@ model School {
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
   timezone         String               @default("UTC")
-  settings         Json?
   status           SchoolStatus         @default(ACTIVE)
+  settings         Json?
   academicYears    AcademicYear[]
   attendances      Attendance[]
   auditLogs        AuditLog[]
@@ -134,6 +134,8 @@ model ParentStudent {
 model User {
   id                       String                    @id @default(uuid())
   email                    String                    @unique
+  userId                   String?                   @unique
+  emisId                   String?                   @unique
   password                 String
   role                     Role
   schoolId                 String
@@ -148,8 +150,6 @@ model User {
   status                   String                    @default("ACTIVE")
   disabledAt               DateTime?
   tokenVersion             Int                       @default(0)
-  emisId                   String?                   @unique
-  userId                   String?                   @unique
   adminProfile             AdminProfile?
   studentAttendances       Attendance[]              @relation("StudentAttendance")
   markedAttendances        Attendance[]              @relation("TeacherAttendance")
@@ -178,11 +178,6 @@ model User {
   @@index([userId])
   @@index([emisId])
   @@index([schoolId])
-}
-
-model SequenceCounter {
-  id    String @id
-  value Int    @default(0)
 }
 
 model AuthSession {
@@ -332,20 +327,20 @@ model StudentProfile {
   grade                  String?
   section                String?
   dob                    DateTime?
+  dobBs                  String?
   rollNo                 String?
   phone                  String?
   gender                 String?
+  bloodGroup             String?
   address                String?
+  temporaryAddress       String?
+  admissionDate          DateTime?
   profilePicture         Bytes?
   profilePictureMimeType String?
-  admissionDate          DateTime?
-  bloodGroup             String?
-  dobBs                  String?
   fatherName             String?
   fatherPhone            String?
   motherName             String?
   motherPhone            String?
-  temporaryAddress       String?
   user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
@@ -379,9 +374,9 @@ model Notice {
   updatedAt      DateTime @updatedAt
   attachmentType String?
   attachmentUrl  String?
+  targetClasses  Class[]  @relation("NoticeTargetClasses")
   author         User     @relation("NoticeAuthor", fields: [authorId], references: [id])
   school         School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  targetClasses  Class[]  @relation("NoticeTargetClasses")
 
   @@index([schoolId, date])
 }
@@ -440,12 +435,12 @@ model AuditLog {
 }
 
 model AuditOutbox {
-  id        String            @id @default(uuid())
+  id        String   @id @default(uuid())
   payload   Json
+  status    AuditOutboxStatus   @default(PENDING)
   error     String?
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  status    AuditOutboxStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status, createdAt])
 }
@@ -567,6 +562,7 @@ enum ConversationType {
   INDIVIDUAL
   GROUP
 }
+
 
 enum AuditOutboxStatus {
   PENDING

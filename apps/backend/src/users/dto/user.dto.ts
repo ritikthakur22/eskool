@@ -34,7 +34,7 @@ export class CreateUserDto {
 
   // Student specific fields
   @IsOptional() @IsString() @MaxLength(50) emisId?: string;
-  // @IsOptional() @IsString() @MaxLength(50) userId?: string; // Admission No
+  @IsOptional() @IsString() @MaxLength(50) userId?: string; // Admission No
   @IsOptional() @IsDateString() dob?: string | null;
   @IsOptional() @IsString() @MaxLength(20) dobBs?: string;
   @IsOptional() @IsString() @MaxLength(30) phone?: string;
