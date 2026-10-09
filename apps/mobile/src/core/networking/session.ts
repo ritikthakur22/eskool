@@ -21,6 +21,8 @@ export const getCachedUserData = async () => {
   return cachedUserData;
 };
 
+export const getCachedUserDataSync = () => cachedUserData;
+
 export const setCachedUserData = async (data: string | null) => {
   cachedUserData = data;
   const SecureStore = await import('expo-secure-store');

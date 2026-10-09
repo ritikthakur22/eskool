@@ -52,11 +52,31 @@ export default function FeesScreen({ navigation }: any) {
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async (refresh = false) => {
-    refresh ? setRefreshing(true) : setLoading(true);
     setError('');
+    
+    // Eagerly try to load from cache to avoid blocking spinner
+    if (!refresh && invoices.length === 0) {
+      try {
+        const SecureStore = await import('expo-secure-store');
+        const cached = await SecureStore.getItemAsync('cache_fees_me');
+        if (cached) {
+          setInvoices(JSON.parse(cached));
+          setLoading(false); // UI renders instantly using cache
+        }
+      } catch (e) {}
+    } else if (refresh) {
+      setRefreshing(true);
+    }
+
     try {
       const response = await api.get('/fees/me');
-      setInvoices(Array.isArray(response.data) ? response.data : []);
+      const data = Array.isArray(response.data) ? response.data : [];
+      setInvoices(data);
+      try {
+        const SecureStore = await import('expo-secure-store');
+        await SecureStore.setItemAsync('cache_fees_me', JSON.stringify(data));
+      } catch (e) {}
+
       try {
         const details = await api.get('/fees/payment-details');
         setPaymentDetails({ ...demoPaymentDetails, ...details.data });
@@ -69,7 +89,7 @@ export default function FeesScreen({ navigation }: any) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [invoices.length]);
   useEffect(() => { load(); }, [load]);
 
   const due = useMemo(() => invoices.filter(item => item.status !== 'PAID'), [invoices]);

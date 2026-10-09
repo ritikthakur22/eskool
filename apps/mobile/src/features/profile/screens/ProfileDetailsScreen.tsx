@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TextInpu
 import { Ionicons } from '@expo/vector-icons';
 import NepaliDate from 'nepali-date-converter';
 import { API_BASE_URL, api } from '../../../core/networking/api';
-import { getInMemoryAccessToken } from '../../../core/networking/session';
+import { getInMemoryAccessToken, getCachedUserData } from '../../../core/networking/session';
 import { useTheme } from '../../../core/theme/ThemeContext';
 
 type Profile = { id: string; email: string; role: string; schoolName?: string; firstName?: string; lastName?: string; grade?: string | null; section?: string | null; studentId?: string | null; dob?: string | null; dobBs?: string | null; phone?: string | null; gender?: string | null; bloodGroup?: string | null; address?: string | null; temporaryAddress?: string | null; profilePictureUrl?: string | null; fatherName?: string | null; fatherPhone?: string | null; motherName?: string | null; motherPhone?: string | null; parentName?: string | null; parentPhone?: string | null; department?: string | null; subjects?: string[]; emisId?: string | null; admissionDate?: string | null; rollNo?: string | null; };
@@ -19,7 +19,17 @@ export default function ProfileDetailsScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [uploadingPhoto, setUploadingPhoto] = useState(false); const [error, setError] = useState('');
   const [photoVersion, setPhotoVersion] = useState(0);
   const load = useCallback(async () => {
-    setLoading(true); setError('');
+    setError('');
+    try {
+      const raw = await getCachedUserData();
+      if (raw) {
+        const data = JSON.parse(raw);
+        setProfile(data);
+        setValues({ firstName: data.firstName || '', lastName: data.lastName || '', email: data.email || '', studentId: data.studentId || data.rollNo || '', phone: data.phone || '', gender: data.gender || '', dob: data.dob ? new Date(data.dob).toISOString().slice(0, 10) : '', address: data.address || '', profilePictureUrl: data.profilePictureUrl || '', parentName: data.parentName || '', parentPhone: data.parentPhone || '' });
+        setLoading(false);
+      }
+    } catch (e) {}
+
     try {
       const { data } = await api.get('/users/me'); setProfile(data);
       setValues({ firstName: data.firstName || '', lastName: data.lastName || '', email: data.email || '', studentId: data.studentId || data.rollNo || '', phone: data.phone || '', gender: data.gender || '', dob: data.dob ? new Date(data.dob).toISOString().slice(0, 10) : '', address: data.address || '', profilePictureUrl: data.profilePictureUrl || '', parentName: data.parentName || '', parentPhone: data.parentPhone || '' });

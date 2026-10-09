@@ -1,22 +1,28 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useMemo, useState } from 'react';
-import * as SecureStore from 'expo-secure-store';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import BottomNavigation from '../../../core/components/BottomNavigation';
 import { currentBsMonth, getBsMonthDays, getBsMonthLabels, shiftBsMonth, type BsMonth } from '../../../core/utils/bsCalendar';
+import { getCachedUserDataSync, getCachedUserData } from '../../../core/networking/session';
 
 const weekDays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 export default function CalendarScreen({ navigation }: any) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
-  const [role, setRole] = useState<string | undefined>();
+  const [role, setRole] = useState<string | undefined>(() => {
+    const raw = getCachedUserDataSync();
+    if (raw) {
+      try { return JSON.parse(raw).role; } catch {}
+    }
+    return undefined;
+  });
   const [month, setMonth] = useState<BsMonth>(currentBsMonth);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  useEffect(() => { SecureStore.getItemAsync('user_data').then(raw => { if (raw) setRole(JSON.parse(raw).role); }).catch(() => undefined); }, []);
+  useEffect(() => { if (!role) getCachedUserData().then(raw => { if (raw) { try { setRole(JSON.parse(raw).role); } catch {} } }).catch(() => undefined); }, [role]);
   const weeks = useMemo(() => {
     const days = getBsMonthDays(month);
     const cells: (typeof days[number] | null)[] = [...Array(days[0]?.weekDay || 0).fill(null), ...days];
