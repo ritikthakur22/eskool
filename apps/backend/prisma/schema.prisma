@@ -32,6 +32,7 @@ model School {
   submissions      HomeworkSubmission[]
   notices          Notice[]
   routineDocuments RoutineDocument[]
+  routineGrids     RoutineGrid[]
   sections         Section[]
   subjects         Subject[]
   users            User[]
@@ -59,6 +60,8 @@ model Class {
   name     String
   school   School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   sections Section[]
+  classRoutines ClassRoutine[]
+  routineGrid RoutineGrid?
   notices  Notice[]  @relation("NoticeTargetClasses")
 
   @@unique([schoolId, name])
@@ -70,6 +73,7 @@ model Section {
   classId            String
   name               String
   classRoutines      ClassRoutine[]
+  routineGrid        RoutineGrid?
   enrollments        Enrollment[]
   exams              Exam[]
   homeworks          Homework[]
@@ -511,19 +515,39 @@ model ExamAttempt {
 model ClassRoutine {
   id        String  @id @default(uuid())
   schoolId  String
-  sectionId String
-  subjectId String
-  teacherId String
+  sectionId String?
+  classId   String?
+  subjectId String?
+  teacherId String?
+  kind      String  @default("CLASS")
+  label     String?
   dayOfWeek Int
   startTime String
   endTime   String
   school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  section   Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  teacher   User    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  section   Section? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  class     Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject   Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher   User?    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([schoolId, sectionId])
+  @@index([schoolId, classId])
   @@index([teacherId])
+}
+
+model RoutineGrid {
+  id        String   @id @default(uuid())
+  schoolId  String
+  sectionId String?  @unique
+  classId   String?  @unique
+  days      Json
+  periods   Json
+  updatedAt DateTime @updatedAt
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  section   Section? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  class     Class?   @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
 }
 
 enum Role {
