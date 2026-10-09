@@ -12,11 +12,20 @@ export class UsersService {
   constructor(private prisma: PrismaService, private readonly cloudinary: CloudinaryService, private readonly audit: AuditService) {}
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { email } });
+    return this.prisma.user.findFirst({ where: { email: { equals: email.trim(), mode: 'insensitive' } } });
+  }
+
+  async findByEmisId(emisId: string) {
+    return this.prisma.user.findFirst({ where: { emisId: { equals: emisId.trim(), mode: 'insensitive' } }, select: { id: true } });
+  }
+
+  async findByStudentId(studentId: string) {
+    return this.prisma.user.findFirst({ where: { userId: { equals: studentId.trim(), mode: 'insensitive' } }, select: { id: true } });
   }
 
   async create(data: Prisma.UserCreateInput): Promise<User> {
-    return this.prisma.user.create({ data });
+    try { return await this.prisma.user.create({ data }); }
+    catch (error: any) { if (error?.code === 'P2002') throw new ConflictException('Email, EMIS ID, or student ID is already in use.'); throw error; }
   }
 
   private async getManagedTarget(id: string, actor: { schoolId: string; actorRole: Role }) {
@@ -56,7 +65,7 @@ export class UsersService {
     return this.prisma.user.findFirst({
       where: { id, schoolId: actor.schoolId },
       select: {
-        id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true, updatedAt: true,
+        id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true, updatedAt: true, userId: true, emisId: true,
         studentProfile: true, teacherProfile: true, adminProfile: true,
       },
     });
@@ -66,17 +75,21 @@ export class UsersService {
     const target = await this.getManagedTarget(id, actor);
     const email = input.email?.trim().toLowerCase();
     if (email && email !== target.email) {
-      const existing = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+      const existing = await this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, select: { id: true } });
       if (existing && existing.id !== id) throw new ConflictException('That email address is already in use.');
     }
     const firstName = input.firstName?.trim();
     const lastName = input.lastName?.trim();
     if ((input.firstName !== undefined && !firstName) || (input.lastName !== undefined && !lastName)) throw new BadRequestException('Name fields cannot be empty.');
-    const userData = email && email !== target.email ? { email } : {};
-    await this.prisma.$transaction(async tx => {
+    const emisId = input.emisId?.trim(); const studentId = input.userId?.trim();
+    if (target.role === Role.STUDENT && input.emisId !== undefined && !emisId) throw new BadRequestException('Student EMIS ID cannot be empty.');
+    if (emisId) { const duplicate = await this.prisma.user.findFirst({ where: { id: { not: id }, emisId: { equals: emisId, mode: 'insensitive' } }, select: { id: true } }); if (duplicate) throw new ConflictException('That EMIS ID is already assigned to another account.'); }
+    if (studentId) { const duplicate = await this.prisma.user.findFirst({ where: { id: { not: id }, userId: { equals: studentId, mode: 'insensitive' } }, select: { id: true } }); if (duplicate) throw new ConflictException('That student ID is already assigned to another account.'); }
+    const userData = { ...(email && email !== target.email ? { email } : {}), ...(target.role === Role.STUDENT && input.emisId !== undefined ? { emisId: emisId?.toUpperCase() || null } : {}), ...(target.role === Role.STUDENT && input.userId !== undefined ? { userId: studentId?.toUpperCase() || null } : {}) };
+    try { await this.prisma.$transaction(async tx => {
       if (Object.keys(userData).length) await tx.user.update({ where: { id }, data: userData });
       if (target.role === Role.STUDENT) {
-        await tx.studentProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.grade !== undefined ? { grade: input.grade.trim() || null } : {}), ...(input.section !== undefined ? { section: input.section.trim() || null } : {}), ...(input.rollNo !== undefined ? { rollNo: input.rollNo.trim() || null } : {}) } });
+        await tx.studentProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.grade !== undefined ? { grade: input.grade.trim() || null } : {}), ...(input.section !== undefined ? { section: input.section.trim() || null } : {}), ...(input.rollNo !== undefined ? { rollNo: input.rollNo.trim() || null } : {}), ...(input.dob !== undefined ? { dob: input.dob ? new Date(input.dob) : null } : {}), ...(input.dobBs !== undefined ? { dobBs: input.dobBs.trim() || null } : {}), ...(input.admissionDate !== undefined ? { admissionDate: input.admissionDate ? new Date(input.admissionDate) : null } : {}), ...(input.gender !== undefined ? { gender: input.gender.trim() || null } : {}), ...(input.bloodGroup !== undefined ? { bloodGroup: input.bloodGroup.trim() || null } : {}), ...(input.phone !== undefined ? { phone: input.phone.trim() || null } : {}), ...(input.address !== undefined ? { address: input.address.trim() || null } : {}), ...(input.temporaryAddress !== undefined ? { temporaryAddress: input.temporaryAddress.trim() || null } : {}), ...(input.fatherName !== undefined ? { fatherName: input.fatherName.trim() || null } : {}), ...(input.fatherPhone !== undefined ? { fatherPhone: input.fatherPhone.trim() || null } : {}), ...(input.motherName !== undefined ? { motherName: input.motherName.trim() || null } : {}), ...(input.motherPhone !== undefined ? { motherPhone: input.motherPhone.trim() || null } : {}) } });
       } else if (target.role === Role.TEACHER) {
         await tx.teacherProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}) } });
       } else if (target.role === Role.ADMIN || target.role === Role.SUPER_ADMIN) {
@@ -84,7 +97,7 @@ export class UsersService {
       } else if (firstName !== undefined || lastName !== undefined || input.grade !== undefined || input.section !== undefined || input.rollNo !== undefined || input.department !== undefined) {
         throw new BadRequestException('This account has no editable profile fields.');
       }
-    });
+    }); } catch (error: any) { if (error?.code === 'P2002') throw new ConflictException('Email, EMIS ID, or student ID is already assigned to another account.'); throw error; }
     void this.audit.record({ action: 'USER_UPDATED', entity: 'User', entityId: id, userId: actor.actorId, schoolId: actor.schoolId, details: { fields: Object.keys(input).filter(field => field !== 'email' || email !== target.email) } });
     return this.getManagedUser(id, actor);
   }

@@ -101,6 +101,15 @@ export class UsersController {
     if (typeof data.email !== 'string' || !data.email.trim() || typeof data.password !== 'string' || data.password.length < 8 || data.password.length > 128) {
       throw new BadRequestException('A valid email and password of 8–128 characters are required.');
     }
+    if (!data.firstName?.trim() || !data.lastName?.trim()) throw new BadRequestException('First and last name are required.');
+    if (targetRole === Role.STUDENT && !data.emisId?.trim()) throw new BadRequestException('A unique EMIS ID is required for every student.');
+    if (targetRole === Role.STUDENT) {
+      const fatherName = data.fatherName?.trim() || ''; const fatherPhone = data.fatherPhone?.trim() || '';
+      const motherName = data.motherName?.trim() || ''; const motherPhone = data.motherPhone?.trim() || '';
+      if (Boolean(fatherName) !== Boolean(fatherPhone) || Boolean(motherName) !== Boolean(motherPhone) || !((fatherName && fatherPhone) || (motherName && motherPhone))) throw new BadRequestException('Enter a parent/guardian name and phone number.');
+      if (data.emisId && await this.usersService.findByEmisId(data.emisId)) throw new BadRequestException('That EMIS ID is already in use.');
+      if (data.userId && await this.usersService.findByStudentId(data.userId)) throw new BadRequestException('That student ID is already in use.');
+    }
 
     // RBAC hierarchy: admins manage operational accounts; only the platform
     // owner can manage admins. Super-admin creation is deliberately excluded
@@ -121,7 +130,16 @@ export class UsersController {
       password: hashedPassword,
       role: targetRole,
       school: { connect: { id: schoolId } },
-      ...(targetRole === Role.STUDENT ? { studentProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Student', grade: data.grade, section: data.section, rollNo: data.rollNo } } } : {}),
+      ...(targetRole === Role.STUDENT ? {
+        emisId: data.emisId!.trim().toUpperCase(), userId: data.userId?.trim().toUpperCase() || undefined,
+        studentProfile: { create: {
+          firstName: data.firstName!.trim(), lastName: data.lastName!.trim(), grade: data.grade?.trim() || null, section: data.section?.trim() || null, rollNo: data.rollNo?.trim() || null,
+          dob: data.dob ? new Date(data.dob) : null, dobBs: data.dobBs?.trim() || null, admissionDate: data.admissionDate ? new Date(data.admissionDate) : null,
+          gender: data.gender?.trim() || null, bloodGroup: data.bloodGroup?.trim() || null, phone: data.phone?.trim() || null, address: data.address?.trim() || null,
+          temporaryAddress: data.temporaryAddress?.trim() || null, fatherName: data.fatherName?.trim() || null, fatherPhone: data.fatherPhone?.trim() || null,
+          motherName: data.motherName?.trim() || null, motherPhone: data.motherPhone?.trim() || null,
+        } },
+      } : {}),
       ...(targetRole === Role.TEACHER ? { teacherProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Teacher', subjects: Array.isArray(data.subjects) ? data.subjects.filter((subject: unknown): subject is string => typeof subject === 'string').slice(0, 20) : [] } } } : {}),
       ...(([Role.ADMIN, Role.SUPER_ADMIN] as Role[]).includes(targetRole) ? { adminProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Admin', department: data.department } } } : {}),
     });
