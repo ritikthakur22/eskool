@@ -65,7 +65,7 @@ export default function AuditLogScreen({ navigation }: any) {
       <View style={s.copy}>
         <Text style={s.action}>{item.action}</Text>
         <Text style={s.detail}>{item.entity}{item.entityId ? ` · ${item.entityId.slice(0, 8)}…` : ''}</Text>
-        <Text style={s.meta}>{item.user?.email || 'System'} · {new Date(item.createdAt).toLocaleString()}</Text>
+        <Text style={s.meta}>{item.user?.firstName ? `${item.user.firstName} ${item.user.lastName || ''}`.trim() : (item.user?.email || 'System')} · {new Date(item.createdAt).toLocaleString()}</Text>
       </View>
     </View>
   );

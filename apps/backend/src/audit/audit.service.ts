@@ -51,10 +51,37 @@ export class AuditService {
         userAgent: true,
         requestId: true,
         createdAt: true,
-        user: { select: { email: true, role: true } },
+        user: { 
+          select: { 
+            email: true, 
+            role: true,
+            studentProfile: { select: { firstName: true, lastName: true } },
+            teacherProfile: { select: { firstName: true, lastName: true } },
+            adminProfile: { select: { firstName: true, lastName: true } },
+          } 
+        },
       },
     });
-    return { items: rows.slice(0, limit), hasMore: rows.length > limit, nextOffset: rows.length > limit ? offset + limit : null };
+
+    const items = rows.slice(0, limit).map(row => {
+      let firstName, lastName;
+      if (row.user) {
+        if (row.user.studentProfile) { firstName = row.user.studentProfile.firstName; lastName = row.user.studentProfile.lastName; }
+        else if (row.user.teacherProfile) { firstName = row.user.teacherProfile.firstName; lastName = row.user.teacherProfile.lastName; }
+        else if (row.user.adminProfile) { firstName = row.user.adminProfile.firstName; lastName = row.user.adminProfile.lastName; }
+      }
+      return {
+        ...row,
+        user: row.user ? {
+          email: row.user.email,
+          role: row.user.role,
+          firstName,
+          lastName
+        } : null
+      };
+    });
+
+    return { items, hasMore: rows.length > limit, nextOffset: rows.length > limit ? offset + limit : null };
   }
 
   async getFailures() {
