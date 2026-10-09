@@ -116,14 +116,93 @@ export class UsersController {
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const schoolId = creatorRole === Role.SUPER_ADMIN && typeof data.schoolId === 'string' ? data.schoolId : req.user.schoolId;
+    // const user = await this.usersService.create({
+    //   email: data.email.trim().toLowerCase(),
+    //   password: hashedPassword,
+    //   role: targetRole,
+    //   school: { connect: { id: schoolId } },
+    //   ...(targetRole === Role.STUDENT ? { studentProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Student', grade: data.grade, section: data.section, rollNo: data.rollNo } } } : {}),
+    //   ...(targetRole === Role.TEACHER ? { teacherProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Teacher', subjects: Array.isArray(data.subjects) ? data.subjects.filter((subject: unknown): subject is string => typeof subject === 'string').slice(0, 20) : [] } } } : {}),
+    //   ...(([Role.ADMIN, Role.SUPER_ADMIN] as Role[]).includes(targetRole) ? { adminProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Admin', department: data.department } } } : {}),
+    // });
+
     const user = await this.usersService.create({
       email: data.email.trim().toLowerCase(),
       password: hashedPassword,
       role: targetRole,
       school: { connect: { id: schoolId } },
-      ...(targetRole === Role.STUDENT ? { studentProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Student', grade: data.grade, section: data.section, rollNo: data.rollNo } } } : {}),
-      ...(targetRole === Role.TEACHER ? { teacherProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Teacher', subjects: Array.isArray(data.subjects) ? data.subjects.filter((subject: unknown): subject is string => typeof subject === 'string').slice(0, 20) : [] } } } : {}),
-      ...(([Role.ADMIN, Role.SUPER_ADMIN] as Role[]).includes(targetRole) ? { adminProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Admin', department: data.department } } } : {}),
+
+      // EMIS identifier is stored on User
+      emisId: targetRole === Role.STUDENT
+        ? data.emisId?.trim()
+        : undefined,
+
+      // Student profile fields
+      ...(targetRole === Role.STUDENT
+        ? {
+            studentProfile: {
+              create: {
+                firstName: data.firstName?.trim() || 'New',
+                lastName: data.lastName?.trim() || 'Student',
+                grade: data.grade,
+                section: data.section,
+                rollNo: data.rollNo,
+
+                dob: data.dob ? new Date(data.dob) : null,
+                dobBs: data.dobBs,
+                phone: data.phone,
+                gender: data.gender,
+                bloodGroup: data.bloodGroup,
+                address: data.address,
+                temporaryAddress: data.temporaryAddress,
+
+                admissionDate: data.admissionDate
+                  ? new Date(data.admissionDate)
+                  : null,
+
+                fatherName: data.fatherName,
+                fatherPhone: data.fatherPhone,
+                motherName: data.motherName,
+                motherPhone: data.motherPhone,
+              },
+            },
+          }
+        : {}),
+
+      // Teacher profile
+      ...(targetRole === Role.TEACHER
+        ? {
+            teacherProfile: {
+              create: {
+                firstName: data.firstName?.trim() || 'New',
+                lastName: data.lastName?.trim() || 'Teacher',
+                subjects: Array.isArray(data.subjects)
+                  ? data.subjects
+                      .filter(
+                        (subject): subject is string =>
+                          typeof subject === 'string',
+                      )
+                      .slice(0, 20)
+                  : [],
+              },
+            },
+          }
+        : {}),
+
+      // Admin profile
+      ...(
+        [Role.ADMIN, Role.SUPER_ADMIN] as Role[]
+      ).includes(targetRole)
+        ? {
+            adminProfile: {
+              create: {
+                firstName: data.firstName?.trim() || 'New',
+                lastName: data.lastName?.trim() || 'Admin',
+                department: data.department,
+              },
+            },
+          }
+        : {},
     });
 
     const { password: _password, ...result } = user;
