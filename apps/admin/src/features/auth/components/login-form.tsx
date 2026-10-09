@@ -41,14 +41,26 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
 
   const busy = isPending || isAuthenticated;
 
+  const onSubmit = (values: FormValues) => {
+    mutate(
+      { ...values, remember },
+      {
+        onSuccess: () => {
+          reset();
+        },
+      },
+    );
+  };
+
   return (
     <form
-      onSubmit={handleSubmit((values) => mutate({ ...values, remember }))}
+      onSubmit={handleSubmit(onSubmit)}
       className="space-y-5"
       noValidate
     >
@@ -70,6 +82,7 @@ export function LoginForm() {
             type="email"
             placeholder="Your Email"
             autoComplete="username"
+            disabled={busy}
             className="h-12 rounded-xl bg-muted/50 pl-10 text-base"
             aria-invalid={!!errors.email}
             {...register("email")}
@@ -88,6 +101,7 @@ export function LoginForm() {
             id="password"
             type={showPassword ? "text" : "password"}
             placeholder="Your Password"
+            disabled={busy}
             autoComplete="current-password"
             className="h-12 rounded-xl bg-muted/50 pl-10 pr-11 text-base"
             aria-invalid={!!errors.password}

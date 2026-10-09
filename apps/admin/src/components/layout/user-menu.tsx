@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut, Settings } from "lucide-react";
+import { ChevronDown, Loader2, LogOut, Settings } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -11,11 +11,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ROUTES } from "@/config/routes";
-// import { useAuthStore } from "@/store/auth-store";
+import { useAuth, useLogout } from "@/features/auth/hooks";
 
 function initials(name: string) {
   return name
-    .split(" ")
+    .split(/[\s._-]+/)
+    .filter(Boolean)
     .map((part) => part[0])
     .slice(0, 2)
     .join("")
@@ -24,15 +25,12 @@ function initials(name: string) {
 
 export function UserMenu() {
   const router = useRouter();
-//   const { user, logout } = useAuthStore();
+  const { user } = useAuth();
+  const { mutate: logout, isPending } = useLogout();
 
-//   const name = user?.name ?? "Admin";
-const name = "Admin"
-
-  const handleLogout = () => {
-    // logout();
-    router.replace(ROUTES.login);
-  };
+  // AuthUser has no firstName (see note below), so derive a display name from the email.
+  const name = user?.firstName ?? "";
+  const role = user?.role.toLowerCase().replace("_", " ") ?? "";
 
   return (
     <DropdownMenu>
@@ -50,8 +48,7 @@ const name = "Admin"
         <span className="hidden text-left leading-tight md:block">
           <span className="block text-sm font-medium">{name}</span>
           <span className="block text-xs capitalize text-muted-foreground">
-            {/* {user?.role?.toLowerCase() ?? "admin"} */}
-            admin
+            {role}
           </span>
         </span>
         <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -61,17 +58,27 @@ const name = "Admin"
         <div className="px-2 py-1.5">
           <p className="truncate text-sm font-medium">{name}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {/* {user?.email} */}
-            test@gmail.com
-            </p>
+            {user?.email}
+          </p>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push(ROUTES.settings)} className="cursor-pointer">
+        <DropdownMenuItem
+          onClick={() => router.push(ROUTES.settings)}
+          className="cursor-pointer"
+        >
           <Settings className="mr-2 h-4 w-4" />
           Settings
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleLogout} className="text-destructive hover:bg-destructive/45! cursor-pointer">
-          <LogOut className="mr-2 h-4 w-4" />
+        <DropdownMenuItem
+          onClick={() => logout()}
+          disabled={isPending}
+          className="cursor-pointer text-destructive hover:bg-destructive/45!"
+        >
+          {isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <LogOut className="mr-2 h-4 w-4" />
+          )}
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>

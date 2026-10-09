@@ -1,60 +1,71 @@
-import { students as seed } from "./mock-data";
-import type { CreateStudentPayload, Student, StudentsPage, StudentsQuery } from "./types";
+import { api } from "@/lib/client";
+import type { CreateStudentPayload, Student, StudentProfile, UpdateStudentPayload } from "./types";
 
-// In-memory store: resets on a full page reload.
-// When the backend is ready, replace each method with an axios call, e.g.
-//   list: (params) => api.get<StudentsPage>("/students", { params }).then((r) => r.data)
-let db: Student[] = [...seed];
+// Shape returned by the NestJS users controller
+type StudentDto = {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  disabledAt: string | null;
+  createdAt: string;
+  updatedAt?: string;
+  studentProfile: (Pick<StudentProfile, "firstName" | "lastName"> & Partial<StudentProfile>) | null;
+};
 
-const wait = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms));
+function toStudent(dto: StudentDto): Student {
+  const p = dto.studentProfile;
+  return {
+    id: dto.id,
+    email: dto.email,
+    status: dto.status,
+    createdAt: dto.createdAt,
+    updatedAt: dto.updatedAt ?? null,
+    disabledAt: dto.disabledAt,
+    profile: {
+      firstName: p?.firstName ?? "",
+      lastName: p?.lastName ?? "",
+      grade: p?.grade ?? null,
+      section: p?.section ?? null,
+      rollNo: p?.rollNo ?? null,
+      dob: p?.dob ?? null,
+      phone: p?.phone ?? null,
+      gender: p?.gender ?? null,
+      address: p?.address ?? null,
+      parentName: p?.parentName ?? null,
+      parentPhone: p?.parentPhone ?? null,
+    },
+  };
+}
+
+const withoutEmpty = (obj: object) =>
+  Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== "" && v !== undefined));
 
 export const studentsApi = {
-  async list({ page, pageSize, search, status }: StudentsQuery): Promise<StudentsPage> {
-    await wait();
-    const q = search.trim().toLowerCase();
+  list: (status: string) =>
+    api
+      .get<StudentDto[]>("/users/admin/users", {
+        params: { role: "STUDENT", status: status === "ALL" ? undefined : status },
+      })
+      .then((r) => r.data.map(toStudent)),
 
-    const filtered = db.filter(
-      (s) =>
-        (status === "ALL" || s.status === status) &&
-        (!q ||
-          s.profile.fullName.toLowerCase().includes(q) ||
-          s.email.toLowerCase().includes(q) ||
-          s.id.toLowerCase().includes(q))
-    );
-
-    const start = (page - 1) * pageSize;
-    return { data: filtered.slice(start, start + pageSize), total: filtered.length };
+  async get(id: string) {
+    const { data } = await api.get<StudentDto>(`/users/admin/users/${id}`);
+    if (data.role !== "STUDENT") throw new Error("Student not found");
+    return toStudent(data);
   },
 
-  async create(payload: CreateStudentPayload): Promise<Student> {
-    await wait(500);
+  // Role defaults to STUDENT on the backend; empty optional fields are dropped
+  create: (payload: CreateStudentPayload) =>
+    api.post<{ id: string }>("/users/admin/create-user", withoutEmpty(payload)).then((r) => r.data),
 
-    if (db.some((s) => s.email.toLowerCase() === payload.email.toLowerCase())) {
-      throw new Error("A user with this email already exists");
-    }
+  // Empty strings are intentional here: the backend turns them into null
+  update: (id: string, payload: UpdateStudentPayload) =>
+    api.patch<StudentDto>(`/users/admin/users/${id}`, payload).then((r) => toStudent(r.data)),
 
-    const student: Student = {
-      id: `stu_${Date.now().toString(36)}`,
-      email: payload.email,
-      status: payload.status,
-      schoolId: "sch_01",
-      createdAt: new Date().toISOString(),
-      disabledAt: payload.status === "DISABLED" ? new Date().toISOString() : null,
-      profilePictureUrl: payload.profilePictureUrl,
-      profile: {
-        fullName: payload.fullName,
-        phone: payload.phone || null,
-        address: payload.address || null,
-        className: payload.className || null,
-      },
-    };
+  disable: (id: string) =>
+    api.post<{ id: string; status: string }>(`/users/admin/users/${id}/disable`).then((r) => r.data),
 
-    db = [student, ...db]; // password is never stored in the mock
-    return student;
-  },
-
-  async remove(id: string): Promise<void> {
-    await wait();
-    db = db.filter((s) => s.id !== id);
-  },
+  restore: (id: string) =>
+    api.post<{ id: string; status: string }>(`/users/admin/users/${id}/restore`).then((r) => r.data),
 };

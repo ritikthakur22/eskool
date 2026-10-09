@@ -1,9 +1,18 @@
 import Link from "next/link";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2, RotateCcw, Ban } from "lucide-react";
 
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ROUTES } from "@/config/routes";
-import { formatDate, getInitials } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { formatClass, getStudentName } from "../utils";
+import { StatusPill, StudentAvatar } from "./student-ui";
 import { cn } from "@/lib/utils";
 import type { Student } from "../types";
 
@@ -11,7 +20,7 @@ type StudentsTableProps = {
   students: Student[];
   isLoading: boolean;
   isError: boolean;
-  onDelete: (student: Student) => void;
+  onToggleStatus: (student: Student) => void;
 };
 
 const statusStyles: Record<string, string> = {
@@ -19,40 +28,46 @@ const statusStyles: Record<string, string> = {
   DISABLED: "bg-destructive/10 text-destructive",
 };
 
-const actionBase = "flex h-8 w-8 items-center justify-center rounded-lg transition-colors";
+const actionBase =
+  "flex h-8 w-8 items-center justify-center rounded-lg transition-colors";
 
-function StatusPill({ status }: { status: string }) {
-  return (
-    <span
-      className={cn(
-        "rounded-md px-2.5 py-1 text-xs font-medium",
-        statusStyles[status] ?? "bg-warning/10 text-warning"
-      )}
-    >
-      {status.charAt(0) + status.slice(1).toLowerCase()}
-    </span>
-  );
-}
+// function StatusPill({ status }: { status: string }) {
+//   return (
+//     <span
+//       className={cn(
+//         "rounded-md px-2.5 py-1 text-xs font-medium",
+//         statusStyles[status] ?? "bg-warning/10 text-warning"
+//       )}
+//     >
+//       {status.charAt(0) + status.slice(1).toLowerCase()}
+//     </span>
+//   );
+// }
 
-function Avatar({ student }: { student: Student }) {
-  if (student.profilePictureUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={student.profilePictureUrl}
-        alt={student.profile.fullName}
-        className="h-10 w-10 shrink-0 rounded-full object-cover"
-      />
-    );
-  }
-  return (
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-      {getInitials(student.profile.fullName)}
-    </span>
-  );
-}
+// function Avatar({ student }: { student: Student }) {
+//   if (student.profilePictureUrl) {
+//     return (
+//       // eslint-disable-next-line @next/next/no-img-element
+//       <img
+//         src={student.profilePictureUrl}
+//         alt={student.profile.fullName}
+//         className="h-10 w-10 shrink-0 rounded-full object-cover"
+//       />
+//     );
+//   }
+//   return (
+//     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+//       {getInitials(student.profile.fullName)}
+//     </span>
+//   );
+// }
 
-export function StudentsTable({ students, isLoading, isError, onDelete }: StudentsTableProps) {
+export function StudentsTable({
+  students,
+  isLoading,
+  isError,
+  onToggleStatus,
+}: StudentsTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -80,7 +95,10 @@ export function StudentsTable({ students, isLoading, isError, onDelete }: Studen
 
         {!isLoading && isError && (
           <TableRow>
-            <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+            <TableCell
+              colSpan={6}
+              className="py-10 text-center text-muted-foreground"
+            >
               Failed to load students.
             </TableCell>
           </TableRow>
@@ -88,7 +106,10 @@ export function StudentsTable({ students, isLoading, isError, onDelete }: Studen
 
         {!isLoading && !isError && students.length === 0 && (
           <TableRow>
-            <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+            <TableCell
+              colSpan={6}
+              className="py-10 text-center text-muted-foreground"
+            >
               No students found.
             </TableCell>
           </TableRow>
@@ -98,15 +119,25 @@ export function StudentsTable({ students, isLoading, isError, onDelete }: Studen
           <TableRow key={student.id}>
             <TableCell>
               <div className="flex items-center gap-3">
-                <Avatar student={student} />
+                {/* <Avatar student={student} /> */}
+                <StudentAvatar student={student} />
                 <div className="leading-tight">
-                  <p className="text-sm font-medium">{student.profile.fullName}</p>
-                  <p className="text-xs text-muted-foreground">#{student.id.slice(0, 8)}</p>
+                  {/* <p className="text-sm font-medium">{student.profile.fullName}</p> */}
+                  <p className="text-sm font-medium">
+                    {getStudentName(student)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    #{student.id.slice(0, 8)}
+                  </p>
                 </div>
               </div>
             </TableCell>
-            <TableCell className="text-sm text-muted-foreground">{student.email}</TableCell>
-            <TableCell className="text-sm">{student.profile.className ?? "—"}</TableCell>
+            <TableCell className="text-sm text-muted-foreground">
+              {student.email}
+            </TableCell>
+            <TableCell className="text-sm">
+              {formatClass(student.profile)}
+            </TableCell>
             <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
               {formatDate(student.createdAt)}
             </TableCell>
@@ -116,29 +147,50 @@ export function StudentsTable({ students, isLoading, isError, onDelete }: Studen
             <TableCell>
               <div className="flex items-center justify-end gap-2">
                 <Link
-                  href={`${ROUTES.students}/${student.id}`}
+                  // href={`${ROUTES.students}/${student.id}`}
+                  href={ROUTES.studentDetail(student.id)}
                   title="View"
                   aria-label="View student"
-                  className={cn(actionBase, "bg-primary/10 text-primary hover:bg-primary/20")}
+                  className={cn(
+                    actionBase,
+                    "bg-primary/10 text-primary hover:bg-primary/20",
+                  )}
                 >
                   <Eye className="h-4 w-4" />
                 </Link>
                 <Link
-                  href={`${ROUTES.students}/${student.id}/edit`}
+                  // href={`${ROUTES.students}/${student.id}/edit`}
+                  href={ROUTES.studentEdit(student.id)}
                   title="Edit"
                   aria-label="Edit student"
-                  className={cn(actionBase, "bg-success/10 text-success hover:bg-success/20")}
+                  className={cn(
+                    actionBase,
+                    "bg-success/10 text-success hover:bg-success/20",
+                  )}
                 >
                   <Pencil className="h-4 w-4" />
                 </Link>
                 <button
                   type="button"
-                  title="Delete"
-                  aria-label="Delete student"
-                  onClick={() => onDelete(student)}
-                  className={cn(actionBase, "bg-destructive/10 text-destructive hover:bg-destructive/20")}
+                  title={student.status === "DISABLED" ? "Restore" : "Disable"}
+                  aria-label={
+                    student.status === "DISABLED"
+                      ? "Restore student"
+                      : "Disable student"
+                  }
+                  onClick={() => onToggleStatus(student)}
+                  className={cn(
+                    actionBase,
+                    student.status === "DISABLED"
+                      ? "bg-success/10 text-success hover:bg-success/20"
+                      : "bg-destructive/10 text-destructive hover:bg-destructive/20",
+                  )}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  {student.status === "DISABLED" ? (
+                    <RotateCcw className="h-4 w-4" />
+                  ) : (
+                    <Ban className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </TableCell>

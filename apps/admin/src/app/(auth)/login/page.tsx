@@ -21,7 +21,7 @@ export default function LoginPage() {
               priority
             />
           </div>
-          <span>ESkool</span>
+          <span>eSkool</span>
         </div>
         <ThemeToggle />
       </div>

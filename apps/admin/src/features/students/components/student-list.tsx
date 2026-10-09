@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import { useStudents } from "../hooks";
+import { StudentStatusDialog } from "./student-status-dialog";
 import type { Student } from "../types";
-import { DeleteStudentDialog } from "./delete-student-dialog";
 import { StudentsTable } from "./students-table";
 
 const PAGE_SIZE = 10;
@@ -19,7 +19,7 @@ export function StudentList() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("ALL");
   const [page, setPage] = useState(1);
-  const [toDelete, setToDelete] = useState<Student | null>(null);
+  const [statusTarget, setStatusTarget] = useState<Student | null>(null);
 
   const debouncedSearch = useDebounce(search, 300);
   const { data, isLoading, isFetching, isError } = useStudents({
@@ -73,7 +73,7 @@ export function StudentList() {
           students={data?.data ?? []}
           isLoading={isLoading}
           isError={isError}
-          onDelete={setToDelete}
+          onToggleStatus={setStatusTarget}
         />
       </div>
 
@@ -84,7 +84,7 @@ export function StudentList() {
         {totalPages > 1 && <Pagination page={page} totalPages={totalPages} onChange={setPage} />}
       </div>
 
-      <DeleteStudentDialog student={toDelete} onClose={() => setToDelete(null)} />
+      <StudentStatusDialog student={statusTarget} onClose={() => setStatusTarget(null)} />
     </div>
   );
 }

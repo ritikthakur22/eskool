@@ -12,8 +12,6 @@ import { toAuthUser } from "@/features/auth/types";
 export async function POST(req: NextRequest) {
   if (!isSameOrigin(req)) return forbidden();
 
-  console.log("Hello")
-
   const body = await req.json().catch(() => null);
   const remember = body.remember === true;
   if (typeof body?.email !== "string" || typeof body?.password !== "string") {

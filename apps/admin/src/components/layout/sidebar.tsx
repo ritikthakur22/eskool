@@ -50,7 +50,7 @@ export function Sidebar() {
             <Image src={"/icon.png"} alt="logo" width={100} height={100} className="rounded-full"/>
           </div>
           <span className={cn("text-xl font-bold", fade(collapsed))}>
-            Eskool
+            eSkool
           </span>
         </div>
 

@@ -9,16 +9,17 @@ export async function GET(req: NextRequest) {
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${API_URL}/auth/me`, {
+    upstream = await fetch(`${API_URL}/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     });
   } catch {
     return NextResponse.json({ message: 'Service unavailable' }, { status: 503 });
   }
+  const data = await upstream.json()
 
   if (!upstream.ok) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: upstream.status });
   }
-  return NextResponse.json({ user: toAuthUser(await upstream.json()) });
+  return NextResponse.json({ user: toAuthUser(data) });
 }

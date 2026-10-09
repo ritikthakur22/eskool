@@ -4,10 +4,19 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { ROUTES } from "@/config/routes";
 import { cn } from "@/lib/utils";
-import { auditLogs } from "../mock-data";
+import { useAuditLogs } from "../hooks";
+import { AuditLog } from "../types";
+// import { auditLogs } from "../mock-data";
 
 const actionStyles: Record<string, string> = {
   CREATE: "bg-success/10 text-success",
@@ -37,11 +46,46 @@ function formatDate(iso: string) {
 }
 
 export function AuditLogsTable() {
+  const { data, isPending, isError } = useAuditLogs({
+    limit: 10,
+    offset: 0,
+  });
+
+  const auditLogs = data?.items ?? [];
+
+  if (isPending) {
+    return (
+      <div className="rounded-2xl border bg-card p-5">
+        <h3 className="mb-4 text-lg font-semibold">Audit Logs</h3>
+        <p className="text-sm text-muted-foreground">
+          Loading audit logs...
+        </p>
+      </div>
+    );
+  }
+
+   if (isError) {
+    return (
+      <div className="rounded-2xl border bg-card p-5">
+        <h3 className="mb-4 text-lg font-semibold">Audit Logs</h3>
+        <p className="text-sm text-destructive">
+          Failed to load audit logs.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border bg-card p-5">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">Audit Logs</h3>
-        <Link href={ROUTES.auditLogs} className={cn(buttonVariants({ variant: "outline" }), "h-9 rounded-xl px-4")}>
+        <Link
+          href={ROUTES.auditLogs}
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "h-9 rounded-xl px-4",
+          )}
+        >
           View All
           <ChevronRight className="ml-1 h-4 w-4" />
         </Link>
@@ -58,16 +102,20 @@ export function AuditLogsTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {auditLogs.map((log) => (
+          {auditLogs.map((log: AuditLog) => (
             <TableRow key={log.id}>
               <TableCell>
                 <div className="flex items-center gap-3">
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
-                    {log.user ? initials(log.user.name) : "SY"}
+                    {log.user ? initials(log.user.email) : "SY"}
                   </span>
                   <div className="leading-tight">
-                    <p className="text-sm font-medium">{log.user?.name ?? "System"}</p>
-                    <p className="text-xs text-muted-foreground">{log.user?.email ?? "—"}</p>
+                    <p className="text-sm font-medium">
+                      {log.user?.name ?? "System"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {log.user?.email ?? "—"}
+                    </p>
                   </div>
                 </div>
               </TableCell>
@@ -75,7 +123,8 @@ export function AuditLogsTable() {
                 <span
                   className={cn(
                     "rounded-md px-2.5 py-1 text-xs font-medium",
-                    actionStyles[log.action] ?? "bg-muted text-muted-foreground"
+                    actionStyles[log.action] ??
+                      "bg-muted text-muted-foreground",
                   )}
                 >
                   {log.action}
@@ -83,9 +132,13 @@ export function AuditLogsTable() {
               </TableCell>
               <TableCell>
                 <p className="text-sm">{log.entity}</p>
-                <p className="text-xs text-muted-foreground">#{log.entityId ?? "—"}</p>
+                <p className="text-xs text-muted-foreground">
+                  #{log.entityId ?? "—"}
+                </p>
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground">{log.ipAddress ?? "—"}</TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {log.ipAddress ?? "—"}
+              </TableCell>
               <TableCell className="whitespace-nowrap text-right text-sm text-muted-foreground">
                 {formatDate(log.createdAt)}
               </TableCell>
