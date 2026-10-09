@@ -1,7 +1,12 @@
 import {
   BadRequestException,
+  Body,
   Controller,
+  Delete,
   Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Query,
   Post,
   Request,
@@ -17,6 +22,42 @@ import { Roles } from '../auth/roles.decorator.js';
 import { RoutineService } from './routine.service.js';
 import type { RoutineUploadFile } from './routine.service.js';
 import { assertFileSignature } from '../storage/file-validation.js';
+
+@Controller('routine/class')
+@UseGuards(JwtAuthGuard, RolesGuard)
+export class ClassRoutineController {
+  constructor(private readonly routineService: RoutineService) {}
+
+  @Get()
+  @Roles(Role.STUDENT, Role.PARENT, Role.TEACHER, Role.ADMIN, Role.SUPER_ADMIN)
+  getForCurrentUser(@Request() req: any) {
+    return this.routineService.getClassRoutineForUser(req.user.schoolId, req.user.id, req.user.role);
+  }
+
+  @Get('section/:sectionId')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  getForSection(@Param('sectionId', new ParseUUIDPipe()) sectionId: string, @Request() req: any) {
+    return this.routineService.getSectionClassRoutine(req.user.schoolId, sectionId);
+  }
+
+  @Post()
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  create(@Body() data: any, @Request() req: any) {
+    return this.routineService.createClassRoutineEntry(req.user.schoolId, req.user.id, data);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  update(@Param('id', new ParseUUIDPipe()) id: string, @Body() data: any, @Request() req: any) {
+    return this.routineService.updateClassRoutineEntry(req.user.schoolId, req.user.id, id, data);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  remove(@Param('id', new ParseUUIDPipe()) id: string, @Request() req: any) {
+    return this.routineService.deleteClassRoutineEntry(req.user.schoolId, req.user.id, id);
+  }
+}
 
 const allowedMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
 
