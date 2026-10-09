@@ -326,14 +326,20 @@ model StudentProfile {
   grade                  String?
   section                String?
   dob                    DateTime?
+  dobBs                  String?
   rollNo                 String?
   phone                  String?
   gender                 String?
+  bloodGroup             String?
   address                String?
+  temporaryAddress       String?
+  admissionDate          DateTime?
   profilePicture         Bytes?
   profilePictureMimeType String?
-  parentName             String?
-  parentPhone            String?
+  fatherName             String?
+  fatherPhone            String?
+  motherName             String?
+  motherPhone            String?
   user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 

@@ -104,7 +104,7 @@ export class UsersService {
 
   async getOwnProfile(userId: string) {
     const [user] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`
-      SELECT u."id", u."email", u."role"::text AS "role", s."name" AS "schoolName",
+      SELECT u."id", u."email", u."role"::text AS "role", u."userId" AS "studentId", u."emisId", s."name" AS "schoolName",
              (u."profilePicture" IS NOT NULL OR u."profilePictureUrl" IS NOT NULL) AS "hasProfilePicture"
       FROM "User" u JOIN "School" s ON s."id" = u."schoolId" WHERE u."id" = ${userId} LIMIT 1
     `);
@@ -112,9 +112,12 @@ export class UsersService {
     const { hasProfilePicture, ...userDetails } = user;
     const profilePictureUrl = hasProfilePicture ? '/users/me/photo' : null;
     if (user.role === 'STUDENT') {
-      const [profile] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`SELECT "firstName", "lastName", "grade", "section", "dob", "rollNo", "phone", "gender", "address", "parentName", "parentPhone" FROM "StudentProfile" WHERE "userId" = ${userId} LIMIT 1`);
+      const [profile] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`
+        SELECT "firstName", "lastName", "grade", "section", "dob", "dobBs", "rollNo", "phone", "gender", "bloodGroup", "address", "temporaryAddress", "admissionDate", "fatherName", "fatherPhone", "motherName", "motherPhone"
+        FROM "StudentProfile" WHERE "userId" = ${userId} LIMIT 1
+      `);
       if (!profile) return { ...userDetails, profilePictureUrl };
-      return { ...userDetails, ...profile, studentId: profile.rollNo, profilePictureUrl };
+      return { ...userDetails, ...profile, profilePictureUrl };
     }
     if (user.role === 'TEACHER') {
       const [profile] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`SELECT "firstName", "lastName", "subjects" FROM "TeacherProfile" WHERE "userId" = ${userId} LIMIT 1`);
@@ -135,6 +138,7 @@ export class UsersService {
       select: { role: true, schoolId: true, studentProfile: { select: { userId: true } }, teacherProfile: { select: { userId: true } }, adminProfile: { select: { userId: true } } },
     });
     if (!user) throw new NotFoundException('User not found');
+    if (user.role === 'STUDENT') throw new ForbiddenException('Students cannot edit their own profile. Please contact an admin.');
     const allowedText = ['firstName', 'lastName', 'email', 'studentId', 'phone', 'gender', 'address', 'parentName', 'parentPhone'] as const;
     const values: Record<string, string> = {};
     for (const key of allowedText) {
