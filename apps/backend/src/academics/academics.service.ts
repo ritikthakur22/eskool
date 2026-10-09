@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CreateAcademicYearDto, CreateClassDto, CreateEnrollmentDto, CreateParentLinkDto, CreateSectionDto, CreateSubjectDto, CreateTeacherAssignmentDto } from './dto/academics.dto.js';
@@ -108,7 +108,11 @@ export class AcademicsService {
 
   private canonicalSectionName(value: string) {
     const name = value.trim();
-    return /^[a-z]$/i.test(name) ? name.toUpperCase() : name;
+    // Section labels commonly use A/B or grade-qualified labels such as 3A,
+    // 10-B and A1. Normalize those labels without uppercasing descriptive names.
+    return /^(?:[a-z]|\d+\s*[-_]?\s*[a-z]|[a-z]\s*[-_]?\s*\d+)$/i.test(name)
+      ? name.replace(/[a-z]/gi, letter => letter.toUpperCase())
+      : name;
   }
 
   async updateClass(id: string, name: string, schoolId: string, actorId: string) {
@@ -143,6 +147,17 @@ export class AcademicsService {
   async deleteSection(id: string, schoolId: string, actorId: string) {
     const section = await this.prisma.section.findFirst({ where: { id, schoolId }, include: { _count: { select: { enrollments: true, teacherAssignments: true, classRoutines: true, exams: true, homeworks: true } } } });
     if (!section) throw new NotFoundException('Section not found in your school.');
+    const siblings = await this.prisma.section.findMany({ where: { classId: section.classId, id: { not: id }, name: { equals: section.name.trim(), mode: 'insensitive' } }, select: { id: true, name: true } });
+    const group = [{ id: section.id, name: section.name }, ...siblings];
+    const canonical = group.find(item => item.name === item.name.toUpperCase()) || group[0];
+    if (canonical.id !== section.id) {
+      await this.prisma.$transaction(async tx => {
+        await this.moveSectionRecords(tx, section.id, canonical.id, true);
+        await tx.section.update({ where: { id: canonical.id }, data: { name: this.canonicalSectionName(canonical.name) } });
+      });
+      void this.audit.record({ action: 'SECTION_MERGED_AND_REMOVED', entity: 'Section', entityId: id, userId: actorId, schoolId, details: { mergedIntoSectionId: canonical.id } });
+      return { success: true, mergedInto: canonical.name };
+    }
     if (Object.values(section._count).some(count => count > 0)) throw new ConflictException('This section is in use by students, teachers, routines, exams, or homework. Remove or reassign those records first.');
     await this.prisma.section.delete({ where: { id } });
     void this.audit.record({ action: 'SECTION_DELETED', entity: 'Section', entityId: id, userId: actorId, schoolId });
@@ -230,22 +245,7 @@ export class AcademicsService {
         if (group.length < 2) continue;
         const canonical = group.find(row => row.name === row.name.toUpperCase()) || group[0];
         for (const duplicate of group.filter(row => row.id !== canonical.id)) {
-          const enrollments = await tx.enrollment.findMany({ where: { sectionId: duplicate.id }, select: { id: true, studentId: true, academicYearId: true } });
-          for (const enrollment of enrollments) {
-            const existing = await tx.enrollment.findFirst({ where: { sectionId: canonical.id, studentId: enrollment.studentId, academicYearId: enrollment.academicYearId }, select: { id: true } });
-            if (existing) throw new ConflictException('Duplicate sections contain a student enrolled in both. Resolve that student’s enrollment before merging sections.');
-          }
-          const assignments = await tx.teacherAssignment.findMany({ where: { sectionId: duplicate.id } });
-          for (const assignment of assignments) {
-            const existing = await tx.teacherAssignment.findFirst({ where: { sectionId: canonical.id, teacherId: assignment.teacherId, subjectId: assignment.subjectId, academicYearId: assignment.academicYearId }, select: { id: true } });
-            if (existing) await tx.teacherAssignment.delete({ where: { id: assignment.id } });
-            else await tx.teacherAssignment.update({ where: { id: assignment.id }, data: { sectionId: canonical.id } });
-          }
-          await tx.homework.updateMany({ where: { sectionId: duplicate.id }, data: { sectionId: canonical.id } });
-          await tx.exam.updateMany({ where: { sectionId: duplicate.id }, data: { sectionId: canonical.id } });
-          await tx.classRoutine.updateMany({ where: { sectionId: duplicate.id }, data: { sectionId: canonical.id } });
-          await tx.enrollment.updateMany({ where: { sectionId: duplicate.id }, data: { sectionId: canonical.id } });
-          await tx.section.delete({ where: { id: duplicate.id } });
+          await this.moveSectionRecords(tx, duplicate.id, canonical.id, true);
           count++;
         }
         const preferredName = this.canonicalSectionName(canonical.name);
@@ -255,6 +255,41 @@ export class AcademicsService {
     });
     if (merged) void this.audit.record({ action: 'DUPLICATE_SECTIONS_MERGED', entity: 'Section', userId: actorId, schoolId, details: { mergedCount: merged } });
     return { merged };
+  }
+
+  private async moveSectionRecords(tx: Prisma.TransactionClient, duplicateId: string, canonicalId: string, preferCanonicalOnEnrollmentConflict = false) {
+    const [duplicateSection, canonicalSection] = await Promise.all([
+      tx.section.findUniqueOrThrow({ where: { id: duplicateId }, select: { name: true } }),
+      tx.section.findUniqueOrThrow({ where: { id: canonicalId }, select: { name: true } }),
+    ]);
+    const enrollments = await tx.enrollment.findMany({ where: { sectionId: duplicateId }, select: { studentId: true, academicYearId: true } });
+    for (const enrollment of enrollments) {
+      const existing = await tx.enrollment.findFirst({ where: { sectionId: canonicalId, studentId: enrollment.studentId, academicYearId: enrollment.academicYearId }, select: { id: true, rollNo: true } });
+      if (existing && !preferCanonicalOnEnrollmentConflict) throw new ConflictException('Duplicate sections contain a student enrolled in both. Resolve that student’s enrollment before merging sections.');
+      if (existing && preferCanonicalOnEnrollmentConflict) {
+        // The canonical enrollment wins. Keep the duplicate's roll number only
+        // when the canonical record does not already have one, then discard
+        // the redundant enrollment to satisfy the student/year uniqueness rule.
+        if (!existing.rollNo) {
+          const duplicateEnrollment = await tx.enrollment.findFirst({ where: { sectionId: duplicateId, studentId: enrollment.studentId, academicYearId: enrollment.academicYearId }, select: { rollNo: true } });
+          if (duplicateEnrollment?.rollNo) await tx.enrollment.update({ where: { id: existing.id }, data: { rollNo: duplicateEnrollment.rollNo } });
+        }
+        await tx.enrollment.deleteMany({ where: { sectionId: duplicateId, studentId: enrollment.studentId, academicYearId: enrollment.academicYearId } });
+      }
+    }
+    const assignments = await tx.teacherAssignment.findMany({ where: { sectionId: duplicateId } });
+    for (const assignment of assignments) {
+      const existing = await tx.teacherAssignment.findFirst({ where: { sectionId: canonicalId, teacherId: assignment.teacherId, subjectId: assignment.subjectId, academicYearId: assignment.academicYearId }, select: { id: true } });
+      if (existing) await tx.teacherAssignment.delete({ where: { id: assignment.id } });
+      else await tx.teacherAssignment.update({ where: { id: assignment.id }, data: { sectionId: canonicalId } });
+    }
+    await tx.homework.updateMany({ where: { sectionId: duplicateId }, data: { sectionId: canonicalId } });
+    await tx.exam.updateMany({ where: { sectionId: duplicateId }, data: { sectionId: canonicalId } });
+    await tx.classRoutine.updateMany({ where: { sectionId: duplicateId }, data: { sectionId: canonicalId } });
+    const enrolledStudentIds = enrollments.map(item => item.studentId);
+    if (enrolledStudentIds.length) await tx.studentProfile.updateMany({ where: { userId: { in: enrolledStudentIds }, section: { equals: duplicateSection.name, mode: 'insensitive' } }, data: { section: canonicalSection.name } });
+    await tx.enrollment.updateMany({ where: { sectionId: duplicateId }, data: { sectionId: canonicalId } });
+    await tx.section.delete({ where: { id: duplicateId } });
   }
 
   async getChildren(parentId: string, schoolId: string) {
