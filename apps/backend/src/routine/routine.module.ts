@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { RoutineController } from './routine.controller.js';
+import { ClassRoutineController, RoutineController } from './routine.controller.js';
 import { RoutineService } from './routine.service.js';
 
-@Module({ controllers: [RoutineController], providers: [RoutineService] })
+@Module({ controllers: [RoutineController, ClassRoutineController], providers: [RoutineService] })
 export class RoutineModule {}
