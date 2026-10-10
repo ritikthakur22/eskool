@@ -47,7 +47,7 @@ export class UsersController {
 
   @Post('me/photo')
   @UseInterceptors(FileInterceptor('file', {
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    limits: { fileSize: 1 * 1024 * 1024, files: 1 },
     fileFilter: (_req, file, callback) => {
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
         callback(new BadRequestException('Choose a JPG, PNG, or WEBP profile photo.'), false);
@@ -90,7 +90,7 @@ export class UsersController {
   @Post('admin/users/:id/photo')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @UseInterceptors(FileInterceptor('file', {
-    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    limits: { fileSize: 1 * 1024 * 1024, files: 1 },
     fileFilter: (_req, file, callback) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)
       ? callback(null, true)
       : callback(new BadRequestException('Choose a JPG, PNG, or WEBP profile photo.'), false),

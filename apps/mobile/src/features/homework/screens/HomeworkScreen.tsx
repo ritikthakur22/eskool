@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Linking from 'expo-linking';
 import { useTheme } from '../../../core/theme/ThemeContext';
-import { API_BASE_URL, api } from '../../../core/networking/api';
+import { API_BASE_URL, api, uploadFile } from '../../../core/networking/api';
 import { getSelectedChildId } from '../../../core/utils/childSelection';
 import { gradeTenSectionName, orderAcademicClasses } from '../../../core/utils/classOrdering';
 
@@ -151,11 +151,9 @@ export default function HomeworkScreen({ navigation }: any) {
       let attachmentType = editHomework?.attachmentType;
       
       if (attachment) {
-        const formData = new FormData();
-        formData.append('file', { uri: attachment.uri, name: attachment.name, type: attachment.mimeType || 'application/octet-stream' } as any);
-        const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-        attachmentUrl = uploadRes.data.url;
-        attachmentType = uploadRes.data.mimeType;
+        const uploadRes = await uploadFile(attachment.uri, attachment.mimeType);
+        attachmentUrl = uploadRes.url;
+        attachmentType = uploadRes.mimeType;
       }
       
       let data: any = editHomework 

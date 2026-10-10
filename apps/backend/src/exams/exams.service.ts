@@ -177,8 +177,14 @@ export class ExamsService {
     const weights = (scheme.categoryWeights || {}) as Record<string, number>;
     const bands = (scheme.gradeBands || []) as Array<{ minPercent: number; maxPercent: number; grade: string; gpa?: number }>;
     const gradeFor = (percentage: number | null) => gradeBandForPercentage(percentage, bands);
+    const resultsByStudent = new Map<string, any[]>();
+    for (const result of results) {
+      const arr = resultsByStudent.get(result.studentId) || [];
+      arr.push(result);
+      resultsByStudent.set(result.studentId, arr);
+    }
     const reports: any[] = enrollments.map((enrollment: any) => {
-      const studentResults = results.filter(result => result.studentId === enrollment.studentId);
+      const studentResults = resultsByStudent.get(enrollment.studentId) || [];
       const bySubject = new Map<string, any[]>();
       for (const result of studentResults) {
         const subjectId = result.exam.subject.id;

@@ -99,6 +99,7 @@ model Subject {
   homeworks          Homework[]
   school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   teacherAssignments TeacherAssignment[]
+  attendances        Attendance[]
 
   @@unique([schoolId, name])
 }
@@ -114,6 +115,7 @@ model Enrollment {
   student        User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, academicYearId])
+  @@index([sectionId])
 }
 
 model TeacherAssignment {
@@ -334,15 +336,18 @@ model Attendance {
   teacherId String?
   date      DateTime
   status    AttendanceStatus
-  subject   String?
+  subjectId String?
   remarks   String?
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
   school    School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   student   User             @relation("StudentAttendance", fields: [studentId], references: [id])
   teacher   User?            @relation("TeacherAttendance", fields: [teacherId], references: [id])
+  subject   Subject?         @relation(fields: [subjectId], references: [id])
 
   @@unique([studentId, date])
+  @@index([schoolId, date])
+  @@index([studentId, date])
 }
 
 model StudentProfile {
@@ -361,8 +366,6 @@ model StudentProfile {
   address                String?
   temporaryAddress       String?
   admissionDate          DateTime?
-  profilePicture         Bytes?
-  profilePictureMimeType String?
   fatherName             String?
   fatherPhone            String?
   motherName             String?
@@ -558,6 +561,8 @@ model ExamQuestion {
   options            String[]
   correctOptionIndex Int
   exam               Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@index([examId])
 }
 
 model ExamAttempt {

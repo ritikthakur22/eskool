@@ -18,8 +18,8 @@ export class MarkAttendanceDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(120)
-  subject?: string;
+  @IsUUID()
+  subjectId?: string;
 
   @IsString()
   @IsOptional()

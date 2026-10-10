@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const studentTabs = [
   { route: 'Dashboard', label: 'Home', icon: 'home-outline' },
@@ -35,14 +36,16 @@ const parentTabs = [
 ];
 
 export default function BottomNavigation({ navigation, activeRoute, colors, role }: any) {
+  const insets = useSafeAreaInsets();
   const tabs = role === 'ADMIN' || role === 'SUPER_ADMIN' ? managementTabs : role === 'TEACHER' ? teacherTabs : role === 'PARENT' ? parentTabs : studentTabs;
+  
   return (
-    <View style={[styles.bar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
+    <View style={[styles.bar, { backgroundColor: colors.card, borderTopColor: colors.border, paddingBottom: Math.max(insets.bottom, 10) }]}>
     {tabs.map(tab => {
       const active = tab.route === activeRoute;
       const color = active ? colors.primary : colors.subText;
       return <TouchableOpacity key={tab.route} accessibilityRole="tab" accessibilityState={{ selected: active }} accessibilityLabel={tab.label} style={styles.tab} onPress={() => navigation.navigate(tab.route)}>
-        <Ionicons name={tab.icon as any} size={21} color={color} />
+        <Ionicons name={tab.icon as any} size={24} color={color} />
         <Text style={[styles.label, { color, fontWeight: active ? '900' : '700' }]}>{tab.label}</Text>
       </TouchableOpacity>;
     })}
@@ -51,7 +54,7 @@ export default function BottomNavigation({ navigation, activeRoute, colors, role
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', paddingTop: 9, paddingBottom: 10, borderTopWidth: 1 },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  label: { fontSize: 9, marginTop: 3 },
+  bar: { flexDirection: 'row', paddingTop: 9, borderTopWidth: 1 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
+  label: { fontSize: 11, marginTop: 4 },
 });

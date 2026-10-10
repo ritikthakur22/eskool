@@ -25,7 +25,7 @@ export class AttendanceExportService {
       where,
       include: {
         student: { include: { studentProfile: true } },
-        teacher: { include: { teacherProfile: true, adminProfile: true } }
+        teacher: { include: { teacherProfile: true, adminProfile: true } }, subject: true
       },
       orderBy: [{ date: 'desc' }, { student: { email: 'asc' } }]
     });
@@ -40,7 +40,7 @@ export class AttendanceExportService {
         `"${studentName}"`,
         rollNo,
         r.status,
-        r.subject || '',
+        r.subject?.name || '',
         `"${teacherName}"`,
         `"${r.remarks || ''}"`
       ].join(',');

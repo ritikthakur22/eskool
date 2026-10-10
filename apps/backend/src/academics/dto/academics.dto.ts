@@ -41,6 +41,12 @@ export class UpdateSubjectDto {
   @IsOptional() @IsString() @MaxLength(30) code?: string;
 }
 
+export class UpdateEnrollmentDto {
+  @IsOptional() @IsUUID() sectionId?: string;
+  @IsOptional() @IsUUID() academicYearId?: string;
+  @IsOptional() @IsString() @MaxLength(50) rollNo?: string;
+}
+
 export class CreateEnrollmentDto {
   @IsUUID() studentId!: string;
   @IsUUID() sectionId!: string;
