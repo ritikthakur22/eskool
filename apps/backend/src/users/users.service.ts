@@ -82,7 +82,7 @@ export class UsersService {
     });
     if (!user) return null;
     const [hasPhoto] = await this.prisma.$queryRaw<Array<{ hasProfilePicture: boolean }>>(Prisma.sql`SELECT ("profilePicture" IS NOT NULL OR "profilePictureUrl" IS NOT NULL) AS "hasProfilePicture" FROM "User" WHERE "id" = ${id} LIMIT 1`);
-    if (hasPhoto?.hasProfilePicture) {
+    if (hasPhoto?.hasProfilePicture && !user.profilePictureUrl) {
       user.profilePictureUrl = `/users/admin/users/${id}/photo`;
     }
     return user;

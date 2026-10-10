@@ -157,12 +157,13 @@ export class AuthService {
   async getCurrentUserFormatted(id: string) {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: {
-        adminProfile: true,
-        teacherProfile: true,
-        studentProfile: true,
+      select: {
+        id: true, userId: true, emisId: true, email: true, role: true, profilePictureUrl: true,
+        adminProfile: true, teacherProfile: true, studentProfile: true,
       }
     });
+    if (!user) return null;
+    const [hasPhoto] = await this.prisma.$queryRaw<Array<{ hasProfilePicture: boolean }>>(Prisma.sql`SELECT ("profilePicture" IS NOT NULL OR "profilePictureUrl" IS NOT NULL) AS "hasProfilePicture" FROM "User" WHERE "id" = ${id} LIMIT 1`);
     if (!user) return null;
 
     let firstName = null;
@@ -190,7 +191,7 @@ export class AuthService {
       firstName,
       lastName,
       department,
-      profilePic: user.profilePictureUrl
+      profilePic: user.profilePictureUrl ? user.profilePictureUrl : (hasPhoto?.hasProfilePicture ? '/users/me/photo' : null)
     };
   }
 
