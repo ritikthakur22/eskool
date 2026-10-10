@@ -172,6 +172,11 @@ export class UsersController {
     });
 
     const { password: _password, ...result } = user;
+    
+    if (targetRole === Role.STUDENT && data.section) {
+      void this.usersService.enrollStudent(user.id, data.section, schoolId);
+    }
+    
     void this.audit.record({ action: 'USER_CREATED', entity: 'User', entityId: user.id, userId: req.user.id, schoolId: schoolId, details: { role: targetRole } });
     return result;
   }

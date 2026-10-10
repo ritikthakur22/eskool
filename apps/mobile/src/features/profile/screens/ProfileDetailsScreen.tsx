@@ -136,7 +136,11 @@ export default function ProfileDetailsScreen({ navigation }: any) {
     if (profile?.firstName) {
       payload.firstName = values.firstName.trim(); payload.lastName = values.lastName.trim();
     }
-    if (values.phone) { const match = values.phone.match(/^(\+\d{1,4})?(.*)$/); const number = match ? match[2] : values.phone; if (number.length > 0 && number.length !== 10) { Alert.alert('Invalid phone', 'Phone number must be exactly 10 digits.'); return; } }
+    if (values.phone) {
+      const matched = COUNTRY_CODES.find(c => values.phone?.startsWith(c.code))?.code || '';
+      const number = values.phone.startsWith(matched) ? values.phone.substring(matched.length) : values.phone;
+      if (number.length > 0 && number.length !== 10) { Alert.alert('Invalid phone', 'Phone number must be exactly 10 digits.'); return; }
+    }
     payload.phone = values.phone?.trim() || '';
     if (profile?.role === 'STUDENT') for (const key of ['studentId', 'gender', 'address', 'parentName', 'parentPhone']) payload[key] = values[key]?.trim() || '';
     if (profile?.role === 'STUDENT') payload.dob = values.dob?.trim() || null;
