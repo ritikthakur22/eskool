@@ -71,6 +71,7 @@ export const uploadFile = async (uri: string, mimeType?: string, endpoint = '/up
 
   const response = await api.post(endpoint, formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    transformRequest: (data) => data, // Let RN handle the FormData encoding natively
   });
   return response.data;
 };

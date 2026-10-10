@@ -32,7 +32,7 @@ export class UsersService {
           WHERE "id" ~ '^dps-\\d+$'
         `;
         const nextId = (result?.maxId || 0) + 1;
-        data.id = \`dps-\${String(nextId).padStart(4, '0')}\`;
+        data.id = `dps-${String(nextId).padStart(4, '0')}`;
       }
       return await this.prisma.user.create({ data });
     }

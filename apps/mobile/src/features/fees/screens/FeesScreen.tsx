@@ -185,7 +185,7 @@ export default function FeesScreen({ navigation }: any) {
       form.append('transactionId', transactionId.trim());
       form.append('amount', amount.trim());
       files.forEach(file => form.append('files', { uri: file.uri, name: file.name, type: file.mimeType } as any));
-      await api.post(`/fees/${selectedInvoice.id}/payment-proofs`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await api.post(`/fees/${selectedInvoice.id}/payment-proofs`, form, { headers: { 'Content-Type': 'multipart/form-data' }, transformRequest: (d) => d });
       setExpandedInvoiceId(null);
       setTransactionId('');
       setFiles([]);
