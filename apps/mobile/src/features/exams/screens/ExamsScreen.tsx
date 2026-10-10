@@ -135,7 +135,7 @@ export default function ExamsScreen({ route, navigation }: any) {
       const data = new FormData();
       data.append('file', { uri: picked.assets[0].uri, name: picked.assets[0].name, type: picked.assets[0].mimeType || 'application/octet-stream' } as any);
       data.append('title', 'Exam routine');
-      await api.post(`/exams/routine/section/${routineSectionId}`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await api.post(`/exams/routine/section/${routineSectionId}`, data, { headers: { 'Content-Type': 'multipart/form-data' }, transformRequest: (d) => d });
       setRoutineFile(null);
       await loadData();
       Alert.alert('Uploaded', 'Exam routine is now available to this class.');

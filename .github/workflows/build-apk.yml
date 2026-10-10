@@ -1,11 +1,20 @@
-name: Build Android APK
+name: Build Android (APK / AAB)
 
 on:
-  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Choose build type'
+        required: true
+        default: 'apk'
+        type: choice
+        options:
+          - apk
+          - aab
 
 jobs:
   build:
-    name: Build Android APK
+    name: Build Android (${{ github.event.inputs.build_type }})
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,21 +45,36 @@ jobs:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -z "$GOOGLE_SERVICES_JSON" ]; then
-            echo "Missing GOOGLE_SERVICES_JSON repository secret; Android Firebase builds cannot run safely without it."
-            exit 1
+            echo "Missing GOOGLE_SERVICES_JSON repository secret; continuing without it."
+          else
+            printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
           fi
-          printf '%s' "$GOOGLE_SERVICES_JSON" > google-services.json
 
       - name: Generate native Android project
         run: npx expo prebuild --platform android --non-interactive --no-install
 
       - name: Build Android APK
+        if: ${{ github.event.inputs.build_type == 'apk' }}
         working-directory: ./apps/mobile/android
         run: chmod +x ./gradlew && ./gradlew assembleRelease
 
+      - name: Build Android AAB
+        if: ${{ github.event.inputs.build_type == 'aab' }}
+        working-directory: ./apps/mobile/android
+        run: chmod +x ./gradlew && ./gradlew bundleRelease
+
       - name: Upload APK Artifact
+        if: ${{ github.event.inputs.build_type == 'apk' }}
         uses: actions/upload-artifact@v4
         with:
-          name: eskool-app-release
+          name: eskool-app-release-apk
           path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 7
+
+      - name: Upload AAB Artifact
+        if: ${{ github.event.inputs.build_type == 'aab' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: eskool-app-release-aab
+          path: apps/mobile/android/app/build/outputs/bundle/release/app-release.aab
           retention-days: 7

@@ -24,7 +24,18 @@ export class UsersService {
   }
 
   async create(data: Prisma.UserCreateInput): Promise<User> {
-    try { return await this.prisma.user.create({ data }); }
+    try {
+      if (!data.id) {
+        const [result] = await this.prisma.$queryRaw<Array<{ maxId: number }>>`
+          SELECT MAX(CAST(SUBSTRING("id" FROM 5) AS INTEGER)) as "maxId" 
+          FROM "User" 
+          WHERE "id" ~ '^dps-\\d+$'
+        `;
+        const nextId = (result?.maxId || 0) + 1;
+        data.id = `dps-${String(nextId).padStart(4, '0')}`;
+      }
+      return await this.prisma.user.create({ data });
+    }
     catch (error: any) { if (error?.code === 'P2002') throw new ConflictException('Email, EMIS ID, or student ID is already in use.'); throw error; }
   }
 
@@ -53,8 +64,8 @@ export class UsersService {
       select: {
         id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true,
         studentProfile: { select: { firstName: true, lastName: true, grade: true, section: true, rollNo: true } },
-        teacherProfile: { select: { firstName: true, lastName: true } },
-        adminProfile: { select: { firstName: true, lastName: true, department: true } },
+        teacherProfile: { select: { firstName: true, lastName: true, phone: true } },
+        adminProfile: { select: { firstName: true, lastName: true, department: true, phone: true } },
       },
     });
     return users.filter(user => canManageRole(filters.actorRole, user.role));
@@ -71,7 +82,7 @@ export class UsersService {
     });
     if (!user) return null;
     const [hasPhoto] = await this.prisma.$queryRaw<Array<{ hasProfilePicture: boolean }>>(Prisma.sql`SELECT ("profilePicture" IS NOT NULL OR "profilePictureUrl" IS NOT NULL) AS "hasProfilePicture" FROM "User" WHERE "id" = ${id} LIMIT 1`);
-    if (hasPhoto?.hasProfilePicture) {
+    if (hasPhoto?.hasProfilePicture && !user.profilePictureUrl) {
       user.profilePictureUrl = `/users/admin/users/${id}/photo`;
     }
     return user;
@@ -102,9 +113,9 @@ export class UsersService {
       if (target.role === Role.STUDENT) {
         await tx.studentProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.grade !== undefined ? { grade: input.grade.trim() || null } : {}), ...(input.section !== undefined ? { section: input.section.trim() || null } : {}), ...(input.rollNo !== undefined ? { rollNo: input.rollNo.trim() || null } : {}), ...(input.dob !== undefined ? { dob: input.dob ? new Date(input.dob) : null } : {}), ...(input.dobBs !== undefined ? { dobBs: input.dobBs.trim() || null } : {}), ...(input.admissionDate !== undefined ? { admissionDate: input.admissionDate ? new Date(input.admissionDate) : null } : {}), ...(input.gender !== undefined ? { gender: input.gender.trim() || null } : {}), ...(input.bloodGroup !== undefined ? { bloodGroup: input.bloodGroup.trim() || null } : {}), ...(input.phone !== undefined ? { phone: input.phone.trim() || null } : {}), ...(input.address !== undefined ? { address: input.address.trim() || null } : {}), ...(input.temporaryAddress !== undefined ? { temporaryAddress: input.temporaryAddress.trim() || null } : {}), ...(input.fatherName !== undefined ? { fatherName: input.fatherName.trim() || null } : {}), ...(input.fatherPhone !== undefined ? { fatherPhone: input.fatherPhone.trim() || null } : {}), ...(input.motherName !== undefined ? { motherName: input.motherName.trim() || null } : {}), ...(input.motherPhone !== undefined ? { motherPhone: input.motherPhone.trim() || null } : {}) } });
       } else if (target.role === Role.TEACHER) {
-        await tx.teacherProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}) } });
+        await tx.teacherProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.phone !== undefined ? { phone: input.phone?.trim() || null } : {}) } });
       } else if (target.role === Role.ADMIN || target.role === Role.SUPER_ADMIN) {
-        await tx.adminProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.department !== undefined ? { department: input.department.trim() || null } : {}) } });
+        await tx.adminProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.phone !== undefined ? { phone: input.phone?.trim() || null } : {}), ...(input.department !== undefined ? { department: input.department.trim() || null } : {}) } });
       } else if (firstName !== undefined || lastName !== undefined || input.grade !== undefined || input.section !== undefined || input.rollNo !== undefined || input.department !== undefined) {
         throw new BadRequestException('This account has no editable profile fields.');
       }
@@ -144,12 +155,12 @@ export class UsersService {
       return { ...userDetails, ...profile, profilePictureUrl };
     }
     if (user.role === 'TEACHER') {
-      const [profile] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`SELECT "firstName", "lastName", "subjects" FROM "TeacherProfile" WHERE "userId" = ${userId} LIMIT 1`);
+      const [profile] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`SELECT "firstName", "lastName", "phone", "subjects" FROM "TeacherProfile" WHERE "userId" = ${userId} LIMIT 1`);
       if (!profile) return { ...userDetails, profilePictureUrl };
       return { ...userDetails, ...profile, profilePictureUrl };
     }
     if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-      const [profile] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`SELECT "firstName", "lastName", "department" FROM "AdminProfile" WHERE "userId" = ${userId} LIMIT 1`);
+      const [profile] = await this.prisma.$queryRaw<Array<Record<string, any>>>(Prisma.sql`SELECT "firstName", "lastName", "phone", "department" FROM "AdminProfile" WHERE "userId" = ${userId} LIMIT 1`);
       if (!profile) return { ...userDetails, profilePictureUrl };
       return { ...userDetails, ...profile, profilePictureUrl };
     }
@@ -179,15 +190,16 @@ export class UsersService {
       const existing = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
       if (existing && existing.id !== userId) throw new ConflictException('That email address is already in use');
     }
-    const fields: { firstName?: string; lastName?: string } = {};
+    const fields: { firstName?: string; lastName?: string; phone?: string } = {};
     if (values.firstName !== undefined) fields.firstName = values.firstName;
     if (values.lastName !== undefined) fields.lastName = values.lastName;
+    if (values.phone !== undefined) fields.phone = values.phone;
     if (user.role === 'TEACHER' && user.teacherProfile) {
-      if ((['studentId', 'phone', 'gender', 'address', 'parentName', 'parentPhone'] as const).some(key => input[key] !== undefined)) throw new BadRequestException('These details are only available for student profiles');
+      if ((['studentId', 'gender', 'address', 'parentName', 'parentPhone'] as const).some(key => input[key] !== undefined)) throw new BadRequestException('These details are only available for student profiles');
       if (input.dob !== undefined) throw new BadRequestException('Only students can update date of birth');
       if (Object.keys(fields).length) await this.prisma.teacherProfile.update({ where: { userId }, data: fields });
     } else if ((user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && user.adminProfile) {
-      if ((['studentId', 'phone', 'gender', 'address', 'parentName', 'parentPhone'] as const).some(key => input[key] !== undefined)) throw new BadRequestException('These details are only available for student profiles');
+      if ((['studentId', 'gender', 'address', 'parentName', 'parentPhone'] as const).some(key => input[key] !== undefined)) throw new BadRequestException('These details are only available for student profiles');
       if (input.dob !== undefined) throw new BadRequestException('Date of birth cannot be updated for this account');
       if (Object.keys(fields).length) await this.prisma.adminProfile.update({ where: { userId }, data: fields });
     } else if (Object.values(values).some(value => value !== email) || input.dob !== undefined) {
@@ -213,6 +225,20 @@ export class UsersService {
     ]);
     void this.audit.record({ action: 'PASSWORD_CHANGED', entity: 'User', entityId: userId, userId });
     return { success: true };
+  }
+
+  async resetManagedUserPassword(id: string, newPassword: unknown, actor: { actorId: string; schoolId: string; actorRole: Role }) {
+    if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 128) {
+      throw new BadRequestException('A new password of at least 8 characters is required');
+    }
+    const target = await this.getManagedTarget(id, actor);
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id }, data: { password: passwordHash, tokenVersion: { increment: 1 } } }),
+      this.prisma.authSession.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } }),
+    ]);
+    void this.audit.record({ action: 'USER_PASSWORD_RESET', entity: 'User', entityId: id, userId: actor.actorId, schoolId: actor.schoolId });
+    return { success: true, message: 'Password has been reset successfully' };
   }
 
   async getUserCounts(schoolId: string) {

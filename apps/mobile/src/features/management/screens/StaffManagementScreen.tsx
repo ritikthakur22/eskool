@@ -159,16 +159,19 @@ export default function StaffManagementScreen({ navigation }: any) {
       if (!parseAdmissionDateTime(form.admissionDateTime)) { Alert.alert('Admission date and time', 'Use the format YYYY-M-D h:mmam/pm, for example 2026-1-9 10:56pm.'); return; }
     }
     if (form.dob && !/^\d{4}-\d{2}-\d{2}$/.test(form.dob)) { Alert.alert('Date of birth', 'Enter the AD date as YYYY-MM-DD.'); return; }
+    if (form.phone) { const match = form.phone.match(/^(\+\d{1,4})?(.*)$/); const number = match ? match[2] : form.phone; if (number.length > 0 && number.length !== 10) { Alert.alert('Invalid phone', 'Phone number must be exactly 10 digits.'); return; } }
+    if (form.fatherPhone) { const match = form.fatherPhone.match(/^(\+\d{1,4})?(.*)$/); const number = match ? match[2] : form.fatherPhone; if (number.length > 0 && number.length !== 10) { Alert.alert('Invalid phone', 'Father phone number must be exactly 10 digits.'); return; } }
+    if (form.motherPhone) { const match = form.motherPhone.match(/^(\+\d{1,4})?(.*)$/); const number = match ? match[2] : form.motherPhone; if (number.length > 0 && number.length !== 10) { Alert.alert('Invalid phone', 'Mother phone number must be exactly 10 digits.'); return; } }
     setSaving(true);
     try {
-      const studentData = form.role === 'STUDENT' ? { emisId: form.emisId.trim(), userId: form.userId.trim() || undefined, grade: form.grade || undefined, section: form.section || undefined, rollNo: form.rollNo.trim() || undefined, dob: form.dob || undefined, dobBs: form.dobBs.trim() || undefined, admissionDate: parseAdmissionDateTime(form.admissionDateTime) || undefined, gender: form.gender || undefined, bloodGroup: form.bloodGroup || undefined, phone: form.phone.trim() || undefined, address: form.address.trim() || undefined, temporaryAddress: form.temporaryAddress.trim() || undefined, fatherName: form.fatherName.trim() || undefined, fatherPhone: form.fatherPhone.trim() || undefined, motherName: form.motherName.trim() || undefined, motherPhone: form.motherPhone.trim() || undefined } : {};
-      const common = { email: form.email.trim().toLowerCase(), firstName: form.firstName.trim(), lastName: form.lastName.trim(), ...studentData };
+      const studentData = form.role === 'STUDENT' ? { emisId: form.emisId.trim(), userId: form.userId.trim() || undefined, grade: form.grade || undefined, section: form.section || undefined, rollNo: form.rollNo.trim() || undefined, dob: form.dob || undefined, dobBs: form.dobBs.trim() || undefined, admissionDate: parseAdmissionDateTime(form.admissionDateTime) || undefined, gender: form.gender || undefined, bloodGroup: form.bloodGroup || undefined, address: form.address.trim() || undefined, temporaryAddress: form.temporaryAddress.trim() || undefined, fatherName: form.fatherName.trim() || undefined, fatherPhone: form.fatherPhone.trim() || undefined, motherName: form.motherName.trim() || undefined, motherPhone: form.motherPhone.trim() || undefined } : {};
+      const common = { email: form.email.trim().toLowerCase(), firstName: form.firstName.trim(), lastName: form.lastName.trim(), phone: form.phone.trim() || undefined, ...studentData };
       let savedUser: any = editingUser;
       if (editingUser) await api.patch(`/users/admin/users/${editingUser.id}`, { ...common, section: form.section || undefined, department: form.department.trim() || undefined, password: form.password || undefined });
       else { const response = await api.post('/users/admin/create-user', { role: form.role, password: form.password, ...common, department: form.department.trim() || undefined }); savedUser = response.data; }
       if (profilePhoto && savedUser?.id) {
         try { await uploadProfilePhoto(savedUser.id); }
-        catch (photoError: any) { Alert.alert('Account saved; photo upload failed', photoError.response?.data?.message || 'Edit this account and try uploading its photo again.'); }
+        catch (photoError: any) { Alert.alert('Account saved; photo upload failed', photoError.response?.data?.message || photoError.message || 'Edit this account and try uploading its photo again.'); }
       }
       setModal(false); setEditingUser(null); setForm(emptyForm(allowedRoles.includes('STUDENT') ? 'STUDENT' : allowedRoles[0])); await load(true);
     }
@@ -193,6 +196,7 @@ export default function StaffManagementScreen({ navigation }: any) {
       <Text style={s.fieldLabel}>{editingUser ? 'New password (leave blank to keep current)' : 'Temporary password'}<Text style={s.required}>{!editingUser && ' *'}</Text></Text><View style={s.passwordRow}><TextInput value={form.password} onChangeText={value => setField('password', value)} placeholder="At least 8 characters" placeholderTextColor={colors.subText} secureTextEntry={!showPassword} autoCapitalize="none" style={[s.input, s.passwordInput]} /><TouchableOpacity accessibilityLabel={showPassword ? 'Hide password' : 'Show password'} onPress={() => setShowPassword(value => !value)} style={s.eyeButton}><Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={19} color={colors.subText} /></TouchableOpacity></View>
       <Text style={s.fieldLabel}>Confirm password<Text style={s.required}>{!editingUser && ' *'}</Text></Text><View style={s.passwordRow}><TextInput value={form.confirmPassword} onChangeText={value => setField('confirmPassword', value)} placeholder="Re-enter password" placeholderTextColor={colors.subText} secureTextEntry={!showConfirmPassword} autoCapitalize="none" style={[s.input, s.passwordInput]} /><TouchableOpacity accessibilityLabel={showConfirmPassword ? 'Hide confirmation' : 'Show confirmation'} onPress={() => setShowConfirmPassword(value => !value)} style={s.eyeButton}><Ionicons name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'} size={19} color={colors.subText} /></TouchableOpacity></View>
       <Text style={s.groupTitle}>PERSONAL DETAILS</Text>{[['firstName', 'First name'], ['lastName', 'Last name']].map(([key, label]) => <View key={key} style={s.fieldGroup}><Text style={s.fieldLabel}>{label}<Text style={s.required}> *</Text></Text><TextInput value={form[key as keyof PersonForm]} onChangeText={value => setField(key as keyof PersonForm, value)} placeholder={label} placeholderTextColor={colors.subText} autoCapitalize="words" style={s.input} /></View>)}
+      <View style={s.fieldGroup}><Text style={s.fieldLabel}>Phone</Text><PhoneInputField value={form.phone} onChange={value => setField('phone', value)} colors={colors} /></View>
       {form.role === 'STUDENT' && <><Text style={s.groupTitle}>STUDENT DETAILS</Text>
         <View style={s.fieldGroup}><Text style={s.fieldLabel}>EMIS ID<Text style={s.required}> *</Text></Text><TextInput value={form.emisId} onChangeText={value => setField('emisId', value)} placeholder="Unique student EMIS ID" placeholderTextColor={colors.subText} autoCapitalize="characters" style={s.input} /></View>
         <View style={s.fieldGroup}><Text style={s.fieldLabel}>Student / admission ID</Text><TextInput value={form.userId} onChangeText={value => setField('userId', value)} placeholder="Optional school ID" placeholderTextColor={colors.subText} autoCapitalize="characters" style={s.input} /></View>
@@ -204,18 +208,96 @@ export default function StaffManagementScreen({ navigation }: any) {
         <View style={s.fieldGroup}><Text style={s.fieldLabel}>Admission date and time</Text><TextInput value={form.admissionDateTime} onChangeText={value => setField('admissionDateTime', value)} placeholder="2026-1-9 10:56pm" placeholderTextColor={colors.subText} autoCapitalize="none" style={s.input} /><Text style={s.helper}>Defaults to now. Format: YYYY-M-D h:mmam/pm.</Text></View>
         {dropdownField('gender', 'Gender', ['Female', 'Male', 'Other', 'Prefer not to say'], 'Choose gender')}
         {dropdownField('bloodGroup', 'Blood group', ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], 'Choose blood group')}
-        <View style={s.fieldGroup}><Text style={s.fieldLabel}>Phone</Text><TextInput value={form.phone} onChangeText={value => setField('phone', value)} placeholder="Student phone" placeholderTextColor={colors.subText} keyboardType="phone-pad" style={s.input} /></View>
         <View style={s.fieldGroup}><Text style={s.fieldLabel}>Permanent address</Text><TextInput value={form.address} onChangeText={value => setField('address', value)} placeholder="Permanent address" placeholderTextColor={colors.subText} style={s.input} /></View>
         <View style={s.addressHeader}><Text style={s.fieldLabel}>Temporary address</Text><TouchableOpacity disabled={!form.address.trim()} onPress={() => setField('temporaryAddress', form.address)} style={[s.copyButton, !form.address.trim() && { opacity: 0.45 }]}><Ionicons name="copy-outline" size={14} color={colors.primary} /><Text style={s.copyText}>Same as permanent</Text></TouchableOpacity></View><TextInput value={form.temporaryAddress} onChangeText={value => setField('temporaryAddress', value)} placeholder="Temporary address" placeholderTextColor={colors.subText} style={s.input} />
         <Text style={s.groupTitle}>PARENT / GUARDIAN<Text style={s.required}> *</Text></Text><Text style={s.helper}>At least one parent/guardian name and phone number are required.</Text>
-        <View style={s.fieldRow}><View style={s.fieldHalf}><Text style={s.fieldLabel}>Father / guardian name</Text><TextInput value={form.fatherName} onChangeText={value => setField('fatherName', value)} placeholder="Name" placeholderTextColor={colors.subText} style={s.input} /></View><View style={s.fieldHalf}><Text style={s.fieldLabel}>Phone</Text><TextInput value={form.fatherPhone} onChangeText={value => setField('fatherPhone', value)} placeholder="Phone" placeholderTextColor={colors.subText} keyboardType="phone-pad" style={s.input} /></View></View>
-        <View style={s.fieldRow}><View style={s.fieldHalf}><Text style={s.fieldLabel}>Mother / guardian name</Text><TextInput value={form.motherName} onChangeText={value => setField('motherName', value)} placeholder="Name" placeholderTextColor={colors.subText} style={s.input} /></View><View style={s.fieldHalf}><Text style={s.fieldLabel}>Phone</Text><TextInput value={form.motherPhone} onChangeText={value => setField('motherPhone', value)} placeholder="Phone" placeholderTextColor={colors.subText} keyboardType="phone-pad" style={s.input} /></View></View>
+        <View style={s.fieldRow}><View style={s.fieldHalf}><Text style={s.fieldLabel}>Father / guardian name</Text><TextInput value={form.fatherName} onChangeText={value => setField('fatherName', value)} placeholder="Name" placeholderTextColor={colors.subText} style={s.input} /></View><View style={s.fieldHalf}><Text style={s.fieldLabel}>Phone</Text><PhoneInputField value={form.fatherPhone || ''} onChange={value => setField('fatherPhone', value)} colors={colors} /></View></View>
+        <View style={s.fieldRow}><View style={s.fieldHalf}><Text style={s.fieldLabel}>Mother / guardian name</Text><TextInput value={form.motherName} onChangeText={value => setField('motherName', value)} placeholder="Name" placeholderTextColor={colors.subText} style={s.input} /></View><View style={s.fieldHalf}><Text style={s.fieldLabel}>Phone</Text><PhoneInputField value={form.motherPhone || ''} onChange={value => setField('motherPhone', value)} colors={colors} /></View></View>
       </>}
       {(form.role === 'ADMIN' || form.role === 'SUPER_ADMIN') && <View style={s.fieldGroup}><Text style={s.fieldLabel}>Department</Text><TextInput value={form.department} onChangeText={value => setField('department', value)} placeholder="Department" placeholderTextColor={colors.subText} style={s.input} /></View>}
       <TouchableOpacity disabled={saving} onPress={create} style={s.primaryButton}>{saving ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>{editingUser ? 'Save changes' : 'Create account'}</Text>}</TouchableOpacity>
     </ScrollView></View></KeyboardAvoidingView></Modal>
     <Modal visible={!!dropdown} transparent animationType="fade" onRequestClose={() => setDropdown(null)}><View style={s.dropdownOverlay}><View style={s.dropdownSheet}><View style={s.modalHead}><Text style={s.modalTitle}>{dropdown?.title}</Text><TouchableOpacity onPress={() => setDropdown(null)}><Ionicons name="close-circle" size={24} color={colors.subText} /></TouchableOpacity></View><ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: '70%' }}>{dropdown?.options.map(option => <TouchableOpacity key={option} onPress={() => { if (dropdown.key === 'grade') setForm(current => ({ ...current, grade: option, section: '' })); else setField(dropdown.key, option); setDropdown(null); }} style={s.dropdownOption}><Text style={s.dropdownOptionText}>{option}</Text>{form[dropdown.key] === option && <Ionicons name="checkmark-circle" size={19} color={colors.primary} />}</TouchableOpacity>)}{!dropdown?.options.length && <Text style={s.emptyText}>{dropdown?.key === 'section' ? `No sections were returned for ${form.grade || 'this class'}. Refresh Academic Structure or check that this class has sections assigned.` : 'No options are available. Add them in Academic Structure.'}</Text>}</ScrollView></View></View></Modal>
   </SafeAreaView>;
+}
+
+const COUNTRY_CODES = [
+  { code: '+977', name: 'Nepal' },
+  { code: '+91', name: 'India' },
+  { code: '+1', name: 'USA/Canada' },
+  { code: '+44', name: 'UK' },
+  { code: '+61', name: 'Australia' },
+  { code: '+81', name: 'Japan' },
+  { code: '+86', name: 'China' },
+  { code: '+971', name: 'UAE' },
+];
+
+function PhoneInputField({ value, onChange, colors }: { value: string; onChange: (v: string) => void; colors: any }) {
+  const [modal, setModal] = useState(false);
+  const [search, setSearch] = useState('');
+  
+  const matchedCode = COUNTRY_CODES.find(c => value.startsWith(c.code))?.code || '+977';
+  const countryCode = matchedCode;
+  const number = value.startsWith(matchedCode) ? value.substring(matchedCode.length) : value;
+
+  const filtered = COUNTRY_CODES.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.code.includes(search));
+  
+  const s = StyleSheet.create({
+    container: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+    pickerBtn: { height: 47, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 11, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4 },
+    pickerText: { color: colors.text, fontSize: 13, fontWeight: '700' },
+    input: { flex: 1, height: 47, color: colors.text, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 11, paddingHorizontal: 12, fontSize: 13 },
+    modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000070' },
+    modalContent: { maxHeight: '70%', padding: 20, backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+    modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+    modalTitle: { color: colors.text, fontSize: 18, fontWeight: '900' },
+    searchInput: { height: 44, color: colors.text, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 11, paddingHorizontal: 12, marginBottom: 15 },
+    option: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', justifyContent: 'space-between' },
+    optionText: { color: colors.text, fontSize: 14 },
+    optionCode: { color: colors.subText, fontSize: 14, fontWeight: 'bold' }
+  });
+
+  return (
+    <View style={s.container}>
+      <TouchableOpacity style={s.pickerBtn} onPress={() => { setSearch(''); setModal(true); }}>
+        <Text style={s.pickerText}>{countryCode}</Text>
+        <Ionicons name="chevron-down" size={14} color={colors.subText} />
+      </TouchableOpacity>
+      <TextInput 
+        value={number} 
+        onChangeText={n => {
+          const num = n.replace(/[^0-9]/g, '');
+          if (num.length <= 10) onChange(countryCode + num);
+        }} 
+        placeholder="10-digit number" 
+        placeholderTextColor={colors.subText} 
+        keyboardType="phone-pad" 
+        style={s.input} 
+      />
+      <Modal visible={modal} transparent animationType="slide" onRequestClose={() => setModal(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <View style={s.modalHead}>
+              <Text style={s.modalTitle}>Country Code</Text>
+              <TouchableOpacity onPress={() => setModal(false)}>
+                <Ionicons name="close-circle" size={24} color={colors.subText} />
+              </TouchableOpacity>
+            </View>
+            <TextInput value={search} onChangeText={setSearch} placeholder="Search country or code..." placeholderTextColor={colors.subText} style={s.searchInput} />
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {filtered.map(c => (
+                <TouchableOpacity key={c.code} style={s.option} onPress={() => { onChange(c.code + number); setModal(false); }}>
+                  <Text style={s.optionText}>{c.name}</Text>
+                  <Text style={s.optionCode}>{c.code}</Text>
+                </TouchableOpacity>
+              ))}
+              {!filtered.length && <Text style={{color: colors.subText, textAlign: 'center', marginTop: 10}}>No results found</Text>}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
 }
 
 function DateWheelField({ label, mode, value, onChange, colors }: { label: string; mode: 'AD' | 'BS'; value: string; onChange: (value: string) => void; colors: any }) {
