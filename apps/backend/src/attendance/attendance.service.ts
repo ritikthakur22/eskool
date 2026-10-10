@@ -153,7 +153,7 @@ export class AttendanceService {
     }
     const updated = await this.prisma.attendance.update({ where: { id: record.id }, data: { status: data.status, remarks: data.remarks?.trim() || null, teacherId: actor.id } });
     void this.audit.record({ action: 'ATTENDANCE_CORRECTED', entity: 'Attendance', entityId: record.id, userId: actor.id, schoolId: actor.schoolId, details: {
-      reason: data.reason.trim(), before: { status: record.status, remarks: record.remarks }, after: { status: updated.status, remarks: updated.remarks }, studentId: record.studentId, date: record.date.toISOString(), subject: record.subject,
+      reason: data.reason.trim(), before: { status: record.status, remarks: record.remarks }, after: { status: updated.status, remarks: updated.remarks }, studentId: record.studentId, date: record.date.toISOString(), subjectId: record.subjectId,
     } });
     return updated;
   }
