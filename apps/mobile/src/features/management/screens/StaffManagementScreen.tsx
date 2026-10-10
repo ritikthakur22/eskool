@@ -227,7 +227,16 @@ export default function StaffManagementScreen({ navigation }: any) {
         <View style={s.fieldGroup}><Text style={s.fieldLabel}>EMIS ID<Text style={s.required}> *</Text></Text><TextInput value={form.emisId} onChangeText={value => setField('emisId', value)} placeholder="Unique student EMIS ID" placeholderTextColor={colors.subText} autoCapitalize="characters" style={s.input} /></View>
         <View style={s.fieldGroup}><Text style={s.fieldLabel}>Student / admission ID</Text><TextInput value={form.userId} onChangeText={value => setField('userId', value)} placeholder="Optional school ID" placeholderTextColor={colors.subText} autoCapitalize="characters" style={s.input} /></View>
         {dropdownField('grade', 'Class', classes.map(item => String(item.name)), 'Choose existing class')}
-        {dropdownField('section', 'Section', sectionOptions, selectedClass ? 'Choose section' : 'Select a class first')}
+        {form.grade && selectedClass && (selectedClass.sections || []).length === 0 ? (
+          <View style={s.fieldGroup}>
+            <Text style={s.fieldLabel}>Section</Text>
+            <View style={[s.dropdownField, { opacity: 0.65, backgroundColor: colors.border + '25' }]}>
+              <Text style={[s.dropdownValue, s.dropdownPlaceholder]}>No section needed for {selectedClass.name}</Text>
+            </View>
+          </View>
+        ) : (
+          dropdownField('section', 'Section', sectionOptions, selectedClass ? 'Choose section' : 'Select a class first')
+        )}
         <View style={s.fieldGroup}><Text style={s.fieldLabel}>Roll number</Text><TextInput value={form.rollNo} onChangeText={value => setField('rollNo', value)} placeholder="Optional" placeholderTextColor={colors.subText} style={s.input} /></View>
         <DateWheelField label="Date of birth (AD)" mode="AD" value={form.dob} onChange={value => updateBirthDate('AD', value)} colors={colors} />
         <DateWheelField label="Date of birth (BS)" mode="BS" value={form.dobBs} onChange={value => updateBirthDate('BS', value)} colors={colors} />
@@ -237,8 +246,10 @@ export default function StaffManagementScreen({ navigation }: any) {
         <View style={s.fieldGroup}><Text style={s.fieldLabel}>Permanent address</Text><TextInput value={form.address} onChangeText={value => setField('address', value)} placeholder="Permanent address" placeholderTextColor={colors.subText} style={s.input} /></View>
         <View style={s.addressHeader}><Text style={s.fieldLabel}>Temporary address</Text><TouchableOpacity disabled={!form.address.trim()} onPress={() => setField('temporaryAddress', form.address)} style={[s.copyButton, !form.address.trim() && { opacity: 0.45 }]}><Ionicons name="copy-outline" size={14} color={colors.primary} /><Text style={s.copyText}>Same as permanent</Text></TouchableOpacity></View><TextInput value={form.temporaryAddress} onChangeText={value => setField('temporaryAddress', value)} placeholder="Temporary address" placeholderTextColor={colors.subText} style={s.input} />
         <Text style={s.groupTitle}>PARENT / GUARDIAN<Text style={s.required}> *</Text></Text><Text style={s.helper}>At least one parent/guardian name and phone number are required.</Text>
-        <View style={s.fieldRow}><View style={s.fieldHalf}><Text style={s.fieldLabel}>Father / guardian name</Text><TextInput value={form.fatherName} onChangeText={value => setField('fatherName', value)} placeholder="Name" placeholderTextColor={colors.subText} style={s.input} /></View><View style={s.fieldHalf}><Text style={s.fieldLabel}>Phone</Text><PhoneInputField value={form.fatherPhone || ''} onChange={value => setField('fatherPhone', value)} colors={colors} /></View></View>
-        <View style={s.fieldRow}><View style={s.fieldHalf}><Text style={s.fieldLabel}>Mother / guardian name</Text><TextInput value={form.motherName} onChangeText={value => setField('motherName', value)} placeholder="Name" placeholderTextColor={colors.subText} style={s.input} /></View><View style={s.fieldHalf}><Text style={s.fieldLabel}>Phone</Text><PhoneInputField value={form.motherPhone || ''} onChange={value => setField('motherPhone', value)} colors={colors} /></View></View>
+        <View style={s.fieldGroup}><Text style={s.fieldLabel}>Father / guardian name</Text><TextInput value={form.fatherName} onChangeText={value => setField('fatherName', value)} placeholder="Father's full name" placeholderTextColor={colors.subText} style={s.input} /></View>
+        <View style={s.fieldGroup}><Text style={s.fieldLabel}>Father phone</Text><PhoneInputField value={form.fatherPhone || ''} onChange={value => setField('fatherPhone', value)} colors={colors} /></View>
+        <View style={s.fieldGroup}><Text style={s.fieldLabel}>Mother / guardian name</Text><TextInput value={form.motherName} onChangeText={value => setField('motherName', value)} placeholder="Mother's full name" placeholderTextColor={colors.subText} style={s.input} /></View>
+        <View style={s.fieldGroup}><Text style={s.fieldLabel}>Mother phone</Text><PhoneInputField value={form.motherPhone || ''} onChange={value => setField('motherPhone', value)} colors={colors} /></View>
       </>}
       {(form.role === 'ADMIN' || form.role === 'SUPER_ADMIN') && <View style={s.fieldGroup}><Text style={s.fieldLabel}>Department</Text><TextInput value={form.department} onChangeText={value => setField('department', value)} placeholder="Department" placeholderTextColor={colors.subText} style={s.input} /></View>}
       <TouchableOpacity disabled={saving} onPress={create} style={s.primaryButton}>{saving ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryText}>{editingUser ? 'Save changes' : 'Create account'}</Text>}</TouchableOpacity>
