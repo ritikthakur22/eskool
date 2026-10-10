@@ -39,25 +39,39 @@ export class UsersService {
     catch (error: any) { if (error?.code === 'P2002') throw new ConflictException('Email, EMIS ID, or student ID is already in use.'); throw error; }
   }
 
-  async enrollStudent(studentId: string, sectionId: string, schoolId: string) {
+  async enrollStudent(studentId: string, sectionName: string, schoolId: string, grade?: string | null) {
     const academicYear = await this.prisma.academicYear.findFirst({
       where: { schoolId, isCurrent: true },
       orderBy: { startDate: 'desc' }
     });
     if (!academicYear) return;
-    const section = await this.prisma.section.findUnique({
-      where: { id: sectionId }
+
+    let sectionWhere: any = { schoolId, name: sectionName };
+    
+    if (!grade) {
+      const userProfile = await this.prisma.studentProfile.findUnique({
+        where: { userId: studentId },
+        select: { grade: true }
+      });
+      if (userProfile?.grade) {
+        sectionWhere.class = { name: userProfile.grade };
+      }
+    } else {
+      sectionWhere.class = { name: grade };
+    }
+
+    const section = await this.prisma.section.findFirst({
+      where: sectionWhere
     });
     if (!section) return;
     
     await this.prisma.enrollment.upsert({
       where: { studentId_academicYearId: { studentId, academicYearId: academicYear.id } },
-      update: { sectionId, classId: section.classId },
+      update: { sectionId: section.id },
       create: {
         studentId,
         academicYearId: academicYear.id,
-        sectionId,
-        classId: section.classId
+        sectionId: section.id
       }
     });
   }
@@ -145,7 +159,7 @@ export class UsersService {
     }); } catch (error: any) { if (error?.code === 'P2002') throw new ConflictException('Email, EMIS ID, or student ID is already assigned to another account.'); throw error; }
     
     if (target.role === Role.STUDENT && input.section !== undefined && input.section.trim()) {
-      void this.enrollStudent(id, input.section.trim(), actor.schoolId);
+      void this.enrollStudent(id, input.section.trim(), actor.schoolId, input.grade?.trim());
     }
     
     void this.audit.record({ action: 'USER_UPDATED', entity: 'User', entityId: id, userId: actor.actorId, schoolId: actor.schoolId, details: { fields: Object.keys(input).filter(field => field !== 'email' || email !== target.email) } });
@@ -288,6 +302,19 @@ export class UsersService {
 
     return { teacherCount, studentCount, adminCount };
   }
+
+  async deleteManagedUser(id: string, actor: { actorId: string; schoolId: string; actorRole: Role }) {
+    const target = await this.getManagedTarget(id, actor);
+    if (id === actor.actorId) throw new BadRequestException('You cannot delete your own account.');
+
+    await this.prisma.user.delete({
+      where: { id: target.id }
+    });
+
+    void this.audit.record({ action: 'USER_DELETED', entity: 'User', entityId: target.id, userId: actor.actorId, schoolId: actor.schoolId, details: { deletedRole: target.role, deletedEmail: target.email } });
+    return { message: 'User and all associated data deleted successfully' };
+  }
+
 
   async getProfilePhoto(userId: string) {
     const [photo] = await this.prisma.$queryRaw<Array<{ profilePicture: Uint8Array | null; profilePictureMimeType: string | null; profilePictureUrl: string | null }>>(Prisma.sql`

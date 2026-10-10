@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, BadRequestException, ForbiddenException, Request, Get, Patch, UploadedFile, UseInterceptors, Header, StreamableFile, Query, Param } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, BadRequestException, ForbiddenException, Request, Get, Patch, Delete, UploadedFile, UseInterceptors, Header, StreamableFile, Query, Param } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service.js';
 import * as bcrypt from 'bcryptjs';
@@ -174,10 +174,27 @@ export class UsersController {
     const { password: _password, ...result } = user;
     
     if (targetRole === Role.STUDENT && data.section) {
-      void this.usersService.enrollStudent(user.id, data.section, schoolId);
+      void this.usersService.enrollStudent(user.id, data.section, schoolId, data.grade);
     }
     
     void this.audit.record({ action: 'USER_CREATED', entity: 'User', entityId: user.id, userId: req.user.id, schoolId: schoolId, details: { role: targetRole } });
     return result;
+  }
+
+  @Delete('admin/users/:id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  async deleteManagedUser(
+    @Param('id') id: string,
+    @Body() data: { confirm?: boolean },
+    @Request() req: any
+  ) {
+    if (data?.confirm !== true) {
+      throw new BadRequestException('You must confirm deletion by passing { "confirm": true } in the request body.');
+    }
+    return this.usersService.deleteManagedUser(id, {
+      actorId: req.user.id,
+      schoolId: req.user.schoolId,
+      actorRole: req.user.role
+    });
   }
 }
