@@ -2,17 +2,18 @@
   "expo": {
     "name": "eSkool",
     "slug": "eSkool",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "2"
+      "buildNumber": "3",
+      "bundleIdentifier": "com.eskool.crdy"
     },
     "android": {
       "package": "com.eskool.crdy",
-      "versionCode": 2,
+      "versionCode": 3,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
@@ -30,11 +31,14 @@
       "expo-notifications",
       "expo-sharing",
       "expo-font",
-      ["expo-splash-screen", {
-        "image": "./assets/splash.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#ffffff"
-      }]
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
     ]
   }
 }
