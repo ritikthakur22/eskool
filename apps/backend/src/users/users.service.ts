@@ -62,13 +62,19 @@ export class UsersService {
 
   async getManagedUser(id: string, actor: { schoolId: string; actorRole: Role }) {
     await this.getManagedTarget(id, actor);
-    return this.prisma.user.findFirst({
+    const user = await this.prisma.user.findFirst({
       where: { id, schoolId: actor.schoolId },
       select: {
         id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true, updatedAt: true, userId: true, emisId: true, profilePictureUrl: true,
         studentProfile: true, teacherProfile: true, adminProfile: true,
       },
     });
+    if (!user) return null;
+    const [hasPhoto] = await this.prisma.$queryRaw<Array<{ hasProfilePicture: boolean }>>(Prisma.sql`SELECT ("profilePicture" IS NOT NULL OR "profilePictureUrl" IS NOT NULL) AS "hasProfilePicture" FROM "User" WHERE "id" = ${id} LIMIT 1`);
+    if (hasPhoto?.hasProfilePicture) {
+      user.profilePictureUrl = `/users/admin/users/${id}/photo`;
+    }
+    return user;
   }
 
   async updateManagedUser(id: string, input: UpdateManagedUserDto, actor: { actorId: string; schoolId: string; actorRole: Role }) {
@@ -85,9 +91,14 @@ export class UsersService {
     if (target.role === Role.STUDENT && input.emisId !== undefined && !emisId) throw new BadRequestException('Student EMIS ID cannot be empty.');
     if (emisId) { const duplicate = await this.prisma.user.findFirst({ where: { id: { not: id }, emisId: { equals: emisId, mode: 'insensitive' } }, select: { id: true } }); if (duplicate) throw new ConflictException('That EMIS ID is already assigned to another account.'); }
     if (studentId) { const duplicate = await this.prisma.user.findFirst({ where: { id: { not: id }, userId: { equals: studentId, mode: 'insensitive' } }, select: { id: true } }); if (duplicate) throw new ConflictException('That student ID is already assigned to another account.'); }
-    const userData = { ...(email && email !== target.email ? { email } : {}), ...(target.role === Role.STUDENT && input.emisId !== undefined ? { emisId: emisId?.toUpperCase() || null } : {}), ...(target.role === Role.STUDENT && input.userId !== undefined ? { userId: studentId?.toUpperCase() || null } : {}) };
+    const userData: any = { ...(email && email !== target.email ? { email } : {}), ...(target.role === Role.STUDENT && input.emisId !== undefined ? { emisId: emisId?.toUpperCase() || null } : {}), ...(target.role === Role.STUDENT && input.userId !== undefined ? { userId: studentId?.toUpperCase() || null } : {}) };
+    if (input.password) {
+      userData.password = await bcrypt.hash(input.password, 10);
+      userData.tokenVersion = { increment: 1 };
+    }
     try { await this.prisma.$transaction(async tx => {
       if (Object.keys(userData).length) await tx.user.update({ where: { id }, data: userData });
+      if (input.password) await tx.authSession.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
       if (target.role === Role.STUDENT) {
         await tx.studentProfile.update({ where: { userId: id }, data: { ...(firstName !== undefined ? { firstName } : {}), ...(lastName !== undefined ? { lastName } : {}), ...(input.grade !== undefined ? { grade: input.grade.trim() || null } : {}), ...(input.section !== undefined ? { section: input.section.trim() || null } : {}), ...(input.rollNo !== undefined ? { rollNo: input.rollNo.trim() || null } : {}), ...(input.dob !== undefined ? { dob: input.dob ? new Date(input.dob) : null } : {}), ...(input.dobBs !== undefined ? { dobBs: input.dobBs.trim() || null } : {}), ...(input.admissionDate !== undefined ? { admissionDate: input.admissionDate ? new Date(input.admissionDate) : null } : {}), ...(input.gender !== undefined ? { gender: input.gender.trim() || null } : {}), ...(input.bloodGroup !== undefined ? { bloodGroup: input.bloodGroup.trim() || null } : {}), ...(input.phone !== undefined ? { phone: input.phone.trim() || null } : {}), ...(input.address !== undefined ? { address: input.address.trim() || null } : {}), ...(input.temporaryAddress !== undefined ? { temporaryAddress: input.temporaryAddress.trim() || null } : {}), ...(input.fatherName !== undefined ? { fatherName: input.fatherName.trim() || null } : {}), ...(input.fatherPhone !== undefined ? { fatherPhone: input.fatherPhone.trim() || null } : {}), ...(input.motherName !== undefined ? { motherName: input.motherName.trim() || null } : {}), ...(input.motherPhone !== undefined ? { motherPhone: input.motherPhone.trim() || null } : {}) } });
       } else if (target.role === Role.TEACHER) {
@@ -262,7 +273,7 @@ export class UsersService {
         WHERE "id" = ${userId}
       `);
       void this.audit.record({ action: 'PROFILE_PHOTO_UPDATED', entity: 'User', entityId: userId, userId: auditActorId, schoolId: owner.schoolId });
-      return { success: true, profilePictureUrl: '/users/me/photo', storage: 'cloudinary' };
+      return { success: true, profilePictureUrl: `/users/admin/users/${userId}/photo`, storage: 'cloudinary' };
     }
     const updated = await this.prisma.$executeRaw(Prisma.sql`
       UPDATE "User" SET "profilePicture" = ${file.buffer}, "profilePictureMimeType" = ${file.mimetype}
@@ -270,6 +281,6 @@ export class UsersService {
     `);
     if (!updated) throw new NotFoundException('User not found');
     void this.audit.record({ action: 'PROFILE_PHOTO_UPDATED', entity: 'User', entityId: userId, userId: auditActorId, schoolId: owner.schoolId });
-    return { success: true, profilePictureUrl: '/users/me/photo' };
+    return { success: true, profilePictureUrl: `/users/admin/users/${userId}/photo` };
   }
 }

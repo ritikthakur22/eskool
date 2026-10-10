@@ -61,9 +61,9 @@ api.interceptors.response.use(undefined, async (error) => {
   return api(original);
 });
 
-export const uploadFile = async (uri: string, mimeType?: string) => {
+export const uploadFile = async (uri: string, mimeType?: string, endpoint = '/upload') => {
   const token = getInMemoryAccessToken() || await SecureStore.getItemAsync('access_token');
-  const response = await FileSystem.uploadAsync(`${API_BASE_URL}/upload`, uri, {
+  const response = await FileSystem.uploadAsync(`${API_BASE_URL}${endpoint}`, uri, {
     fieldName: 'file',
     httpMethod: 'POST',
     uploadType: FileSystem.FileSystemUploadType.MULTIPART,

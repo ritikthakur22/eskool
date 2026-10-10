@@ -79,13 +79,16 @@ export default function ProfileDetailsScreen({ navigation }: any) {
     }
     if (result.canceled || !result.assets[0]) return;
     const photo = result.assets[0];
-    if (photo.size && photo.size > 5 * 1024 * 1024) { Alert.alert('Photo is too large', 'Choose an image smaller than 5 MB.'); return; }
+    if (photo.size && photo.size > 1 * 1024 * 1024) { Alert.alert('Photo is too large', 'Choose an image smaller than 1 MB.'); return; }
     const mimeType = photo.mimeType || 'image/jpeg';
-    const form = new FormData();
-    form.append('file', { uri: photo.uri, name: photo.name || 'profile-photo.jpg', type: mimeType } as any);
     setUploadingPhoto(true);
-    try { await api.post('/users/me/photo', form); setPhotoVersion(Date.now()); await load(); }
-    catch (e: any) { Alert.alert('Photo upload failed', e.response?.data?.message || 'Choose another photo and try again.'); }
+    try {
+      const { uploadFile } = await import('../../../core/networking/api');
+      await uploadFile(photo.uri, mimeType, '/users/me/photo');
+      setPhotoVersion(Date.now());
+      await load();
+    }
+    catch (e: any) { Alert.alert('Photo upload failed', e.message || 'Choose another photo and try again.'); }
     finally { setUploadingPhoto(false); }
   };
   const update = (key: string, label: string, placeholder: string, opts: any = {}) => <View style={s.inputGroup} key={key}><Text style={s.label}>{label}</Text><TextInput value={values[key] || ''} onChangeText={value => set(key, value)} placeholder={placeholder} placeholderTextColor={colors.subText} style={s.input} {...opts} /></View>;

@@ -53,6 +53,7 @@ export class UpdateManagedUserDto {
   @IsOptional() @IsEmail() @MaxLength(254) email?: string;
   @IsOptional() @IsString() @MinLength(1) @MaxLength(100) firstName?: string;
   @IsOptional() @IsString() @MinLength(1) @MaxLength(100) lastName?: string;
+  @IsOptional() @IsString() @MinLength(8) @MaxLength(128) password?: string;
   @IsOptional() @IsString() @MaxLength(50) grade?: string;
   @IsOptional() @IsString() @MaxLength(50) section?: string;
   @IsOptional() @IsString() @MaxLength(50) rollNo?: string;
