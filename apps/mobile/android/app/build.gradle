@@ -105,10 +105,12 @@ android {
             keyPassword 'android'
         }
         release {
-            if (file('eskool.keystore').exists()) { storeFile file('eskool.keystore')
-            storePassword 'eskool@good'
-            keyAlias 'eskool'
-            keyPassword 'eskool@good' }
+            if (file('eskool.keystore').exists()) {
+                storeFile file('eskool.keystore')
+                storePassword 'eskool@gool'
+                keyAlias 'eskool'
+                keyPassword 'eskool@gool'
+            }
         }
     }
     buildTypes {
@@ -116,8 +118,7 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            // Temporarily using debug keystore so Google Login works in Release APK during testing
-            signingConfig signingConfigs.debug
+            signingConfig file('eskool.keystore').exists() ? signingConfigs.release : signingConfigs.debug
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
             shrinkResources enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
