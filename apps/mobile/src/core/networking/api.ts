@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { getInMemoryAccessToken, getInMemoryRefreshToken, setInMemoryAccessToken, setInMemoryRefreshToken } from './session';
 
 // Set EXPO_PUBLIC_API_URL to the computer's LAN URL when using a physical device.
@@ -71,7 +71,11 @@ export const uploadFile = async (uri: string, mimeType?: string, endpoint = '/up
     mimeType: mimeType || 'application/octet-stream',
   });
   if (response.status >= 200 && response.status < 300) {
-    return JSON.parse(response.body);
+    try {
+      return JSON.parse(response.body);
+    } catch {
+      return response.body;
+    }
   } else {
     throw new Error(`Upload failed with status ${response.status}: ${response.body}`);
   }

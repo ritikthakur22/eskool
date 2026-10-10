@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import NepaliDate from 'nepali-date-converter';
 import { API_BASE_URL, api } from '../../../core/networking/api';
@@ -12,6 +12,85 @@ const formatBsDate = (ad: string) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ad) || Number.isNaN(Date.parse(ad))) return '';
   try { return new NepaliDate(new Date(`${ad}T00:00:00`)).format('YYYY-MM-DD'); } catch { return ''; }
 };
+
+const COUNTRY_CODES = [
+  { code: '+977', name: 'Nepal' },
+  { code: '+91', name: 'India' },
+  { code: '+1', name: 'USA/Canada' },
+  { code: '+44', name: 'UK' },
+  { code: '+61', name: 'Australia' },
+  { code: '+81', name: 'Japan' },
+  { code: '+86', name: 'China' },
+  { code: '+971', name: 'UAE' },
+];
+
+function PhoneInputField({ value, onChange, colors }: { value: string; onChange: (v: string) => void; colors: any }) {
+  const [modal, setModal] = useState(false);
+  const [search, setSearch] = useState('');
+  
+  const match = value.match(/^(\+\d{1,4})?(.*)$/);
+  const countryCode = (match && match[1]) ? match[1] : '+977';
+  const number = (match && match[2]) ? match[2] : value;
+
+  const filtered = COUNTRY_CODES.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.code.includes(search));
+  
+  const s = StyleSheet.create({
+    container: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+    pickerBtn: { height: 47, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 11, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 4 },
+    pickerText: { color: colors.text, fontSize: 13, fontWeight: '700' },
+    input: { flex: 1, height: 47, color: colors.text, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 11, paddingHorizontal: 12, fontSize: 13 },
+    modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#00000070' },
+    modalContent: { maxHeight: '70%', padding: 20, backgroundColor: colors.card, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+    modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+    modalTitle: { color: colors.text, fontSize: 18, fontWeight: '900' },
+    searchInput: { height: 44, color: colors.text, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 11, paddingHorizontal: 12, marginBottom: 15 },
+    option: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', justifyContent: 'space-between' },
+    optionText: { color: colors.text, fontSize: 14 },
+    optionCode: { color: colors.subText, fontSize: 14, fontWeight: 'bold' }
+  });
+
+  return (
+    <View style={s.container}>
+      <TouchableOpacity style={s.pickerBtn} onPress={() => { setSearch(''); setModal(true); }}>
+        <Text style={s.pickerText}>{countryCode}</Text>
+        <Ionicons name="chevron-down" size={14} color={colors.subText} />
+      </TouchableOpacity>
+      <TextInput 
+        value={number} 
+        onChangeText={n => {
+          const num = n.replace(/[^0-9]/g, '');
+          if (num.length <= 10) onChange(countryCode + num);
+        }} 
+        placeholder="10-digit number" 
+        placeholderTextColor={colors.subText} 
+        keyboardType="phone-pad" 
+        style={s.input} 
+      />
+      <Modal visible={modal} transparent animationType="slide" onRequestClose={() => setModal(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <View style={s.modalHead}>
+              <Text style={s.modalTitle}>Country Code</Text>
+              <TouchableOpacity onPress={() => setModal(false)}>
+                <Ionicons name="close-circle" size={24} color={colors.subText} />
+              </TouchableOpacity>
+            </View>
+            <TextInput value={search} onChangeText={setSearch} placeholder="Search country or code..." placeholderTextColor={colors.subText} style={s.searchInput} />
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {filtered.map(c => (
+                <TouchableOpacity key={c.code} style={s.option} onPress={() => { onChange(c.code + number); setModal(false); }}>
+                  <Text style={s.optionText}>{c.name}</Text>
+                  <Text style={s.optionCode}>{c.code}</Text>
+                </TouchableOpacity>
+              ))}
+              {!filtered.length && <Text style={{color: colors.subText, textAlign: 'center', marginTop: 10}}>No results found</Text>}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
 
 export default function ProfileDetailsScreen({ navigation }: any) {
   const { colors } = useTheme(); const s = makeStyles(colors);
@@ -57,7 +136,9 @@ export default function ProfileDetailsScreen({ navigation }: any) {
     if (profile?.firstName) {
       payload.firstName = values.firstName.trim(); payload.lastName = values.lastName.trim();
     }
-    if (profile?.role === 'STUDENT') for (const key of ['studentId', 'phone', 'gender', 'address', 'parentName', 'parentPhone']) payload[key] = values[key]?.trim() || '';
+    if (values.phone) { const match = values.phone.match(/^(\+\d{1,4})?(.*)$/); const number = match ? match[2] : values.phone; if (number.length > 0 && number.length < 10) { Alert.alert('Invalid phone', 'Phone number must be exactly 10 digits.'); return; } }
+    payload.phone = values.phone?.trim() || '';
+    if (profile?.role === 'STUDENT') for (const key of ['studentId', 'gender', 'address', 'parentName', 'parentPhone']) payload[key] = values[key]?.trim() || '';
     if (profile?.role === 'STUDENT') payload.dob = values.dob?.trim() || null;
     if (values.dob && !/^\d{4}-\d{2}-\d{2}$/.test(values.dob)) { Alert.alert('Check date of birth', 'Enter the AD date in YYYY-MM-DD format.'); return; }
     setSaving(true);
@@ -109,6 +190,7 @@ export default function ProfileDetailsScreen({ navigation }: any) {
           {staffSection('Personal information', 'person-outline', 'Your name and sign-in address', <>
             {profile.firstName ? <>{update('firstName', 'First name', 'First name', { autoCapitalize: 'words', maxLength: 80 })}{update('lastName', 'Last name', 'Last name', { autoCapitalize: 'words', maxLength: 80 })}</> : <Text style={s.helper}>Your school has not added a personal name to this account.</Text>}
             {update('email', 'Work email', 'name@example.com', { autoCapitalize: 'none', keyboardType: 'email-address' })}
+            <View style={s.inputGroup}><Text style={s.label}>Phone number</Text><PhoneInputField value={values.phone || ''} onChange={value => set('phone', value)} colors={colors} /></View>
             <View style={s.inlineHint}><Ionicons name="information-circle-outline" size={15} color={colors.primary} /><Text style={s.inlineHintText}>Changing your email also changes the address used to sign in.</Text></View>
           </>)}
           {profile.role === 'TEACHER' ? staffSection('Teaching profile', 'book-outline', 'Subjects and assigned classes', <>

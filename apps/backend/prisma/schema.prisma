@@ -378,6 +378,7 @@ model TeacherProfile {
   userId    String   @unique
   firstName String
   lastName  String
+  phone     String?
   subjects  String[]
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -387,6 +388,7 @@ model AdminProfile {
   userId     String  @unique
   firstName  String
   lastName   String
+  phone      String?
   department String?
   user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

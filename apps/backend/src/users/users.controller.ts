@@ -161,8 +161,8 @@ export class UsersController {
           motherName: data.motherName?.trim() || null, motherPhone: data.motherPhone?.trim() || null,
         } },
       } : {}),
-      ...(targetRole === Role.TEACHER ? { teacherProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Teacher', subjects: Array.isArray(data.subjects) ? data.subjects.filter((subject: unknown): subject is string => typeof subject === 'string').slice(0, 20) : [] } } } : {}),
-      ...(([Role.ADMIN, Role.SUPER_ADMIN] as Role[]).includes(targetRole) ? { adminProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Admin', department: data.department } } } : {}),
+      ...(targetRole === Role.TEACHER ? { teacherProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Teacher', phone: data.phone?.trim() || null, subjects: Array.isArray(data.subjects) ? data.subjects.filter((subject: unknown): subject is string => typeof subject === 'string').slice(0, 20) : [] } } } : {}),
+      ...(([Role.ADMIN, Role.SUPER_ADMIN] as Role[]).includes(targetRole) ? { adminProfile: { create: { firstName: data.firstName || 'New', lastName: data.lastName || 'Admin', phone: data.phone?.trim() || null, department: data.department } } } : {}),
     });
 
     const { password: _password, ...result } = user;
