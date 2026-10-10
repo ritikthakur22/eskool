@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
-import { CreateAcademicYearDto, CreateClassDto, CreateEnrollmentDto, CreateParentLinkDto, CreateSectionDto, CreateSubjectDto, CreateTeacherAssignmentDto } from './dto/academics.dto.js';
+import { CreateAcademicYearDto, CreateClassDto, CreateEnrollmentDto, UpdateEnrollmentDto, CreateParentLinkDto, CreateSectionDto, CreateSubjectDto, CreateTeacherAssignmentDto } from './dto/academics.dto.js';
 
 @Injectable()
 export class AcademicsService {
@@ -86,6 +86,26 @@ export class AcademicsService {
       if (error?.code === 'P2002') throw new ConflictException('This student is already enrolled for that academic year.');
       throw error;
     }
+  }
+
+  async getEnrollments(filters: { sectionId?: string; studentId?: string; academicYearId?: string }, schoolId: string) {
+    return this.prisma.enrollment.findMany({ where: { ...filters, student: { schoolId } }, include: { student: { select: { id: true, email: true, studentProfile: { select: { firstName: true, lastName: true } } } }, section: { select: { id: true, name: true, class: { select: { name: true } } } }, academicYear: { select: { id: true, name: true } } } });
+  }
+
+  async updateEnrollment(id: string, data: UpdateEnrollmentDto, schoolId: string, actorId: string) {
+    const enrollment = await this.prisma.enrollment.findFirst({ where: { id, student: { schoolId } } });
+    if (!enrollment) throw new NotFoundException('Enrollment not found.');
+    const updated = await this.prisma.enrollment.update({ where: { id }, data: { ...(data.sectionId ? { sectionId: data.sectionId } : {}), ...(data.academicYearId ? { academicYearId: data.academicYearId } : {}), ...(data.rollNo !== undefined ? { rollNo: data.rollNo?.trim() || null } : {}) } });
+    void this.audit.record({ action: 'ENROLLMENT_UPDATED', entity: 'Enrollment', entityId: updated.id, userId: actorId, schoolId, details: { before: enrollment, after: updated } });
+    return updated;
+  }
+
+  async unenroll(id: string, schoolId: string, actorId: string) {
+    const enrollment = await this.prisma.enrollment.findFirst({ where: { id, student: { schoolId } } });
+    if (!enrollment) throw new NotFoundException('Enrollment not found.');
+    await this.prisma.enrollment.delete({ where: { id } });
+    void this.audit.record({ action: 'STUDENT_UNENROLLED', entity: 'Enrollment', entityId: id, userId: actorId, schoolId, details: { studentId: enrollment.studentId, sectionId: enrollment.sectionId, academicYearId: enrollment.academicYearId } });
+    return { success: true };
   }
 
   async assignTeacher(data: CreateTeacherAssignmentDto, schoolId: string, actorId: string) {

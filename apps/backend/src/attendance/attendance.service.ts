@@ -24,7 +24,7 @@ export class AttendanceService {
     try {
       attendance = await this.prisma.attendance.create({ data: {
         studentId: student.id, teacherId: actor.id,
-        date: dateObj, status: data.status, subject: data.subject, remarks: data.remarks, schoolId: actor.schoolId
+        date: dateObj, status: data.status, subjectId: data.subjectId, remarks: data.remarks, schoolId: actor.schoolId
       } });
     } catch (error: any) {
       if (error?.code === 'P2002') throw new ConflictException('Attendance has already been recorded for this student and date. Use correction instead.');
@@ -41,18 +41,18 @@ export class AttendanceService {
     });
     if (!section) throw new ForbiddenException('You are not assigned to this attendance section.');
     if (actor.role === Role.TEACHER && !data.subjectId) throw new ForbiddenException('Teachers must select an assigned subject.');
-    let subjectName: string | null = null;
+    let subjectId: string | null = null;
     if (data.subjectId) {
       const subject = await this.prisma.subject.findFirst({ where: { id: data.subjectId, schoolId: actor.schoolId }, select: { name: true } });
       if (!subject) throw new NotFoundException('Subject not found in your school.');
-      subjectName = subject.name;
+      subjectId = data.subjectId || null;
     }
     const studentIds = [...new Set(data.records.map(record => record.studentId))];
     const enrolled = await this.prisma.enrollment.findMany({ where: { sectionId: section.id, studentId: { in: studentIds }, student: { schoolId: actor.schoolId, role: Role.STUDENT, status: 'ACTIVE' } }, select: { studentId: true } });
     if (enrolled.length !== studentIds.length) throw new ForbiddenException('Every selected student must be active and enrolled in this section.');
     const date = new Date(data.date);
     try {
-      const result = await this.prisma.$transaction(tx => tx.attendance.createMany({ data: data.records.map(record => ({ studentId: record.studentId, teacherId: actor.id, schoolId: actor.schoolId, date, status: record.status, subject: subjectName, remarks: record.remarks?.trim() || null })) }));
+      const result = await this.prisma.$transaction(tx => tx.attendance.createMany({ data: data.records.map(record => ({ studentId: record.studentId, teacherId: actor.id, schoolId: actor.schoolId, date, status: record.status, subjectId: subjectId, remarks: record.remarks?.trim() || null })) }));
       void this.audit.record({ action: 'ATTENDANCE_BULK_MARKED', entity: 'Attendance', userId: actor.id, schoolId: actor.schoolId, details: { sectionId: section.id, date: date.toISOString(), count: result.count } });
       return { count: result.count, date };
     } catch (error: any) {
@@ -117,7 +117,7 @@ export class AttendanceService {
       orderBy: [{ date: 'desc' }, { student: { studentProfile: { lastName: 'asc' } } }],
       take: 2500,
       select: {
-        id: true, date: true, status: true, subject: true, remarks: true, createdAt: true, updatedAt: true,
+        id: true, date: true, status: true, subjectId: true, subject: { select: { id: true, name: true } }, remarks: true, createdAt: true, updatedAt: true,
         student: { select: { id: true, email: true, studentProfile: { select: { firstName: true, lastName: true, rollNo: true, grade: true, section: true } } } },
         teacher: { select: { id: true, email: true, teacherProfile: { select: { firstName: true, lastName: true } }, adminProfile: { select: { firstName: true, lastName: true } } } },
       },
@@ -143,7 +143,7 @@ export class AttendanceService {
   async correctAttendance(id: string, data: CorrectAttendanceDto, actor: { id: string; schoolId: string; role: Role }) {
     const record = await this.prisma.attendance.findFirst({
       where: { id, schoolId: actor.schoolId },
-      select: { id: true, studentId: true, teacherId: true, status: true, remarks: true, date: true, subject: true },
+      select: { id: true, studentId: true, teacherId: true, status: true, remarks: true, date: true, subjectId: true, subject: { select: { id: true, name: true } } },
     });
     if (!record) throw new NotFoundException('Attendance record not found in your school.');
     if (actor.role === Role.TEACHER) {
