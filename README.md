@@ -207,6 +207,9 @@ The API base URL is configured in the mobile client with `EXPO_PUBLIC_API_URL`; 
 | `GET` | `/auth/me` | Bearer | Read the current token user |
 | `POST` | `/users/admin/create-user` | Admin | Create a new user (Student, Teacher, Admin) |
 | `PATCH` | `/users/admin/users/:id` | Admin | Update user details (and enrollment if applicable) |
+| `DELETE` | `/users/admin/users/:id` | Admin | Delete a user account and all associated data |
+| `POST` | `/users/admin/users/:id/disable` | Admin | Disable user account access |
+| `POST` | `/users/admin/users/:id/restore` | Admin | Restore user account access |
 | `GET` | `/users/me` | Bearer | Read the current profile |
 | `PATCH` | `/users/me` | Bearer | Update allowed profile fields |
 | `GET` | `/users/stats/counts` | Bearer | Get total count of teachers, admins, students |
@@ -222,6 +225,9 @@ The API base URL is configured in the mobile client with `EXPO_PUBLIC_API_URL`; 
 | `PATCH` | `/homework/grade/:submissionId` | Admin/teacher | Grade a submission in the same school |
 | `GET` | `/exams/student/:studentId` | Bearer | Read own results; staff may read same-school students |
 | `POST` | `/exams` | Admin/teacher | Create an exam |
+| `POST` | `/exams/:id/questions` | Admin/teacher | Add MCQ questions to an exam |
+| `POST` | `/exams/:id/attempts` | Student | Start an MCQ exam attempt |
+| `POST` | `/exams/attempts/:attemptId/finish` | Student | Finish and score an MCQ exam |
 | `POST` | `/exams/result` | Admin/teacher | Add a validated result for a same-school student |
 | `GET` | `/fees/me` | Student | Read invoices and payment status |
 | `POST` | `/fees/:invoiceId/payment-proofs` | Student | Submit payment proof |
