@@ -1,10 +1,10 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { AcademicsService } from './academics.service.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
-import { CreateAcademicYearDto, CreateClassDto, CreateEnrollmentDto, CreateParentLinkDto, CreateSectionDto, CreateSubjectDto, CreateTeacherAssignmentDto, UpdateAcademicYearDto, UpdateClassDto, UpdateSectionDto, UpdateSubjectDto } from './dto/academics.dto.js';
+import { CreateAcademicYearDto, CreateClassDto, CreateEnrollmentDto, UpdateEnrollmentDto, CreateParentLinkDto, CreateSectionDto, CreateSubjectDto, CreateTeacherAssignmentDto, UpdateAcademicYearDto, UpdateClassDto, UpdateSectionDto, UpdateSubjectDto } from './dto/academics.dto.js';
 
 @Controller('academics')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -92,6 +92,18 @@ export class AcademicsController {
   @Post('enrollments')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
   enroll(@Body() data: CreateEnrollmentDto, @Request() req: any) { return this.academics.enroll(data, req.user.schoolId, req.user.id); }
+
+  @Get('enrollments')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN, Role.TEACHER)
+  getEnrollments(@Query('sectionId') sectionId: string, @Query('studentId') studentId: string, @Query('academicYearId') academicYearId: string, @Request() req: any) { return this.academics.getEnrollments({ sectionId, studentId, academicYearId }, req.user.schoolId); }
+
+  @Patch('enrollments/:id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  updateEnrollment(@Param('id', new ParseUUIDPipe()) id: string, @Body() data: UpdateEnrollmentDto, @Request() req: any) { return this.academics.updateEnrollment(id, data, req.user.schoolId, req.user.id); }
+
+  @Delete('enrollments/:id')
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
+  unenroll(@Param('id', new ParseUUIDPipe()) id: string, @Request() req: any) { return this.academics.unenroll(id, req.user.schoolId, req.user.id); }
 
   @Post('teacher-assignments')
   @Roles(Role.ADMIN, Role.SUPER_ADMIN)
