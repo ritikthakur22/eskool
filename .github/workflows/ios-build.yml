@@ -1,6 +1,9 @@
-name: Build iOS IPA (AltStore)
+name: Build iOS IPA (AltStore / Sideloading)
 
 on:
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 permissions:
@@ -8,8 +11,9 @@ permissions:
 
 jobs:
   build:
+    name: Build iOS IPA
     runs-on: macos-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,11 +21,21 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: ./apps/mobile/package-lock.json
 
       - name: Install Dependencies
         working-directory: apps/mobile
-        run: npm install
+        run: npm ci
+
+      - name: Prepare Google services configuration
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > apps/mobile/google-services.json
+          fi
 
       - name: Generate Native iOS Project
         working-directory: apps/mobile
@@ -47,15 +61,19 @@ jobs:
           mkdir Payload
           cp -r build/Build/Products/Release-iphoneos/eSkool.app Payload/
           zip -qr app-release-ios.ipa Payload
-          
-      - name: Upload to GitHub Release
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eskool-app-release-ipa
+          path: apps/mobile/ios/app-release-ios.ipa
+          retention-days: 7
+
+      - name: Upload IPA to GitHub Release
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         working-directory: apps/mobile/ios
         run: |
           TAG_NAME="${{ github.ref_name }}"
-          if [[ "${{ github.ref_type }}" != "tag" ]]; then
-            TAG_NAME="v1.0.0"
-          fi
-          
-          gh release upload $TAG_NAME app-release-ios.ipa --clobber
+          gh release upload "$TAG_NAME" app-release-ios.ipa --clobber
