@@ -39,6 +39,29 @@ export class UsersService {
     catch (error: any) { if (error?.code === 'P2002') throw new ConflictException('Email, EMIS ID, or student ID is already in use.'); throw error; }
   }
 
+  async enrollStudent(studentId: string, sectionId: string, schoolId: string) {
+    const academicYear = await this.prisma.academicYear.findFirst({
+      where: { schoolId, isCurrent: true },
+      orderBy: { startDate: 'desc' }
+    });
+    if (!academicYear) return;
+    const section = await this.prisma.section.findUnique({
+      where: { id: sectionId }
+    });
+    if (!section) return;
+    
+    await this.prisma.enrollment.upsert({
+      where: { studentId_academicYearId: { studentId, academicYearId: academicYear.id } },
+      update: { sectionId, classId: section.classId },
+      create: {
+        studentId,
+        academicYearId: academicYear.id,
+        sectionId,
+        classId: section.classId
+      }
+    });
+  }
+
   private async getManagedTarget(id: string, actor: { schoolId: string; actorRole: Role }) {
     const target = await this.prisma.user.findFirst({
       where: { id, schoolId: actor.schoolId },
@@ -120,6 +143,11 @@ export class UsersService {
         throw new BadRequestException('This account has no editable profile fields.');
       }
     }); } catch (error: any) { if (error?.code === 'P2002') throw new ConflictException('Email, EMIS ID, or student ID is already assigned to another account.'); throw error; }
+    
+    if (target.role === Role.STUDENT && input.section !== undefined && input.section.trim()) {
+      void this.enrollStudent(id, input.section.trim(), actor.schoolId);
+    }
+    
     void this.audit.record({ action: 'USER_UPDATED', entity: 'User', entityId: id, userId: actor.actorId, schoolId: actor.schoolId, details: { fields: Object.keys(input).filter(field => field !== 'email' || email !== target.email) } });
     return this.getManagedUser(id, actor);
   }

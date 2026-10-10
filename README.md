@@ -205,6 +205,8 @@ The API base URL is configured in the mobile client with `EXPO_PUBLIC_API_URL`; 
 | `POST` | `/auth/refresh` | Public | Rotate a refresh session and issue a new access token |
 | `POST` | `/auth/logout` | Bearer | Revoke the current refresh session |
 | `GET` | `/auth/me` | Bearer | Read the current token user |
+| `POST` | `/users/admin/create-user` | Admin | Create a new user (Student, Teacher, Admin) |
+| `PATCH` | `/users/admin/users/:id` | Admin | Update user details (and enrollment if applicable) |
 | `GET` | `/users/me` | Bearer | Read the current profile |
 | `PATCH` | `/users/me` | Bearer | Update allowed profile fields |
 | `GET` | `/users/stats/counts` | Bearer | Get total count of teachers, admins, students |
