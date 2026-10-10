@@ -17,10 +17,16 @@ export interface AuditLog {
   userAgent: string | null;
   requestId: string | null;
   createdAt: string;
-  user: {
+  // user: {
+  //   email: string;
+  //   role: string;
+  //   name?: string;
+  // } | null;
+    user: {
     email: string;
     role: string;
-    name?: string;
+    firstName?: string | null;
+    lastName?: string | null;
   } | null;
 }
 

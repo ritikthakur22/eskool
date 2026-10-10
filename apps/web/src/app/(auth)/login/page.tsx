@@ -14,7 +14,7 @@ export default function LoginPage() {
           <div className="relative w-8 h-8 sm:w-12 sm:h-12 overflow-hidden rounded-full">
             <Image
               src="/icon.png"
-              alt="ESkool logo"
+              alt="eSkool logo"
               fill
               className="object-cover"
               sizes="(max-width: 640px) 32px, 48px"
@@ -75,7 +75,7 @@ export default function LoginPage() {
           </Link>
         </nav>
         <p className="text-muted-foreground">
-          © <CurrentYear /> Eskool, All Rights Reserved.
+          © <CurrentYear /> eSkool, All Rights Reserved.
         </p>
       </footer>
     </div>
