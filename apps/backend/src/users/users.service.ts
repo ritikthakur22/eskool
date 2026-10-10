@@ -62,13 +62,19 @@ export class UsersService {
 
   async getManagedUser(id: string, actor: { schoolId: string; actorRole: Role }) {
     await this.getManagedTarget(id, actor);
-    return this.prisma.user.findFirst({
+    const user = await this.prisma.user.findFirst({
       where: { id, schoolId: actor.schoolId },
       select: {
         id: true, email: true, role: true, status: true, disabledAt: true, createdAt: true, updatedAt: true, userId: true, emisId: true, profilePictureUrl: true,
         studentProfile: true, teacherProfile: true, adminProfile: true,
       },
     });
+    if (!user) return null;
+    const [hasPhoto] = await this.prisma.$queryRaw<Array<{ hasProfilePicture: boolean }>>(Prisma.sql`SELECT ("profilePicture" IS NOT NULL OR "profilePictureUrl" IS NOT NULL) AS "hasProfilePicture" FROM "User" WHERE "id" = ${id} LIMIT 1`);
+    if (hasPhoto?.hasProfilePicture) {
+      user.profilePictureUrl = `/users/admin/users/${id}/photo`;
+    }
+    return user;
   }
 
   async updateManagedUser(id: string, input: UpdateManagedUserDto, actor: { actorId: string; schoolId: string; actorRole: Role }) {
@@ -262,7 +268,7 @@ export class UsersService {
         WHERE "id" = ${userId}
       `);
       void this.audit.record({ action: 'PROFILE_PHOTO_UPDATED', entity: 'User', entityId: userId, userId: auditActorId, schoolId: owner.schoolId });
-      return { success: true, profilePictureUrl: '/users/me/photo', storage: 'cloudinary' };
+      return { success: true, profilePictureUrl: `/users/admin/users/${userId}/photo`, storage: 'cloudinary' };
     }
     const updated = await this.prisma.$executeRaw(Prisma.sql`
       UPDATE "User" SET "profilePicture" = ${file.buffer}, "profilePictureMimeType" = ${file.mimetype}
@@ -270,6 +276,6 @@ export class UsersService {
     `);
     if (!updated) throw new NotFoundException('User not found');
     void this.audit.record({ action: 'PROFILE_PHOTO_UPDATED', entity: 'User', entityId: userId, userId: auditActorId, schoolId: owner.schoolId });
-    return { success: true, profilePictureUrl: '/users/me/photo' };
+    return { success: true, profilePictureUrl: `/users/admin/users/${userId}/photo` };
   }
 }

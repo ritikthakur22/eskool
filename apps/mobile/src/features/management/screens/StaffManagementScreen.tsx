@@ -139,15 +139,14 @@ export default function StaffManagementScreen({ navigation }: any) {
     const picked = await DocumentPicker.getDocumentAsync({ type: ['image/jpeg', 'image/png', 'image/webp'], copyToCacheDirectory: true });
     if (!picked.canceled && picked.assets?.[0]) {
       const file = picked.assets[0];
-      if ((file.size || 0) > 5 * 1024 * 1024) return Alert.alert('Photo too large', 'Choose an image smaller than 5 MB.');
+      if ((file.size || 0) > 1 * 1024 * 1024) return Alert.alert('Photo too large', 'Choose an image smaller than 1 MB.');
       setProfilePhoto(file);
     }
   };
   const uploadProfilePhoto = async (userId: string) => {
     if (!profilePhoto) return;
-    const data = new FormData();
-    data.append('file', { uri: profilePhoto.uri, name: profilePhoto.name || 'profile-photo.jpg', type: profilePhoto.mimeType || 'image/jpeg' } as any);
-    await api.post(`/users/admin/users/${userId}/photo`, data, { headers: { 'Content-Type': 'multipart/form-data' } });
+    const { uploadFile } = await import('../../../core/networking/api');
+    await uploadFile(profilePhoto.uri, profilePhoto.mimeType || 'image/jpeg', `/users/admin/users/${userId}/photo`);
   };
   const create = async () => {
     if (!form.email.trim() || !form.firstName.trim() || !form.lastName.trim() || (!editingUser && form.password.length < 8)) { Alert.alert('Complete the form', 'Email and full name are required. New accounts need a password of at least 8 characters.'); return; }
@@ -186,7 +185,7 @@ export default function StaffManagementScreen({ navigation }: any) {
     </ScrollView>
     <Modal visible={modal} transparent animationType="slide" onRequestClose={() => { setModal(false); setEditingUser(null); }}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={s.overlay}><View style={s.modal}><View style={s.modalHead}><View><Text style={s.eyebrow}>SCHOOL ACCOUNT</Text><Text style={s.modalTitle}>{editingUser ? 'Edit account' : 'Create account'}</Text></View><TouchableOpacity onPress={() => { setModal(false); setEditingUser(null); }}><Ionicons name="close-circle" size={25} color={colors.subText} /></TouchableOpacity></View><ScrollView style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
       <Text style={s.modalHint}>{editingUser ? 'Update identity and student details.' : 'Fields marked * are required.'}</Text>
-      {editingUser?.profilePictureUrl && <Image source={{ uri: `${API_BASE_URL}/users/admin/users/${editingUser.id}/photo`, headers: { Authorization: `Bearer ${getInMemoryAccessToken() || ''}` } }} style={{ width: 64, height: 64, borderRadius: 20, marginBottom: 10, backgroundColor: colors.border }} />}
+      {editingUser?.profilePictureUrl && <Image source={{ uri: `${API_BASE_URL}${editingUser.profilePictureUrl}?v=${Date.now()}`, headers: { Authorization: `Bearer ${getInMemoryAccessToken() || ''}` } }} style={{ width: 64, height: 64, borderRadius: 20, marginBottom: 10, backgroundColor: colors.border }} />}
       <TouchableOpacity onPress={chooseProfilePhoto} style={{ minHeight: 60, padding: 12, marginBottom: 12, borderRadius: 13, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, flexDirection: 'row', alignItems: 'center', gap: 11 }}><Ionicons name="camera-outline" size={22} color={colors.primary} /><View style={{ flex: 1 }}><Text style={{ color: colors.text, fontSize: 12, fontWeight: '800' }}>{profilePhoto ? profilePhoto.name : 'Add profile photo'}</Text><Text style={s.helper}>JPG, PNG or WEBP · up to 5 MB</Text></View><Text style={{ color: colors.primary, fontSize: 11, fontWeight: '900' }}>{profilePhoto ? 'Change' : 'Choose'}</Text></TouchableOpacity>
       {!editingUser && <View style={s.roleRow}>{allowedRoles.map(item => <TouchableOpacity key={item} onPress={() => setField('role', item)} style={[s.roleOption, form.role === item && s.roleSelected]}><Text style={[s.roleText, form.role === item && s.roleTextSelected]}>{roleLabels[item]}</Text></TouchableOpacity>)}</View>}
       <Text style={s.groupTitle}>ACCOUNT</Text><Text style={s.fieldLabel}>Email address<Text style={s.required}> *</Text></Text><TextInput value={form.email} onChangeText={value => setField('email', value)} placeholder="name@example.com" placeholderTextColor={colors.subText} keyboardType="email-address" autoCapitalize="none" style={s.input} />
