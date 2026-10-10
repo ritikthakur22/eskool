@@ -138,9 +138,8 @@ export class AuthService {
       if (!revoked) throw new UnauthorizedException('This saved sign-in was already used. Please sign in again.');
       return { oldSessionId: session.id, userId: session.userId, schoolId: session.schoolId, next };
     });
-    const { oldSessionId, userId, schoolId, next } = result;
+    const { next } = result;
     const { sessionId: _replacementId, ...tokens } = next;
-    void this.audit.record({ action: 'REFRESH_ROTATED', entity: 'AuthSession', entityId: oldSessionId, userId, schoolId });
     return tokens;
   }
 
