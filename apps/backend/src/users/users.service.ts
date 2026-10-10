@@ -24,7 +24,18 @@ export class UsersService {
   }
 
   async create(data: Prisma.UserCreateInput): Promise<User> {
-    try { return await this.prisma.user.create({ data }); }
+    try {
+      if (!data.id) {
+        const [result] = await this.prisma.$queryRaw<Array<{ maxId: number }>>`
+          SELECT MAX(CAST(SUBSTRING("id" FROM 5) AS INTEGER)) as "maxId" 
+          FROM "User" 
+          WHERE "id" ~ '^dps-\\d+$'
+        `;
+        const nextId = (result?.maxId || 0) + 1;
+        data.id = \`dps-\${String(nextId).padStart(4, '0')}\`;
+      }
+      return await this.prisma.user.create({ data });
+    }
     catch (error: any) { if (error?.code === 'P2002') throw new ConflictException('Email, EMIS ID, or student ID is already in use.'); throw error; }
   }
 

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import { getInMemoryAccessToken, getInMemoryRefreshToken, setInMemoryAccessToken, setInMemoryRefreshToken } from './session';
 
 // Set EXPO_PUBLIC_API_URL to the computer's LAN URL when using a physical device.
