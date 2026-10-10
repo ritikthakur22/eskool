@@ -62,21 +62,15 @@ api.interceptors.response.use(undefined, async (error) => {
 });
 
 export const uploadFile = async (uri: string, mimeType?: string, endpoint = '/upload') => {
-  const token = getInMemoryAccessToken() || await SecureStore.getItemAsync('access_token');
-  const response = await FileSystem.uploadAsync(`${API_BASE_URL}${endpoint}`, uri, {
-    fieldName: 'file',
-    httpMethod: 'POST',
-    uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    mimeType: mimeType || 'application/octet-stream',
+  const formData = new FormData();
+  formData.append('file', {
+    uri,
+    name: uri.split('/').pop() || 'upload',
+    type: mimeType || 'application/octet-stream',
+  } as any);
+
+  const response = await api.post(endpoint, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
-  if (response.status >= 200 && response.status < 300) {
-    try {
-      return JSON.parse(response.body);
-    } catch {
-      return response.body;
-    }
-  } else {
-    throw new Error(`Upload failed with status ${response.status}: ${response.body}`);
-  }
+  return response.data;
 };

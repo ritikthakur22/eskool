@@ -234,9 +234,9 @@ function PhoneInputField({ value, onChange, colors }: { value: string; onChange:
   const [modal, setModal] = useState(false);
   const [search, setSearch] = useState('');
   
-  const match = value.match(/^(\+\d{1,4})?(.*)$/);
-  const countryCode = (match && match[1]) ? match[1] : '+977';
-  const number = (match && match[2]) ? match[2] : value;
+  const matchedCode = COUNTRY_CODES.find(c => value.startsWith(c.code))?.code || '+977';
+  const countryCode = matchedCode;
+  const number = value.startsWith(matchedCode) ? value.substring(matchedCode.length) : value;
 
   const filtered = COUNTRY_CODES.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.code.includes(search));
   
