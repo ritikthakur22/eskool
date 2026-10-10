@@ -43,6 +43,23 @@ const displayName = (user: ManagedUser) => {
   return [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || user.email;
 };
 
+const COUNTRY_CODES = [
+  { code: '+977', name: 'Nepal' },
+  { code: '+91', name: 'India' },
+  { code: '+1', name: 'USA/Canada' },
+  { code: '+44', name: 'UK' },
+  { code: '+61', name: 'Australia' },
+  { code: '+81', name: 'Japan' },
+  { code: '+86', name: 'China' },
+  { code: '+971', name: 'UAE' },
+];
+
+export const extractPhoneNumber = (phone?: string) => {
+  if (!phone) return '';
+  const matched = COUNTRY_CODES.find(c => phone.startsWith(c.code))?.code || '';
+  return phone.startsWith(matched) ? phone.substring(matched.length) : phone;
+};
+
 export default function StaffManagementScreen({ navigation }: any) {
   const { colors } = useTheme();
   const s = makeStyles(colors);
@@ -159,9 +176,9 @@ export default function StaffManagementScreen({ navigation }: any) {
       if (!parseAdmissionDateTime(form.admissionDateTime)) { Alert.alert('Admission date and time', 'Use the format YYYY-M-D h:mmam/pm, for example 2026-1-9 10:56pm.'); return; }
     }
     if (form.dob && !/^\d{4}-\d{2}-\d{2}$/.test(form.dob)) { Alert.alert('Date of birth', 'Enter the AD date as YYYY-MM-DD.'); return; }
-    if (form.phone) { const match = form.phone.match(/^(\+\d{1,4})?(.*)$/); const number = match ? match[2] : form.phone; if (number.length > 0 && number.length !== 10) { Alert.alert('Invalid phone', 'Phone number must be exactly 10 digits.'); return; } }
-    if (form.fatherPhone) { const match = form.fatherPhone.match(/^(\+\d{1,4})?(.*)$/); const number = match ? match[2] : form.fatherPhone; if (number.length > 0 && number.length !== 10) { Alert.alert('Invalid phone', 'Father phone number must be exactly 10 digits.'); return; } }
-    if (form.motherPhone) { const match = form.motherPhone.match(/^(\+\d{1,4})?(.*)$/); const number = match ? match[2] : form.motherPhone; if (number.length > 0 && number.length !== 10) { Alert.alert('Invalid phone', 'Mother phone number must be exactly 10 digits.'); return; } }
+    if (form.phone) { const number = extractPhoneNumber(form.phone); if (number.length > 0 && number.length !== 10) { Alert.alert('Invalid phone', 'Phone number must be exactly 10 digits.'); return; } }
+    if (form.fatherPhone) { const number = extractPhoneNumber(form.fatherPhone); if (number.length > 0 && number.length !== 10) { Alert.alert('Invalid phone', 'Father phone number must be exactly 10 digits.'); return; } }
+    if (form.motherPhone) { const number = extractPhoneNumber(form.motherPhone); if (number.length > 0 && number.length !== 10) { Alert.alert('Invalid phone', 'Mother phone number must be exactly 10 digits.'); return; } }
     setSaving(true);
     try {
       const studentData = form.role === 'STUDENT' ? { emisId: form.emisId.trim(), userId: form.userId.trim() || undefined, grade: form.grade || undefined, section: form.section || undefined, rollNo: form.rollNo.trim() || undefined, dob: form.dob || undefined, dobBs: form.dobBs.trim() || undefined, admissionDate: parseAdmissionDateTime(form.admissionDateTime) || undefined, gender: form.gender || undefined, bloodGroup: form.bloodGroup || undefined, address: form.address.trim() || undefined, temporaryAddress: form.temporaryAddress.trim() || undefined, fatherName: form.fatherName.trim() || undefined, fatherPhone: form.fatherPhone.trim() || undefined, motherName: form.motherName.trim() || undefined, motherPhone: form.motherPhone.trim() || undefined } : {};
@@ -221,16 +238,7 @@ export default function StaffManagementScreen({ navigation }: any) {
   </SafeAreaView>;
 }
 
-const COUNTRY_CODES = [
-  { code: '+977', name: 'Nepal' },
-  { code: '+91', name: 'India' },
-  { code: '+1', name: 'USA/Canada' },
-  { code: '+44', name: 'UK' },
-  { code: '+61', name: 'Australia' },
-  { code: '+81', name: 'Japan' },
-  { code: '+86', name: 'China' },
-  { code: '+971', name: 'UAE' },
-];
+
 
 function PhoneInputField({ value, onChange, colors }: { value: string; onChange: (v: string) => void; colors: any }) {
   const [modal, setModal] = useState(false);
