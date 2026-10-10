@@ -87,6 +87,12 @@ export class UsersController {
     return this.usersService.updateManagedUser(id, data, { actorId: req.user.id, schoolId: req.user.schoolId, actorRole: req.user.role as Role });
   }
 
+  @Patch('admin/users/:id/reset-password')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  resetManagedUserPassword(@Param('id') id: string, @Body() data: { newPassword?: string }, @Request() req: any) {
+    return this.usersService.resetManagedUserPassword(id, data.newPassword, { actorId: req.user.id, schoolId: req.user.schoolId, actorRole: req.user.role as Role });
+  }
+
   @Post('admin/users/:id/photo')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   @UseInterceptors(FileInterceptor('file', {

@@ -227,6 +227,20 @@ export class UsersService {
     return { success: true };
   }
 
+  async resetManagedUserPassword(id: string, newPassword: unknown, actor: { actorId: string; schoolId: string; actorRole: Role }) {
+    if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 128) {
+      throw new BadRequestException('A new password of at least 8 characters is required');
+    }
+    const target = await this.getManagedTarget(id, actor);
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id }, data: { password: passwordHash, tokenVersion: { increment: 1 } } }),
+      this.prisma.authSession.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } }),
+    ]);
+    void this.audit.record({ action: 'USER_PASSWORD_RESET', entity: 'User', entityId: id, userId: actor.actorId, schoolId: actor.schoolId });
+    return { success: true, message: 'Password has been reset successfully' };
+  }
+
   async getUserCounts(schoolId: string) {
     const counts = await this.prisma.user.groupBy({
       by: ['role'],
