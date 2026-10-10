@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import { getInMemoryAccessToken, getInMemoryRefreshToken, setInMemoryAccessToken, setInMemoryRefreshToken } from './session';
 
 // Set EXPO_PUBLIC_API_URL to the computer's LAN URL when using a physical device.
@@ -59,3 +60,19 @@ api.interceptors.response.use(undefined, async (error) => {
   original.headers.Authorization = `Bearer ${accessToken}`;
   return api(original);
 });
+
+export const uploadFile = async (uri: string, mimeType?: string) => {
+  const token = getInMemoryAccessToken() || await SecureStore.getItemAsync('access_token');
+  const response = await FileSystem.uploadAsync(`${API_BASE_URL}/upload`, uri, {
+    fieldName: 'file',
+    httpMethod: 'POST',
+    uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    mimeType: mimeType || 'application/octet-stream',
+  });
+  if (response.status >= 200 && response.status < 300) {
+    return JSON.parse(response.body);
+  } else {
+    throw new Error(`Upload failed with status ${response.status}: ${response.body}`);
+  }
+};

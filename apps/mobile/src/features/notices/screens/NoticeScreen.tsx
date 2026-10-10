@@ -4,7 +4,7 @@ import { KeyboardAvoidingView, Platform, ActivityIndicator, Modal, RefreshContro
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Linking from 'expo-linking';
-import { API_BASE_URL, api } from '../../../core/networking/api';
+import { API_BASE_URL, api, uploadFile } from '../../../core/networking/api';
 import { useTheme } from '../../../core/theme/ThemeContext';
 import { noticeTargetClasses } from '../../../core/utils/classOrdering';
 import { isNoticeUnread, loadNoticeReadState, markAllNoticesRead, markNoticeRead, saveNoticeReadState, type NoticeReadState } from '../../../core/utils/noticeReadState';
@@ -113,11 +113,9 @@ export default function NoticeScreen({ navigation }: any) {
       let attachmentType = editNotice?.attachmentType;
       
       if (attachment) {
-        const formData = new FormData();
-        formData.append('file', { uri: attachment.uri, name: attachment.name, type: attachment.mimeType || 'application/octet-stream' } as any);
-        const uploadRes = await api.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-        attachmentUrl = uploadRes.data.url;
-        attachmentType = uploadRes.data.mimeType;
+        const uploadRes = await uploadFile(attachment.uri, attachment.mimeType);
+        attachmentUrl = uploadRes.url;
+        attachmentType = uploadRes.mimeType;
       }
       
       let data = { ...form, attachmentUrl, attachmentType };

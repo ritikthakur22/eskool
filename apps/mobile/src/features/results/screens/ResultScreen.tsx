@@ -4,7 +4,7 @@ import { KeyboardAvoidingView, Platform, StyleSheet, View, Text, TouchableOpacit
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../../core/theme/ThemeContext';
-import { api } from '../../../core/networking/api';
+import { api, uploadFile } from '../../../core/networking/api';
 import { getSelectedChildId } from '../../../core/utils/childSelection';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -168,10 +168,8 @@ export default function ResultScreen({ navigation }: any) {
       let templateUrl = scheme.templateUrl || undefined;
       let templateName = scheme.templateName || undefined;
       if (templateFile) {
-        const data = new FormData();
-        data.append('file', { uri: templateFile.uri, name: templateFile.name, type: templateFile.mimeType || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } as any);
-        const upload = await api.post('/upload', data, { headers: { 'Content-Type': 'multipart/form-data' } });
-        templateUrl = upload.data.url;
+        const upload = await uploadFile(templateFile.uri, templateFile.mimeType);
+        templateUrl = upload.url;
         templateName = templateFile.name;
       }
       const payload = { categoryWeights: Object.fromEntries(Object.entries(weights).map(([key, value]) => [key, Number(value)])), gradeBands: gradeBands.map(band => ({ ...band, minPercent: Number(band.minPercent), maxPercent: Number(band.maxPercent), gpa: band.gpa === '' || band.gpa === undefined ? undefined : Number(band.gpa) })), templateUrl, templateName };
